@@ -52,6 +52,6 @@ The **TA Management System** is designed to efficiently manage Teaching Assistan
 ## Contributing
 * Burak Kağan Gür
 * Daib Malik
-* İdil Bilge Öziş
+* Bilge İdil Öziş
 * Yunus Günay
 * Yusufbek Karamatov
