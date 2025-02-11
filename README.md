@@ -45,9 +45,9 @@ The **TA Management System** is designed to efficiently manage Teaching Assistan
 * Database: MySQL
 
 ## Usage
-**- TAs:** Log in to enter tasks and request leave.
-**- Faculty:** Approve/reject TA tasks and assign proctoring duties.
-**- Admins:** Manage roles, workload caps, and import data.
+* **TAs:** Log in to enter tasks and request leave.
+* **Faculty:** Approve/reject TA tasks and assign proctoring duties.
+* **Admins:** Manage roles, workload caps, and import data.
 
 ## Contributing
 * Burak Kağan Gür
