@@ -1,0 +1,143 @@
+  
+.container {
+    font-family: 'Titillium Web', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color:rgb(247, 245, 245);
+  }
+  
+  .formWrapper {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 12px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    padding: 32px;
+  }
+  
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 0 2;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: -10px 0 0 0;
+  }
+  
+  .inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .labelRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .input {
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .forgotPassword {
+    font-size: 14px;
+    color: #2563eb;
+    text-decoration: none;
+  }
+  
+  .forgotPassword:hover {
+    text-decoration: underline;
+  }
+  
+  .button {
+    background-color: #2563eb;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .button:hover {
+    background-color: #1d4ed8;
+  }
+  
+  .button:active {
+    background-color: #1e40af;
+  }
+  
+  .message {
+    text-align: center;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 0;
+  }
+  
+  .error {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+  }
+  
+  .register {
+    text-align: center;
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+  }
+  
+  .registerLink {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .registerLink:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 480px) {
+    .formWrapper {
+      padding: 24px;
+    }
+  
+    .form {
+      gap: 20px;
+    }
+  }
+  
+  
