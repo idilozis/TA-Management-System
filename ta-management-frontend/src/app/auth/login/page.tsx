@@ -1,0 +1,161 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import axios from "axios"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Mail, Eye, EyeOff } from "lucide-react"
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+// Form validation schema
+const formSchema = z.object({
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+})
+
+const Login = () => {
+  const router = useRouter()
+  const [message, setMessage] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const response = await axios.post("http://localhost:5000/auth/login", values, {
+        headers: { "Content-Type": "application/json" },
+      })
+      setMessage(response.data.message)
+      // Redirect after login
+      setTimeout(() => router.push("/dashboard"), 1000)
+    } 
+    catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        setMessage(error.response?.data?.message || "Login failed. Please try again.");
+      } else {
+        setMessage("Login failed. Please try again.");
+      }
+    }
+  }
+
+  return (
+    <div className="flex justify-center items-center min-h-screen">
+      <Card className="w-full max-w-xl shadow-md p-6">
+        
+        <CardHeader>
+          <CardTitle className="flex justify-center items-center">
+            Welcome!
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to sign in.
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              
+              {/* Email */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enter Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input placeholder="Enter your email" {...field} />
+                        <Mail className="absolute right-2 top-2 h-5 w-5 text-gray-400 pointer-events-none" />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Password */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enter Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          {...field}
+                        />
+                        {/* Show/Hide password button. */}
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-2 top-2 text-gray-400"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" className="w-full">
+                Sign In {'>'}
+              </Button>
+
+            </form>
+          </Form>
+
+          {message && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+
+        <CardFooter className="flex justify-end">
+          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+            Forgot Password?
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
+  )
+}
+
+export default Login

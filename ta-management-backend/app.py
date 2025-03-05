@@ -15,47 +15,6 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor()
 
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    
-    # Debug: Print the incoming data
-    print("Received registration data:", data)
-    
-    # Ensure all required fields are present
-    required_fields = ['name', 'surname', 'email', 'role', 'password']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"message": f"Missing required field: {field}"}), 400
-
-    name = data['name']
-    surname = data['surname']
-    email = data['email']
-    role = data['role']
-    password = data['password']
-
-    try:
-        # Check if the user already exists
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        existing_user = cursor.fetchone()
-        if existing_user:
-            return jsonify({"message": "User already exists"}), 400
-
-        # Hash the password before storing it
-        hashed_password = generate_password_hash(password)
-
-        # Insert new user into the database
-        cursor.execute(
-            "INSERT INTO users (name, surname, email, role, password) VALUES (%s, %s, %s, %s, %s)",
-            (name, surname, email, role, hashed_password)
-        )
-        db.commit()
-
-        return jsonify({"message": "User registered successfully!"}), 201
-
-    except mysql.connector.Error as err:
-        return jsonify({"message": f"Database error: {err}"}), 500
-
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()

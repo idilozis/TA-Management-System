@@ -1,1 +1,44 @@
-node_modules
+# ---------------------------
+#  Node / Next.js
+# ---------------------------
+node_modules/
+.next/
+out/
+
+# Local environment variables
+.env
+.env.*
+
+# ---------------------------
+#  Python / Flask
+# ---------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.cache
+*.egg-info/
+dist/
+build/
+
+# Virtual environment folders
+venv/
+.venv/
+
+# Flask instance or config folders (if you use them)
+instance/
+config.py
+
+# ---------------------------
+#  OS / Editor / Tooling
+# ---------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ---------------------------
+#  Specific Project Files
+# ---------------------------
+Deliverables/Deliverable 1 - 1st Iteration.pdf
