@@ -55,7 +55,7 @@ const Login = () => {
       })
       setMessage(response.data.message)
       // Redirect after login
-      setTimeout(() => router.push("/dashboard"), 1000)
+      setTimeout(() => router.push("/home-page"), 1000)
     } 
     catch (error: unknown) {
       if (axios.isAxiosError(error)) {
