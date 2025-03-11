@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import axios from "axios"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Mail, Eye, EyeOff } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Mail, Eye, EyeOff } from "lucide-react";
 
 import {
   Card,
@@ -16,9 +16,9 @@ import {
   CardTitle,
   CardDescription,
   CardFooter,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -26,48 +26,72 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+} from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Form validation schema
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-})
+  rememberMe: z.boolean().optional(),
+});
 
 const Login = () => {
-  const router = useRouter()
-  const [message, setMessage] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter();
+  const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false, // default unchecked
     },
-  })
+  });
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberEmail");
+    const savedPassword = localStorage.getItem("rememberPassword");
+    if (savedEmail && savedPassword) {
+      form.setValue("email", savedEmail);
+      form.setValue("password", savedPassword);
+      form.setValue("rememberMe", true);
+    }
+  }, [form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const response = await axios.post("http://localhost:5000/auth/login", values, {
+      const response = await axios.post("http://localhost:8000/auth/login/", values, {
         headers: { "Content-Type": "application/json" },
-      })
-      setMessage(response.data.message)
-      // Redirect after login
-      setTimeout(() => router.push("/home-page"), 1000)
-    } 
-    catch (error: unknown) {
+      });
+
+      setMessage(response.data.message);
+
+      if (response.data.status === "success") {
+        // save credentials if "Remember Me" is checked
+        if (values.rememberMe) {
+          localStorage.setItem("rememberEmail", values.email);
+          localStorage.setItem("rememberPassword", values.password);
+        } else {
+          localStorage.removeItem("rememberEmail");
+          localStorage.removeItem("rememberPassword");
+        }
+
+        setTimeout(() => router.push("/home-page"), 1000);
+      }
+    } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         setMessage(error.response?.data?.message || "Login failed. Please try again.");
       } else {
         setMessage("Login failed. Please try again.");
       }
     }
-  }
+  };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex justify-center items-center min-h-screen bg-blue-100">
       <Card className="w-full max-w-xl shadow-md p-6">
         
         <CardHeader>
@@ -115,6 +139,7 @@ const Login = () => {
                           placeholder="Enter your password"
                           {...field}
                         />
+
                         {/* Show/Hide password button. */}
                         <button
                           type="button"
@@ -134,6 +159,24 @@ const Login = () => {
                 )}
               />
 
+              {/* Remember Me Checkbox */}
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox 
+                        id="rememberMe" 
+                        checked={field.value} 
+                        onCheckedChange={field.onChange} 
+                      />
+                    </FormControl>
+                    <FormLabel htmlFor="rememberMe">Remember Me</FormLabel>
+                  </FormItem>
+                )}
+              />
+
               <Button type="submit" className="w-full">
                 Sign In {'>'}
               </Button>
@@ -148,14 +191,16 @@ const Login = () => {
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-end">
+        {/* Forgot Password? */}
+        <CardFooter className="flex justify-between">
           <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
             Forgot Password?
           </Link>
         </CardFooter>
+        
       </Card>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

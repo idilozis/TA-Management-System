@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import {
   Card,
@@ -26,31 +27,52 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Validation schema
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmPassword"],
 });
 
-const ForgotPassword = () => {
+const ResetPassword = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email");
+
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: "" },
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
+  useEffect(() => {
+    if (!email) {
+      setMessage("Invalid or missing reset link.");
+    }
+  }, [email]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setMessage("");
+    if (!email) {
+      setMessage("Invalid or missing reset link.");
+      return;
+    }
+
     try {
       const response = await axios.post(
-        "http://localhost:8000/auth/forgot-password/",
-        values,
+        "http://localhost:8000/auth/reset-password/",
+        { email, password: values.password },
         { headers: { "Content-Type": "application/json" } }
       );
 
       setMessage(response.data.message);
       setIsSuccess(true);
     } 
+    
     catch (error: unknown) {
       setIsSuccess(false);
       if (axios.isAxiosError(error)) {
@@ -66,25 +88,35 @@ const ForgotPassword = () => {
       <Card className="w-full max-w-xl shadow-md p-6">
         <CardHeader>
           <CardTitle className="flex justify-center items-center">
-            Forgot Password
+            Reset Password
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your email to receive a password reset link.
+            Enter a new password for {email || "your account"}.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {message && (
+            <Alert variant={isSuccess ? "default" : "destructive"} className="mb-4">
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* New Password */}
               <FormField
                 control={form.control}
-                name="email"
+                name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>New Password</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input placeholder="Enter your email" {...field} />
-                        <Mail className="absolute right-2 top-2 h-5 w-5 text-gray-400 pointer-events-none" />
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your new password"
+                          {...field}
+                        />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -92,21 +124,30 @@ const ForgotPassword = () => {
                 )}
               />
 
+              {/* Confirm Password */}
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Confirm your new password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Button type="submit" className="w-full">
-                Send Reset Link
+                Reset Password
               </Button>
             </form>
           </Form>
-
-          {message && (
-            <Alert variant={isSuccess ? "default" : "destructive"} className="mt-4">
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;
