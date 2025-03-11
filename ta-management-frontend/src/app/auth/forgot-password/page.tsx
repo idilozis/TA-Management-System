@@ -30,6 +30,7 @@ const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
 });
 
+
 const ForgotPassword = () => {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);

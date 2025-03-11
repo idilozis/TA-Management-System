@@ -56,11 +56,11 @@ env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))  # Load .env file 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')  # Example: Gmail
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')  # Gmail
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')  # email
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')  # email app password
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')  # Email address
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')  # Email app password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ######################################
 
@@ -86,7 +86,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# Database
+# DATABASE
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

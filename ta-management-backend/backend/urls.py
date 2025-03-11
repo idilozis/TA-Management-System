@@ -7,7 +7,7 @@ def initial_backend_view(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/', include('userauth.urls')),  # includes "auth.urls" file. for frontend, call with "auth/"
+    path('auth/', include('userauth.urls')),  # includes "auth.urls" file, call with "auth/"
 
     # Default root view
     path('', initial_backend_view), 
