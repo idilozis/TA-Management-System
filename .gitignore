@@ -10,7 +10,7 @@ out/
 .env.*
 
 # ---------------------------
-#  Python / Flask
+#  Python / Django
 # ---------------------------
 __pycache__/
 *.pyc
@@ -25,10 +25,6 @@ build/
 venv/
 .venv/
 
-# Flask instance or config folders (if you use them)
-instance/
-config.py
-
 # ---------------------------
 #  OS / Editor / Tooling
 # ---------------------------
@@ -39,6 +35,6 @@ Thumbs.db
 *.swp
 
 # ---------------------------
-#  Specific Project Files
+#  Deliverables
 # ---------------------------
-Deliverables/Deliverable 1 - 1st Iteration.pdf
+deliverables/
