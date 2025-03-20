@@ -1,5 +1,7 @@
 from pathlib import Path
 import environ, os
+import pymysql
+pymysql.install_as_MySQLdb
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,11 +23,13 @@ INSTALLED_APPS = [
     # Manually added below:
     'rest_framework',
     'corsheaders',  # Enables frontend-backend connection
-    'userauth',
+    
+    # MyApp:
+    'myapp.apps.MyAppConfig',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware', # Manually Added
+    'corsheaders.middleware.CorsMiddleware', # CORS HEADERS
 
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -36,14 +40,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Manually Added
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+# CORS ORIGINS
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000',
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 # Manually Added
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
+    'http://localhost:3000',
 ]
 
 # Manually Added
@@ -51,16 +57,14 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.AllowAllUsersModelBackend',
 ]
 
-# Mail
-env = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR, ".env"))  # Load .env file 
 
+# E-mail without .env (hardcoded)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')  # Gmail
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')  # Email address
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')  # Email app password
+EMAIL_HOST = 'smtp.gmail.com' # Gmail
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ynsgunayy@gmail.com'  # Email address
+EMAIL_HOST_PASSWORD = 'lqpsmsfdbnrhioqg' # Email app password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ######################################
 
@@ -86,11 +90,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# DATABASE
+# MySQL DATABASE
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'cs319',
+        'USER': 'ta_management',
+        'PASSWORD': 'cs319',
+        'HOST': '13.51.13.127',  # AWS server IP address
+        'PORT': '3306',
     }
 }
 

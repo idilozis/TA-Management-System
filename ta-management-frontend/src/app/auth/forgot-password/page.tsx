@@ -1,36 +1,25 @@
 "use client";
 
+import apiClient from "@/lib/axiosClient"; // shared Axios instance
 import { useState } from "react";
-import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Mail } from "lucide-react";
 
+
+// Form validation schema
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
 });
 
-
+// FORGOT PASSWORD
 const ForgotPassword = () => {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -43,10 +32,8 @@ const ForgotPassword = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setMessage("");
     try {
-      const response = await axios.post(
-        "http://localhost:8000/auth/forgot-password/",
-        values,
-        { headers: { "Content-Type": "application/json" } }
+      const response = await apiClient.post("/auth/forgot-password/", values, { 
+        headers: { "Content-Type": "application/json" } }
       );
 
       setMessage(response.data.message);
@@ -54,8 +41,8 @@ const ForgotPassword = () => {
     } 
     catch (error: unknown) {
       setIsSuccess(false);
-      if (axios.isAxiosError(error)) {
-        setMessage(error.response?.data?.message || "Something went wrong.");
+      if (error instanceof Error) {
+        setMessage(error.message || "Something went wrong.");
       } else {
         setMessage("Something went wrong.");
       }

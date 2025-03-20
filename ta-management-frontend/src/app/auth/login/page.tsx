@@ -1,5 +1,6 @@
 "use client";
 
+import apiClient from "@/lib/axiosClient"; // shared Axios instance
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -7,33 +8,19 @@ import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail, Eye, EyeOff } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+import { Mail, Eye, EyeOff } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 
 // Form validation schema
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   rememberMe: z.boolean().optional(),
 });
 
@@ -51,34 +38,33 @@ const Login = () => {
     },
   });
 
+  // Remember Me
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberEmail");
-    const savedPassword = localStorage.getItem("rememberPassword");
-    if (savedEmail && savedPassword) {
+    if (savedEmail) {
       form.setValue("email", savedEmail);
-      form.setValue("password", savedPassword);
       form.setValue("rememberMe", true);
     }
   }, [form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const response = await axios.post("http://localhost:8000/auth/login/", values, {
+      const response = await apiClient.post("/auth/login/", values, {
         headers: { "Content-Type": "application/json" },
       });
 
       setMessage(response.data.message);
 
       if (response.data.status === "success") {
-        // save credentials if "Remember Me" is checked
+        const userType = response.data.userType;
+        console.log("Login success, userType = ", userType);
+
+        // Save only email if "Remember Me" is checked
         if (values.rememberMe) {
           localStorage.setItem("rememberEmail", values.email);
-          localStorage.setItem("rememberPassword", values.password);
         } else {
           localStorage.removeItem("rememberEmail");
-          localStorage.removeItem("rememberPassword");
         }
-
         setTimeout(() => router.push("/home-page"), 1000);
       }
     } catch (error: unknown) {
@@ -89,6 +75,7 @@ const Login = () => {
       }
     }
   };
+
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-blue-100">
