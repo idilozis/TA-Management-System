@@ -65,7 +65,7 @@ const Login = () => {
 
       if (response.data.status === "success") {
         const userType = response.data.userType;
-        console.log("Login success, userType =", userType);
+        console.log("Login success, userType = ", userType);
 
         // Save only email if "Remember Me" is checked
         if (values.rememberMe) {
