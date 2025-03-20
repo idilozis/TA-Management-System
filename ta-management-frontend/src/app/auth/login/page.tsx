@@ -1,6 +1,6 @@
 "use client";
 
-import apiClient from "@/lib/axiosClient"; // shared Axios instance
+import apiClient from "@/lib/axiosClient";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -38,6 +38,14 @@ const Login = () => {
     },
   });
 
+  // Call the CSRF endpoint once to ensure the cookie is set
+  useEffect(() => {
+    apiClient.get("/auth/csrf/")
+      .catch((err) => {
+        console.error("Error setting CSRF cookie:", err);
+      });
+  }, []);
+
   // Remember Me
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberEmail");
@@ -57,7 +65,7 @@ const Login = () => {
 
       if (response.data.status === "success") {
         const userType = response.data.userType;
-        console.log("Login success, userType = ", userType);
+        console.log("Login success, userType =", userType);
 
         // Save only email if "Remember Me" is checked
         if (values.rememberMe) {
@@ -75,7 +83,6 @@ const Login = () => {
       }
     }
   };
-
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-blue-100">
@@ -126,8 +133,7 @@ const Login = () => {
                           placeholder="Enter your password"
                           {...field}
                         />
-
-                        {/* Show/Hide password button. */}
+                        {/* Show/Hide password button */}
                         <button
                           type="button"
                           onClick={() => setShowPassword((prev) => !prev)}
@@ -153,10 +159,10 @@ const Login = () => {
                 render={({ field }) => (
                   <FormItem className="flex items-center space-x-2">
                     <FormControl>
-                      <Checkbox 
-                        id="rememberMe" 
-                        checked={field.value} 
-                        onCheckedChange={field.onChange} 
+                      <Checkbox
+                        id="rememberMe"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
                     <FormLabel htmlFor="rememberMe">Remember Me</FormLabel>
