@@ -9,7 +9,7 @@ def initial_backend_view(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('myapp.userauth.urls')),          # Call "myapp -> userauth" functions
-    path('ta-duties/', include('myapp.ta-duties.urls')),    # Call "myapp -> ta-duties" functions
+    path('schedule/', include('myapp.schedule.urls')),      # Call "myapp -> schedule" functions
 
     # Default root view
     path('', initial_backend_view), 

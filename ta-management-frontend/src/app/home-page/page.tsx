@@ -7,6 +7,7 @@ import Link from "next/link";
 import { HomeIcon, ClipboardIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import SettingsModal from "@/components/general/settings";
+import TAWeeklySchedule from "@/components/general/schedule";
 
 interface UserData {
   name: string;
@@ -37,7 +38,7 @@ const getRoleString = (user: UserData) => {
   }
 };
 
-const HomePage = () => {
+export default function HomePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -58,22 +59,24 @@ const HomePage = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen">
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
         <Sidebar className="w-64 bg-pink-200 p-6 shadow-md">
-          <div className="flex flex-col items-center text-center mb-6">
+          <div className="flex flex-col items-center text-center mb-6">          
             <img
               src="/blank-profile-icon.png"
               alt="Profile"
               className="w-16 h-16 rounded-full mb-3"
             />
+            
             <h3 className="text-lg font-semibold">
               {user ? `${user.name} ${user.surname || ""}` : "Loading..."}
             </h3>
-
+            
             <p className="text-sm text-gray-700">
               {user ? getRoleString(user) : ""}
             </p>
-
+            
             <button
               onClick={() => setShowSettings(true)}
               className="mt-4 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded"
@@ -107,27 +110,36 @@ const HomePage = () => {
           </nav>
         </Sidebar>
 
-        <main className="flex-1 p-8 overflow-auto">
-          <h1 className="text-3xl font-bold mb-4">TA Management System Home Page</h1>
-          {user && (
-            <p>
-              Hi {user.name}, you are logged in as {user.email}. <br />
-              <strong>{getRoleString(user)}</strong>.
+        {/* Main Content */}
+        <main className="flex-1 p-8">         
+          <div className="max-w-5xl mx-auto">
+            <h1 className="text-3xl font-bold mb-4">TA Management System Home Page</h1>
+            {user && (
+              <p className="mb-4">
+                Hi {user.name}, you are logged in as {user.email}. <br />
+                <strong>{getRoleString(user)}</strong>.
+              </p>
+            )}
+            <p className="mb-6">
+              Use the sidebar to navigate between TA Duties, Proctoring, and Reports.
             </p>
-          )}
-          <p>Use the sidebar to navigate between TA Duties, Proctoring, and Reports.</p>
+
+            {/* Show the schedule only if user is a TA */}
+            {user && user.isTA && (
+              <TAWeeklySchedule />
+            )}
+          </div>
         </main>
 
         {showSettings && user && (
           <SettingsModal 
             user={user} 
             onClose={() => setShowSettings(false)} 
-            onUpdateUser={(updatedUser) => setUser(updatedUser)} // Update local state.
+            onUpdateUser={(updatedUser) => setUser(updatedUser)}
           />
         )}
+        
       </div>
     </SidebarProvider>
   );
-};
-
-export default HomePage;
+}

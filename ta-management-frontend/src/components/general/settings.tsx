@@ -57,8 +57,8 @@ export default function SettingsModal({ user, onClose, onUpdateUser }: SettingsM
       // Update local user data
       const updatedUser = { ...user, name, surname };
       onUpdateUser(updatedUser);
-    } catch (error: any) {
-      setMessage(error.response?.data?.message || "Update failed.");
+    } catch {
+      setMessage("Update failed.");
     }
   };
 
