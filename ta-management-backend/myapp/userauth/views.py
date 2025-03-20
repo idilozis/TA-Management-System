@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth import login as auth_login
 from django.conf import settings
 from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db import transaction
 from django.core.mail import send_mail
 from django.core.cache import cache
@@ -42,6 +43,9 @@ def login(request):
     
     return JsonResponse({"message": "Method not allowed"}, status=405)
 
+@ensure_csrf_cookie
+def get_csrf_token(request): 
+    return JsonResponse({"message": "CSRF cookie set."})
 
 # -----------------------------
 # GET CURRENT USER SESSION
