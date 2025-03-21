@@ -79,7 +79,7 @@ def get_current_user(request):
             "status": "success",
             "user": {
                 "name": user.name,
-                "courses": user.courses,
+                "surname": user.surname,
                 "department": user.department,
                 "email": user.email,
                 "isTA": False,
