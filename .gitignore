@@ -1,16 +1,29 @@
 # ---------------------------
-#  Node / Next.js
+#  Node.js / Next.js
 # ---------------------------
 node_modules/
 .next/
 out/
 
+# Next.js build output
+.vercel/
+.cache/
+
 # Local environment variables
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+
+# Debug log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # ---------------------------
-#  Python / Flask
+#  Python / Django
 # ---------------------------
 __pycache__/
 *.pyc
@@ -20,14 +33,11 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+db.sqlite3
 
 # Virtual environment folders
 venv/
 .venv/
-
-# Flask instance or config folders (if you use them)
-instance/
-config.py
 
 # ---------------------------
 #  OS / Editor / Tooling
@@ -37,8 +47,10 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.sublime-project
+*.sublime-workspace
 
 # ---------------------------
-#  Specific Project Files
+#  Deliverables (Prevent Pushing Project Reports)
 # ---------------------------
-Deliverables/Deliverable 1 - 1st Iteration.pdf
+deliverables/

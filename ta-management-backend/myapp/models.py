@@ -39,10 +39,12 @@ class TAUser(models.Model):
 # STAFF Users
 class StaffUser(models.Model):
     name = models.CharField(max_length=255)
+    surname = models.CharField(max_length=255)
     email = models.EmailField(primary_key=True) # Email PK
-    courses = models.CharField(max_length=15, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=255,blank=True,null=True)
+
+    # Staff users are not TAs
     isTA = models.BooleanField(default=False)
 
     class Meta:
@@ -58,23 +60,22 @@ class StaffUser(models.Model):
         return check_password(raw_password, self.password)
 
 
-""""
-This model can be necessary for later usage.
-Remove courses from StaffUser.
-Staff members can now access their courses via the related name (i.e., staff_user_instance.courses.all()).
-
 # COURSES
 class Course(models.Model):
     code = models.CharField(max_length=15, unique=True)
     name = models.CharField(max_length=255)
 
-    # Link each course to the related staff member.
-    instructor = models.ForeignKey('StaffUser', on_delete=models.CASCADE, related_name="courses")
+    # Many-to-many: a course can have multiple staff instructors,
+    # and a staff can teach multiple courses.
+    instructors = models.ManyToManyField(
+        StaffUser, 
+        related_name="courses_taught",
+        blank=True
+    )
 
-    # TA relations
+    # TA relations for CS department (for later usage)
     must_have_tas = models.ManyToManyField(TAUser, blank=True, related_name="must_have_for_courses")
     preferred_tas = models.ManyToManyField(TAUser, blank=True, related_name="preferred_for_courses")
 
     def __str__(self):
         return f"{self.code} - {self.name}"
-"""

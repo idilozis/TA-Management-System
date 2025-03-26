@@ -4,17 +4,26 @@ import { useState } from "react";
 import apiClient from "@/lib/axiosClient";
 import { X } from "lucide-react";
 
-// Type for user data: TA / Staff
-export type UserData = {
+export interface UserData {
   name: string;
-  surname?: string; // Currently Staffs just have name without surnames
+  surname: string;
   email: string;
   isTA: boolean;
+  
+  // TAs
   program?: string;
   advisor?: string;
-  courses?: string;
-  department?: string;
-};
+  
+  // Staffs
+  department?: string; 
+  courses?: Course[];
+}
+
+export interface Course {
+  id: number;
+  code: string;
+  name: string;
+}
 
 interface SettingsModalProps {
   user: UserData;
@@ -31,7 +40,7 @@ export default function SettingsModal({ user, onClose, onUpdateUser }: SettingsM
   const handleSave = async () => {
     setMessage("");
     // Check if name or surname is empty.
-    if (!name.trim() || !surname.trim()) {
+    if (!name.trim() && !surname.trim()) {
         setMessage("Name and surname cannot be empty!");
         return;
     }
@@ -48,13 +57,13 @@ export default function SettingsModal({ user, onClose, onUpdateUser }: SettingsM
         name,
         surname,
       };
-      if (password) {
-        payload.password = password;
-      }
+      
+      if (password) { payload.password = password; }
+      
       const response = await apiClient.post("/auth/update-profile/", payload);
       setMessage(response.data.message || "Profile updated!");
 
-      // Update local user data
+      // Update local user data.
       const updatedUser = { ...user, name, surname };
       onUpdateUser(updatedUser);
     } catch {
