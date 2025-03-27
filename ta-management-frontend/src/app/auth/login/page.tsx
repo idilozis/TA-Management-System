@@ -94,7 +94,7 @@ const Login = () => {
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-black overflow-hidden">
+    <div className="relative flex flex-col min-h-screen bg-gray-950 overflow-hidden">
       {/* Top Header */}
      
       {/* BILKENT background text */}
@@ -104,13 +104,13 @@ const Login = () => {
 
       {/* Form Card */}
       <div className="flex flex-1 justify-center items-center z-10">
-        <Card className="w-full max-w-md bg-black border border-gray-700 p-6 rounded-2xl shadow-xl">
+        <Card className="w-full max-w-md bg-gray-950 border border-gray-700 p-6 rounded-2xl shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-xl font-semibold text-white">
-              Welcome to TA Management System.
+              Welcome to TA Management System
             </CardTitle>
             <CardDescription className="text-gray-400">
-              Please enter your credentials to begin.
+              Please enter your credentials to begin
             </CardDescription>
           </CardHeader>
 
@@ -127,7 +127,7 @@ const Login = () => {
                       </FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input placeholder="Enter your email" {...field} className="pr-10 bg-black text-white placeholder-gray-500 autofill:bg-black" />
+                          <Input placeholder="Enter your email" {...field} className="pr-10 bg-gray-950 text-white placeholder-gray-500 autofill:bg-gray-950" />
                           <Mail className="absolute right-2 top-2.5 h-5 w-5 text-gray-400" />
                         </div>
                       </FormControl>
@@ -150,7 +150,7 @@ const Login = () => {
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
                             {...field}
-                            className="pr-10 bg-black text-white placeholder-gray-500 autofill:bg-black"
+                            className="pr-10 bg-gray-950 text-white placeholder-gray-500 autofill:bg-black"
                           />
                           <button
                             type="button"

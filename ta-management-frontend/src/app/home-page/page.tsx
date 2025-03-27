@@ -5,7 +5,13 @@ import apiClient from "@/lib/axiosClient";
 import { useRouter } from "next/navigation";
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { HomeIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import {
+  CalendarDays,
+  FileText,
+  CheckCircle,
+  UserRound,
+  Settings as SettingsIcon,
+} from "lucide-react";
 
 import SettingsModal from "@/components/general/settings";
 import type { UserData } from "@/components/general/settings";
@@ -17,8 +23,8 @@ const getRoleString = (user: UserData) => {
   if (user.isTA) {
     return (
       <>
-        Teaching Assistant ({user.program}) <br />
-        Your Advisor: {user.advisor}
+        {/* Teaching Assistant ({user.program}) <br />
+        Your Advisor: {user.advisor} */}
       </>
     );
   } else {
@@ -40,7 +46,7 @@ export default function HomePage() {
         if (response.data.status === "success") {
           const userData = response.data.user;
           setUser(userData);
-  
+
           if (!userData.isTA) {
             apiClient.get("/proctoring/list-courses/").then((coursesRes) => {
               if (coursesRes.data.status === "success") {
@@ -65,69 +71,72 @@ export default function HomePage() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
-        <Sidebar className="w-64 bg-pink-200 p-6 shadow-md">
-          <div className="flex flex-col items-center text-center mb-6">
-            <img
-              src="/blank-profile-icon.png"
-              alt="Profile"
-              className="w-16 h-16 rounded-full mb-3"
-            />
-            <h3 className="text-lg font-semibold">
-              {user ? `${user.name} ${user.surname}` : "Loading..."}
-            </h3>
-            <p className="text-sm text-gray-700">
-              {user ? getRoleString(user) : ""}
-            </p>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="mt-4 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-            >
-              Update Info
-            </button>
-          </div>
+      <div className="flex min-h-screen bg-black text-white w-full">
+        <Sidebar className="w-64 bg-black border-r border-zinc-800">
+        <div className="flex flex-col items-center text-center px-6 py-4 border-b border-zinc-800">
+          <img
+            src="/blank-profile-icon.png"
+            alt="Profile"
+            className="w-16 h-16 rounded-full mb-3 border border-gray-600"
+          />
+          <h3 className="text-lg font-semibold">
+            {user ? `${user.name} ${user.surname}` : "Loading..."}
+          </h3>
+          <p className="text-xs text-gray-500 mt-1 text-center">
+            {user ? getRoleString(user) : ""}
+          </p>
 
-          <nav className="flex flex-col space-y-4">
-            <Link
-              href="/ta-duties"
-              className="flex items-center p-2 rounded hover:bg-gray-200 transition-colors"
+          <button
+            onClick={() => setShowSettings(true)}
+            className="mt-4 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm w-fit"
+          >
+            Update Info
+          </button>
+        </div>
+
+
+          <nav className="flex flex-col px-4 pt-4 space-y-2 text-sm">
+            <Link href="/home-page" className="flex items-center px-3 py-2 rounded hover:bg-gray-700 transition-colors"
             >
-              <HomeIcon className="h-6 w-6 text-red-500" />
-              <span className="ml-3 text-lg">TA Duties</span>
+              <CalendarDays className="h-5 w-5 text-gray-300" />
+              <span className="ml-2">My Schedule</span>
             </Link>
-            <Link
-              href="/reports"
-              className="flex items-center p-2 rounded hover:bg-gray-200 transition-colors"
-            >
-              <ChartBarIcon className="h-6 w-6 text-purple-800" />
-              <span className="ml-3 text-lg">Reports</span>
+            <Link href="/proctoring" className="flex items-center px-3 py-2 rounded hover:bg-gray-700 transition-colors">
+              <FileText className="h-5 w-5 text-gray-300" />
+              <span className="ml-2">Exams</span>
+            </Link>
+            <Link href="/requests" className="flex items-center px-3 py-2 rounded hover:bg-gray-700 transition-colors">
+              <CheckCircle className="h-5 w-5 text-gray-300" />
+              <span className="ml-2">Approve/Reject Requests</span>
+            </Link>
+            <Link href="/edit-info" className="flex items-center px-3 py-2 rounded hover:bg-gray-700 transition-colors">
+              <UserRound className="h-5 w-5 text-gray-300" />
+              <span className="ml-2">Edit/View Information</span>
+            </Link>
+            <Link href="/settings" className="flex items-center px-3 py-2 rounded hover:bg-gray-700 transition-colors">
+              <SettingsIcon className="h-5 w-5 text-gray-300" />
+              <span className="ml-2">Settings</span>
             </Link>
           </nav>
         </Sidebar>
 
-        <main className="flex-1 p-8">
-          <div className="max-w-5xl mx-auto">
-            <h1 className="text-3xl font-bold mb-4">
-              TA Management System Home Page
-            </h1>
-            
+        <main className="flex-1 bg-gray-950 p-8 w-full">
+        <div className="w-full">
             {user && (
-              <p className="mb-4">
+              <p className="mb-4 text-gray-300">
                 Hi {user.name}, you are logged in as {user.email}. <br />
-                <strong>{getRoleString(user)}</strong>.
+                <strong>{getRoleString(user)}</strong>
               </p>
             )}
 
-            <p className="mb-6">
-              Use the sidebar to navigate between TA Duties, Proctoring, and Reports.
-            </p>
-
+            {/* If TA, show schedule */}
             {user && user.isTA && <TAWeeklySchedule />}
 
+            {/* If Staff, show courses + exam section */}
             {user && !user.isTA && user.courses && (
               <div className="mt-4">
                 <h3 className="text-lg font-semibold">Your Courses:</h3>
-                <ul className="list-disc ml-6">
+                <ul className="list-disc ml-6 text-gray-200">
                   {user.courses.map((course) => (
                     <li key={course.id}>
                       {course.code} - {course.name}
@@ -142,7 +151,7 @@ export default function HomePage() {
                 <h2 className="text-xl font-semibold">MY EXAMS</h2>
                 <button
                   onClick={() => setShowExamModal(true)}
-                  className="bg-green-500 text-white px-4 py-2 rounded"
+                  className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded"
                 >
                   Add Exam
                 </button>

@@ -136,9 +136,7 @@ export default function TAWeeklySchedule() {
         setSlots(
           slots.filter(
             (s) =>
-              !(
-                s.day === editSlot.day && s.time_slot === editSlot.time_slot
-              )
+              !(s.day === editSlot.day && s.time_slot === editSlot.time_slot)
           )
         );
         setEditSlot(null);
@@ -152,33 +150,52 @@ export default function TAWeeklySchedule() {
     }
   };
 
-  const getCellClass = (course: string) => {
-    if (!course) return ""; // no colour
-    return isEditMode ? "bg-blue-50" : "bg-green-100";
+  // Returns CSS classes for each cell, based on whether it has a course or is in edit mode
+  const getCellClass = (day: string, timeSlot: string) => {
+    const course = getCourseFor(day, timeSlot);
+    if (!course) {
+      // Empty slot
+      return isEditMode
+        ? "bg-neutral-900 cursor-pointer hover:bg-neutral-800 text-gray-200"
+        : "bg-neutral-900 text-gray-300";
+    }
+    // Has a course
+    return isEditMode
+      ? "bg-blue-800 text-white cursor-pointer hover:bg-blue-700"
+      : "bg-green-800 text-white";
   };
 
   return (
-    <div className="mt-6">
-      
+    <div className="mt-6 text-white">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">MY SCHEDULE</h2>
+        <h1 className="text-3xl font-bold mb-1">MY SCHEDULE</h1>
         <button
-            onClick={() => {
-                setIsEditMode(!isEditMode);
-                setEditSlot(null); // Automatically close modal when toggling edit mode
-            }}
-            className={`px-3 py-2 rounded ${isEditMode ? "bg-green-500 text-white" : "bg-blue-600 text-white"}`}
-            >
-            {isEditMode ? "Done Editing" : "Edit Schedule"}
+          onClick={() => {
+            setIsEditMode(!isEditMode);
+            setEditSlot(null); // Automatically close modal when toggling edit mode
+          }}
+          className={`px-3 py-2 rounded ${
+            isEditMode
+              ? "bg-green-600 hover:bg-green-500"
+              : "bg-blue-600 hover:bg-blue-500"
+          } text-white`}
+        >
+          {isEditMode ? "Done Editing" : "Edit Schedule"}
         </button>
       </div>
 
-      <table className="border-collapse w-full mb-4">
+      {/* Dark table */}
+      <table className="border-collapse w-full mb-4 text-sm">
         <thead>
           <tr>
-            <th className="border p-2 bg-gray-50 w-1/6">Time</th>
+            <th className="border border-gray-700 p-2 bg-neutral-900 w-1/6 text-gray-200">
+              Time
+            </th>
             {DAYS.map((d) => (
-              <th key={d} className="border p-2 bg-gray-50 w-1/6">
+              <th
+                key={d}
+                className="border border-gray-700 p-2 bg-neutral-900 w-1/6 text-gray-200"
+              >
                 {d}
               </th>
             ))}
@@ -187,22 +204,21 @@ export default function TAWeeklySchedule() {
         <tbody>
           {TIME_SLOTS.map((ts) => (
             <tr key={ts}>
-              <td className="border p-2 font-medium text-gray-700">{ts}</td>
-              {DAYS.map((day) => {
-                const course = getCourseFor(day, ts);
-                const cellClass = getCellClass(course);
-                return (
-                  <td
-                    key={day}
-                    className={`border p-2 text-center ${cellClass} ${
-                      isEditMode ? "cursor-pointer hover:bg-gray-100" : ""
-                    }`}
-                    onClick={() => handleCellClick(day, ts)}
-                  >
-                    {course || ""}
-                  </td>
-                );
-              })}
+              <td className="border border-gray-700 p-2 font-medium text-gray-200 bg-neutral-900">
+                {ts}
+              </td>
+              {DAYS.map((day) => (
+                <td
+                  key={day}
+                  className={cn(
+                    "border border-gray-700 p-2 text-center transition-colors",
+                    getCellClass(day, ts)
+                  )}
+                  onClick={() => handleCellClick(day, ts)}
+                >
+                  {getCourseFor(day, ts) || ""}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -210,14 +226,15 @@ export default function TAWeeklySchedule() {
 
       {editSlot && (
         <div
-          className="fixed inset-0 bg-blue-100 bg-opacity-30 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
           onClick={() => setEditSlot(null)}
         >
+          {/* Modal */}
           <div
-            className="bg-white p-4 rounded shadow-lg w-80"
+            className="bg-neutral-900 p-4 rounded shadow-lg w-80 border border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-2">
+            <h3 className="text-lg font-semibold mb-2 text-white">
               Edit Slot ({editSlot.day} {editSlot.time_slot})
             </h3>
 
@@ -229,7 +246,7 @@ export default function TAWeeklySchedule() {
             )}
 
             <input
-              className="border p-2 w-full mb-4"
+              className="border border-gray-600 bg-neutral-800 text-white p-2 w-full mb-4"
               placeholder="Course name"
               value={newCourse}
               onChange={(e) => setNewCourse(e.target.value)}
@@ -239,7 +256,7 @@ export default function TAWeeklySchedule() {
               {editSlot.id && editSlot.course && (
                 <button
                   onClick={handleDeleteSlot}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500"
                 >
                   Delete
                 </button>
@@ -248,18 +265,17 @@ export default function TAWeeklySchedule() {
               <div className="space-x-2">
                 <button
                   onClick={() => setEditSlot(null)}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                  className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-500"
                 >
                   Cancel
                 </button>
-                
+
                 <button
                   onClick={handleSaveSlot}
-                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-500"
                 >
                   Save
                 </button>
-              
               </div>
             </div>
           </div>
@@ -267,4 +283,9 @@ export default function TAWeeklySchedule() {
       )}
     </div>
   );
+}
+
+// A tiny helper so we can conditionally combine classes
+function cn(...classes: (string | false | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
 }
