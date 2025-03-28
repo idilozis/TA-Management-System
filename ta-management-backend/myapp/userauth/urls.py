@@ -9,6 +9,7 @@ urlpatterns = [
     
     path('forgot-password/', forgot_password, name='forgot_password'), # auth/forgot-password/
     path('reset-password/', reset_password, name='reset_password'), # auth/reset-password/
-
+    path("verify-password/", verify_password, name="verify_password"),
+    path("get-current-user/", get_current_user, name="get_current_user"),
     path('update-profile/', update_profile, name='update_profile') # auth/update-profile/
 ]
