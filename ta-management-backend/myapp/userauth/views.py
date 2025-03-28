@@ -189,23 +189,73 @@ def reset_password(request):
 def update_profile(request):
     data = json.loads(request.body)
     email = request.session.get("user_email")
-    if not email: 
+    if not email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+
     user, user_type = find_user_by_email(email)
     if not user:
         return JsonResponse({"status": "error", "message": "User not found"}, status=404)
-    
+
+    # Validate current password before updating profile
+    current_password = data.get("current_password")
+    if current_password and not user.check_password(current_password):
+        return JsonResponse({"status": "error", "message": "Invalid current password."}, status=401)
+
     new_name = data.get("name")
     new_surname = data.get("surname")
-    new_password = data.get("password")
+    new_password = data.get("new_password")
+    confirm_password = data.get("confirm_password")
+
+    # Validate password fields even if they are empty
+    if new_password or confirm_password:
+        # Check if both new password fields are filled
+        if not new_password or not confirm_password:
+            return JsonResponse({"status": "error", "message": "Both new password and confirmation are required."}, status=400)
+        
+        # Check password length
+        if len(new_password) < 8:
+            return JsonResponse({"status": "error", "message": "New password must be at least 8 characters."}, status=400)
+        
+        # Check password match
+        if new_password != confirm_password:
+            return JsonResponse({"status": "error", "message": "New passwords do not match."}, status=400)
+        
+        # Set new password
+        user.set_password(new_password)
 
     if new_name:
         user.name = new_name
     if new_surname:
         user.surname = new_surname
-    if new_password:
-        user.set_password(new_password)
+
     user.save()
 
     return JsonResponse({"status": "success", "message": "Profile updated successfully."})
+
+
+from django.contrib.auth.hashers import check_password
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+@require_POST
+def verify_password(request):
+    """
+    Verify current password before allowing profile update.
+    """
+    data = json.loads(request.body)
+    password = data.get("password")
+
+    # Get the currently authenticated user from the session
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    if not user:
+        return JsonResponse({"status": "error", "message": "User not found"}, status=404)
+
+    # Check if the current password is correct
+    if check_password(password, user.password):
+        return JsonResponse({"status": "success", "message": "Password verified."})
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid password."}, status=401)
