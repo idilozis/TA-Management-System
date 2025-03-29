@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { AppSidebar } from "@/components/general/app-sidebar";
+import { useUser } from "@/components/general/user-data";
 
 export default function Duties() {
   return (

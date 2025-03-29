@@ -1,8 +1,10 @@
 # myapp/userauth/views.py
 from django.http import JsonResponse
 from django.contrib.auth import login as auth_login
+from django.contrib.auth.hashers import check_password
 from django.conf import settings
 from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db import transaction
 from django.core.mail import send_mail
@@ -233,9 +235,9 @@ def update_profile(request):
     return JsonResponse({"status": "success", "message": "Profile updated successfully."})
 
 
-from django.contrib.auth.hashers import check_password
-from django.views.decorators.csrf import csrf_exempt
-
+# -----------------------------
+# VERIFY PASSWORD
+# -----------------------------
 @csrf_exempt
 @require_POST
 def verify_password(request):

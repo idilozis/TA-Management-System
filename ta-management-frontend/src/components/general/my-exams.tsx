@@ -64,7 +64,7 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
       {error && <div className="text-red-500 mb-2">{error}</div>}
       <table className="min-w-full border bg-white">
         <thead className="bg-gray-200">
-          <tr>
+          <tr className="text-red-800">
             <th className="py-2 px-4">Course</th>
             <th className="py-2 px-4">Date</th>
             <th className="py-2 px-4">Start - End</th>
@@ -74,9 +74,9 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
             <th className="py-2 px-4">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-red-50">
           {exams.map((exam) => (
-            <tr key={exam.id}>
+            <tr className="text-blue-950" key={exam.id}>
               <td className="text-center p-3 whitespace-nowrap">{exam.course_code} - {exam.course_name}</td>
               <td className="text-center p-3 whitespace-nowrap">{exam.date}</td>
               <td className="text-center p-3 whitespace-nowrap">{exam.start_time} - {exam.end_time}</td>

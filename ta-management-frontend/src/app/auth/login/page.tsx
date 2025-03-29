@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import "../login/text-image.css";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -94,23 +95,22 @@ const Login = () => {
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-gray-950 overflow-hidden">
-      {/* Top Header */}
-     
+    <div className="relative flex flex-col min-h-screen bg-blue-950 overflow-hidden z-0">
       {/* BILKENT background text */}
-      <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 text-[15rem] font-bold text-white/5 select-none">
+      <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 text-[15rem] font-bold text-transparent select-none bilkent-text">
         BİLKENT
       </div>
 
-      {/* Form Card */}
+      {/* Main Login Form */}
       <div className="flex flex-1 justify-center items-center z-10">
-        <Card className="w-full max-w-md bg-gray-950 border border-gray-700 p-6 rounded-2xl shadow-xl">
+        {/* Card with Animated Border */}
+        <Card className="w-full max-w-md bg-white border-4 border-red-800 p-6 rounded-2xl shadow-xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl font-semibold text-white">
-              Welcome to TA Management System
+            <CardTitle className="text-xl font-semibold text-gray-900">
+              Welcome to TA Management System!
             </CardTitle>
-            <CardDescription className="text-gray-400">
-              Please enter your credentials to begin
+            <CardDescription className="text-gray-600">
+              Please enter your credentials to begin.
             </CardDescription>
           </CardHeader>
 
@@ -122,13 +122,14 @@ const Login = () => {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">
-                        Enter Email <span className="text-red-500">*</span>
+                      <FormLabel className="text-gray-900">
+                        Email <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input placeholder="Enter your email" {...field} className="pr-10 bg-gray-950 text-white placeholder-gray-500 autofill:bg-gray-950" />
-                          <Mail className="absolute right-2 top-2.5 h-5 w-5 text-gray-400" />
+                          <Input placeholder="Enter your email" 
+                          {...field} className="pr-10 bg-gray-100 text-gray-900 placeholder-gray-500 autofill:bg-gray-100" />
+                          <Mail className="absolute right-2 top-2.5 h-5 w-5 text-gray-900" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -141,21 +142,20 @@ const Login = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">
-                        Enter Password <span className="text-red-500">*</span>
+                      <FormLabel className="text-gray-900">
+                        Password <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
-                            {...field}
-                            className="pr-10 bg-gray-950 text-white placeholder-gray-500 autofill:bg-black"
+                            {...field} className="pr-10 bg-gray-100 text-gray-900 placeholder-gray-500 autofill:bg-gray-100"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-2 top-2.5 text-gray-400"
+                            className="absolute right-2 top-2.5 text-gray-900"
                           >
                             {showPassword ? (
                               <EyeOff className="h-5 w-5" />
@@ -176,13 +176,13 @@ const Login = () => {
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
                       <FormControl>
-                        <Checkbox
+                        <Checkbox className="bg-gray-100"
                           id="rememberMe"
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormLabel htmlFor="rememberMe" className="mb-0 text-white">
+                      <FormLabel htmlFor="rememberMe" className="mb-0 text-gray-800">
                         Remember Me
                       </FormLabel>
                     </FormItem>
@@ -193,7 +193,7 @@ const Login = () => {
                   type="submit"
                   className="w-full text-white border border-transparent hover:border-white bg-blue-700 transition duration-200"
                 >
-                  Sign In
+                  Sign In {">"}
                 </Button>
 
               </form>
