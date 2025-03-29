@@ -261,3 +261,14 @@ def verify_password(request):
         return JsonResponse({"status": "success", "message": "Password verified."})
     else:
         return JsonResponse({"status": "error", "message": "Invalid password."}, status=401)
+
+
+# -----------------------------
+# LOG OUT
+# -----------------------------
+@csrf_exempt
+@require_POST
+def logout(request):
+    # Clear all session data
+    request.session.flush()
+    return JsonResponse({"status": "success", "message": "Logged out successfully."})

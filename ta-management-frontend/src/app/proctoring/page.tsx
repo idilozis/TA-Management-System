@@ -3,6 +3,7 @@
 import React from "react";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
+import apiClient from "@/lib/axiosClient";
 
 export default function Proctoring() {
   return (

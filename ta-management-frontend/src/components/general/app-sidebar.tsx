@@ -1,20 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { HomeIcon, FileText, CheckCircle, SettingsIcon } from "lucide-react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { usePathname, useRouter } from "next/navigation";
+import { HomeIcon, FileText, CheckCircle, SettingsIcon, LogOut } from "lucide-react";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu,
+         SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import type { UserData } from "@/components/general/user-data";
+import apiClient from "@/lib/axiosClient";
 
 type AppSidebarProps = {
   user: UserData | null;
@@ -22,12 +14,13 @@ type AppSidebarProps = {
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
   // User Role Text
   const getRoleString = (user: UserData) => {
-    if (user.isTA) { // TA Users
+    if (user.isTA) {
       return (
         <>
           {user.program} Student
@@ -35,34 +28,62 @@ export function AppSidebar({ user }: AppSidebarProps) {
           Your Advisor: {user.advisor}
         </>
       );
-    } else { // Staff Users
+    } else {
       return <>Staff of {user.department}</>;
     }
   };
 
-  // Navigation items
+  // NAVIGATION ITEMS
   const navItems = [
     {
       name: "Home Page",
       path: "/home-page",
       icon: HomeIcon,
     },
+    
     {
       name: "Exams",
       path: "/proctoring",
       icon: FileText,
     },
-    {
-      name: "Approve/Reject Requests",
-      path: "/requests",
-      icon: CheckCircle,
-    },
-    {
+    
+    ...(user && user.isTA
+      ? [
+          {
+            name: "My Duties",
+            path: "/ta-duties",
+            icon: CheckCircle,
+          },
+        ]
+      : []),
+    
+      ...(user && !user.isTA
+      ? [
+          {
+            name: "Requests",
+            path: "/requests",
+            icon: CheckCircle,
+          },
+        ]
+      : []),
+    
+      {
       name: "Settings",
       path: "/settings",
       icon: SettingsIcon,
     },
   ];
+
+  // Logout handler: Call the logout API and then redirect to login page.
+  const handleLogout = async () => {
+    try {
+      await apiClient.post("/auth/logout/");
+    } catch (error) {
+      console.error("Logout API call failed", error);
+    } finally {
+      router.push("/");
+    }
+  };
 
   return (
     <Sidebar
@@ -87,7 +108,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
               isCollapsed ? "h-8 w-8 mb-0" : "mb-3 h-16 w-16"
             } rounded-full border border-zinc-300 dark:border-zinc-600`}
           />
-
           {/* Hide these elements when collapsed */}
           {!isCollapsed && user && (
             <>
@@ -122,11 +142,19 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="mt-auto border-t border-zinc-200 dark:border-zinc-800 p-4">
-        {/* Hide the logged in text when collapsed */}
         {!isCollapsed && user && (
-          <div className="text-xs text-zinc-500 dark:text-zinc-500">
-            Logged in as {user.email}
-          </div>
+          <>
+            <div className="text-xs text-zinc-500 dark:text-zinc-500">
+              Logged in as {user.email}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="mt-2 inline-flex items-center text-xs text-red-500 dark:text-red-400 hover:underline"
+            >
+              <LogOut className="mr-1 h-4 w-4" />
+              <span>Log Out</span>
+            </button>
+          </>
         )}
       </SidebarFooter>
 
