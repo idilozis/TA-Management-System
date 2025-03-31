@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import apiClient from "@/lib/axiosClient";
 import { motion, AnimatePresence } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 
 const TIME_SLOTS = [
   "08:30-09:20",
@@ -40,13 +41,13 @@ function ScheduleCell({
   onClick: () => void;
   isEditMode: boolean;
 }) {
-  const baseClass = "border border-gray-700 p-2 text-center transition-colors";
+  const baseClass = "border border-gray-300 p-2 text-center transition-colors";
   const emptyClass = isEditMode
-    ? "bg-neutral-900 cursor-pointer hover:bg-neutral-800 text-gray-200"
-    : "bg-neutral-900 text-gray-300";
+    ? "bg-gray-100 cursor-pointer hover:bg-gray-200 text-gray-700"
+    : "bg-gray-100 text-gray-600";
   const filledClass = isEditMode
-    ? "bg-blue-800 text-white cursor-pointer hover:bg-blue-700"
-    : "bg-green-800 text-white";
+    ? "bg-blue-100 text-blue-900 cursor-pointer hover:bg-blue-200"
+    : "bg-blue-100 text-blue-900";
 
   const cellClass = course ? filledClass : emptyClass;
 
@@ -112,7 +113,6 @@ export default function TAWeeklySchedule() {
       });
       if (res.data.status === "success") {
         setMessage("Slot updated successfully.");
-        // Use functional update to avoid stale closure issues
         setSlots((prev) => {
           const updated = [...prev];
           const index = updated.findIndex(
@@ -173,9 +173,12 @@ export default function TAWeeklySchedule() {
   };
 
   return (
-    <div className="mt-6 text-white">
+    <div className="mt-6 text-gray-900">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold mb-1">MY SCHEDULE</h1>
+        <h1 className="flex items-center text-3xl font-bold mb-1">
+          <CalendarDays className="mr-2 h-8 w-8 text-blue-600" /> MY SCHEDULE
+        </h1>
+        
         <button
           onClick={() => {
             setIsEditMode((prev) => !prev);
@@ -192,9 +195,9 @@ export default function TAWeeklySchedule() {
       <table className="border-collapse w-full mb-4 text-sm">
         <thead>
           <tr>
-            <th className="border border-gray-700 p-2 bg-neutral-900 text-gray-200">Time</th>
+            <th className="border border-gray-300 p-2 bg-gray-200 text-gray-800">Time</th>
             {DAYS.map((day) => (
-              <th key={day} className="border border-gray-700 p-2 bg-neutral-900 text-gray-200">
+              <th key={day} className="border border-gray-300 p-2 bg-gray-200 text-gray-800">
                 {day}
               </th>
             ))}
@@ -203,7 +206,7 @@ export default function TAWeeklySchedule() {
         <tbody>
           {TIME_SLOTS.map((timeSlot) => (
             <tr key={timeSlot}>
-              <td className="border border-gray-700 p-2 font-medium bg-neutral-900 text-gray-200">
+              <td className="border border-gray-300 p-2 font-medium bg-gray-200 text-gray-800">
                 {timeSlot}
               </td>
               {DAYS.map((day) => (
@@ -228,14 +231,14 @@ export default function TAWeeklySchedule() {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+            className="fixed inset-0 flex items-center justify-center z-50"
             onClick={() => setEditSlot(null)}
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
-              className="bg-neutral-900 p-4 rounded shadow-lg w-80 border border-gray-700"
+              className="bg-white p-4 rounded shadow-lg w-80 border border-gray-300"
             >
-              <h3 className="text-lg font-semibold mb-2 text-white">
+              <h3 className="text-lg font-semibold mb-2 text-gray-900">
                 Edit Slot ({editSlot.day} {editSlot.time_slot})
               </h3>
               {message && (
@@ -244,8 +247,8 @@ export default function TAWeeklySchedule() {
                 </div>
               )}
               <input
-                className="border border-gray-600 bg-neutral-800 text-white p-2 w-full mb-4"
-                placeholder="Course name"
+                className="border border-gray-300 bg-gray-50 text-gray-900 p-2 w-full mb-4"
+                placeholder="Enter course name"
                 value={newCourse}
                 onChange={(e) => setNewCourse(e.target.value)}
               />
@@ -261,7 +264,7 @@ export default function TAWeeklySchedule() {
                 <div className="space-x-2">
                   <button
                     onClick={() => setEditSlot(null)}
-                    className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-500"
+                    className="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500"
                   >
                     Cancel
                   </button>

@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import "../login/text-image.css";
+import { motion, AnimatePresence } from "framer-motion";
+import "@/app/auth/text-image.css";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -75,9 +76,6 @@ const Login = () => {
       setMessage(response.data.message);
 
       if (response.data.status === "success") {
-        const userType = response.data.userType;
-        console.log("Login success, userType = ", userType);
-
         if (values.rememberMe) {
           localStorage.setItem("rememberEmail", values.email);
         } else {
@@ -103,115 +101,128 @@ const Login = () => {
 
       {/* Main Login Form */}
       <div className="flex flex-1 justify-center items-center z-10">
-        {/* Card with Animated Border */}
-        <Card className="w-full max-w-md bg-white border-4 border-red-800 p-6 rounded-2xl shadow-xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl font-semibold text-gray-900">
-              Welcome to TA Management System!
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Please enter your credentials to begin.
-            </CardDescription>
-          </CardHeader>
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="w-full max-w-md bg-white border-4 border-red-700 p-6 rounded-2xl shadow-xl">
+              <CardHeader className="text-center">
+                {/* Add whitespace-nowrap to prevent text from wrapping */}
+                <CardTitle className="text-xl font-semibold text-gray-900 whitespace-nowrap">
+                  Welcome to TA Management System!
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Please enter your credentials to begin.
+                </CardDescription>
+              </CardHeader>
 
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-900">
-                        Email <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input placeholder="Enter your email" 
-                          {...field} className="pr-10 bg-gray-100 text-gray-900 placeholder-gray-500 autofill:bg-gray-100" />
-                          <Mail className="absolute right-2 top-2.5 h-5 w-5 text-gray-900" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900">
+                            Email <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                placeholder="Enter your email"
+                                {...field}
+                                className="pr-10 bg-gray-50 text-gray-900 placeholder-gray-500 autofill:bg-gray-50"
+                              />
+                              <Mail className="absolute right-2 top-2.5 h-5 w-5 text-gray-900" />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-900">
-                        Password <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            {...field} className="pr-10 bg-gray-100 text-gray-900 placeholder-gray-500 autofill:bg-gray-100"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-2 top-2.5 text-gray-900"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900">
+                            Password <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                {...field}
+                                className="pr-10 bg-gray-50 text-gray-900 placeholder-gray-500 autofill:bg-gray-50"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute right-2 top-2.5 text-gray-900"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-5 w-5" />
+                                ) : (
+                                  <Eye className="h-5 w-5" />
+                                )}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="rememberMe"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormControl>
-                        <Checkbox className="bg-gray-100"
-                          id="rememberMe"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormLabel htmlFor="rememberMe" className="mb-0 text-gray-800">
-                        Remember Me
-                      </FormLabel>
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="rememberMe"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <Checkbox
+                              className="bg-gray-50"
+                              id="rememberMe"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormLabel htmlFor="rememberMe" className="mb-0 text-gray-800">
+                            Remember Me
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
 
-                <Button
-                  type="submit"
-                  className="w-full text-white border border-transparent hover:border-white bg-blue-700 transition duration-200"
-                >
-                  Sign In {">"}
-                </Button>
+                    <Button
+                      type="submit"
+                      className="w-full text-white border border-transparent hover:border-white bg-blue-600 transition duration-200"
+                    >
+                      Sign In {">"}
+                    </Button>
+                  </form>
+                </Form>
 
-              </form>
-            </Form>
+                {message && (
+                  <Alert variant="destructive" className="mt-4">
+                    <AlertDescription>{message}</AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
 
-            {message && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertDescription>{message}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-
-          <CardFooter className="justify-start">
-            <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
-              Forgot Password?
-            </Link>
-          </CardFooter>
-        </Card>
+              <CardFooter className="justify-start">
+                <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+                  Forgot Password?
+                </Link>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

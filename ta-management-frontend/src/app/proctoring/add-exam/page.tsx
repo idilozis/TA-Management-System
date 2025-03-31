@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import apiClient from "@/lib/axiosClient";
 
 interface AddExamModalProps {
@@ -26,7 +27,7 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch staff's courses from /proctoring/list-courses/
+  // Fetch staff's courses
   useEffect(() => {
     apiClient
       .get("/proctoring/list-courses/")
@@ -54,7 +55,6 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
       return;
     }
 
-    // Validate start time is before end time
     if (startTime >= endTime) {
       setError("Start time must be before end time.");
       setIsSubmitting(false);
@@ -74,7 +74,7 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
       
       if (response.data.status === "success") {
         setMessage(response.data.message || "Exam created successfully!");
-        // Reset form after successful creation
+        // Reset form
         setSelectedCourse("");
         setDate("");
         setStartTime("");
@@ -99,139 +99,159 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-blue-100 bg-opacity-30 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      {/* clicking outside closes modal */}
-      <div
-        className="bg-white p-6 rounded shadow-md w-96"
-        onClick={(e) => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 flex items-center justify-center z-50"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
-        <h2 className="text-xl font-semibold mb-4">Add Exam</h2>
+        {/* Modal content */}
+        <motion.div
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white p-6 rounded shadow border-blue-700 border-2 w-96"
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -50, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <h2 className="text-xl font-semibold mb-4">Add Exam</h2>
 
-        {message && (
-          <div className="mb-4 p-2 bg-green-100 border border-green-300 text-green-800 rounded">
-            {message}
-          </div>
-        )}
+          {message && (
+            <div className="mb-4 p-2 bg-green-100 border border-green-300 text-green-800 rounded">
+              {message}
+            </div>
+          )}
 
-        {error && (
-          <div className="mb-4 p-2 bg-red-100 border border-red-300 text-red-800 rounded">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mb-4 p-2 bg-red-100 border border-red-300 text-red-800 rounded">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleCreateExam} className="space-y-4">
-          {/* Course selection */}
-          <div>
-            <label className="block mb-1 font-medium">Course <span className="text-red-500">*</span></label>
-            <select
-              className="border p-2 w-full"
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              required
-            >
-              <option value="">Select a course</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} - {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <form onSubmit={handleCreateExam} className="space-y-4">
+            {/* Course selection */}
+            <div>
+              <label className="block mb-1 font-medium">
+                Course <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="border p-2 w-full"
+                value={selectedCourse}
+                onChange={(e) => setSelectedCourse(e.target.value)}
+                required
+              >
+                <option value="">Select a course</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} - {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Date */}
-          <div>
-            <label className="block mb-1 font-medium">Date <span className="text-red-500">*</span></label>
-            <input
-              type="date"
-              className="border p-2 w-full"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-            />
-          </div>
+            {/* Date */}
+            <div>
+              <label className="block mb-1 font-medium">
+                Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                className="border p-2 w-full"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* Start Time */}
-          <div>
-            <label className="block mb-1 font-medium">Start Time <span className="text-red-500">*</span></label>
-            <input
-              type="time"
-              className="border p-2 w-full"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-            />
-          </div>
+            {/* Start Time */}
+            <div>
+              <label className="block mb-1 font-medium">
+                Start Time <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="time"
+                className="border p-2 w-full"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* End Time */}
-          <div>
-            <label className="block mb-1 font-medium">End Time <span className="text-red-500">*</span></label>
-            <input
-              type="time"
-              className="border p-2 w-full"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              required
-            />
-          </div>
+            {/* End Time */}
+            <div>
+              <label className="block mb-1 font-medium">
+                End Time <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="time"
+                className="border p-2 w-full"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* Classroom Name */}
-          <div>
-            <label className="block mb-1 font-medium">Classroom Name <span className="text-red-500">*</span></label>
-            <input
-              type="text"
-              className="border p-2 w-full"
-              value={classroomName}
-              onChange={(e) => setClassroomName(e.target.value)}
-              required
-              placeholder="e.g., Room 101"
-            />
-          </div>
+            {/* Classroom Name */}
+            <div>
+              <label className="block mb-1 font-medium">
+                Classroom Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                className="border p-2 w-full"
+                value={classroomName}
+                onChange={(e) => setClassroomName(e.target.value)}
+                required
+                placeholder="e.g., Room 101"
+              />
+            </div>
 
-          {/* Num Proctors */}
-          <div>
-            <label className="block mb-1 font-medium">Number of Proctors</label>
-            <input
-              type="number"
-              min={1}
-              className="border p-2 w-full"
-              value={numProctors}
-              onChange={(e) => setNumProctors(parseInt(e.target.value, 10) || 1)}
-            />
-          </div>
+            {/* Num Proctors */}
+            <div>
+              <label className="block mb-1 font-medium">Number of Proctors</label>
+              <input
+                type="number"
+                min={1}
+                className="border p-2 w-full"
+                value={numProctors}
+                onChange={(e) => setNumProctors(parseInt(e.target.value, 10) || 1)}
+              />
+            </div>
 
-          {/* Student Count */}
-          <div>
-            <label className="block mb-1 font-medium">Student Count</label>
-            <input
-              type="number"
-              min={0}
-              className="border p-2 w-full"
-              value={studentCount}
-              onChange={(e) => setStudentCount(parseInt(e.target.value, 10) || 0)}
-            />
-          </div>
+            {/* Student Count */}
+            <div>
+              <label className="block mb-1 font-medium">Student Count</label>
+              <input
+                type="number"
+                min={0}
+                className="border p-2 w-full"
+                value={studentCount}
+                onChange={(e) => setStudentCount(parseInt(e.target.value, 10) || 0)}
+              />
+            </div>
 
-          <div className="flex justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="bg-gray-200 text-gray-700 px-3 py-2 rounded"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-3 py-2 rounded"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-200 text-gray-700 px-3 py-2 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-3 py-2 rounded"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
+
 }

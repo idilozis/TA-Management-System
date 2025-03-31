@@ -40,13 +40,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
       path: "/home-page",
       icon: HomeIcon,
     },
-    
     {
       name: "Exams",
       path: "/proctoring",
       icon: FileText,
     },
-    
     ...(user && user.isTA
       ? [
           {
@@ -56,8 +54,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    
-      ...(user && !user.isTA
+    ...(user && !user.isTA
       ? [
           {
             name: "Requests",
@@ -66,15 +63,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    
-      {
+    {
       name: "Settings",
       path: "/settings",
       icon: SettingsIcon,
     },
   ];
 
-  // Logout handler: Call the logout API and then redirect to login page.
+  // Logout handler
   const handleLogout = async () => {
     try {
       await apiClient.post("/auth/logout/");
@@ -87,34 +83,21 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   return (
     <Sidebar
-      className="border-r border-zinc-200 bg-zinc-50 text-zinc-900
-                 dark:border-zinc-800 dark:bg-black dark:text-white"
+      className="border-r border-gray-200 bg-white text-gray-900"
       collapsible="icon"
     >
-      <SidebarHeader
-        className={`border-b border-zinc-200 dark:border-zinc-800 p-0 ${
-          isCollapsed ? "py-4" : ""
-        }`}
-      >
-        <div
-          className={`flex flex-col items-center px-6 py-4 text-center ${
-            isCollapsed ? "py-0" : ""
-          }`}
-        >
+      <SidebarHeader className={`border-b border-gray-200 p-0 ${isCollapsed ? "py-4" : ""}`}>
+        <div className={`flex flex-col items-center px-6 py-4 text-center ${isCollapsed ? "py-0" : ""}`}>
           <img
             src="/blank-profile-icon.png"
             alt="Profile"
-            className={`${
-              isCollapsed ? "h-8 w-8 mb-0" : "mb-3 h-16 w-16"
-            } rounded-full border border-zinc-300 dark:border-zinc-600`}
+            className={`${isCollapsed ? "h-8 w-8 mb-0" : "mb-3 h-16 w-16"} rounded-full border border-gray-300`}
           />
           {/* Hide these elements when collapsed */}
           {!isCollapsed && user && (
             <>
-              <h3 className="text-lg font-semibold">
-                {user.name} {user.surname}
-              </h3>
-              <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
+              <h3 className="text-lg font-semibold">{user.name} {user.surname}</h3>
+              <p className="mt-1 text-center text-xs text-gray-500">
                 {getRoleString(user)}
               </p>
             </>
@@ -132,7 +115,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                 tooltip={item.name}
               >
                 <Link href={item.path} className="flex items-center">
-                  <item.icon className="h-5 w-5 text-zinc-500 dark:text-zinc-300" />
+                  <item.icon className="h-5 w-5 text-gray-500" />
                   <span className="ml-2">{item.name}</span>
                 </Link>
               </SidebarMenuButton>
@@ -141,15 +124,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="mt-auto border-t border-zinc-200 dark:border-zinc-800 p-4">
+      <SidebarFooter className="mt-auto border-t border-gray-200 p-4">
         {!isCollapsed && user && (
           <>
-            <div className="text-xs text-zinc-500 dark:text-zinc-500">
+            <div className="text-xs text-gray-500">
               Logged in as {user.email}
             </div>
             <button
               onClick={handleLogout}
-              className="mt-2 inline-flex items-center text-xs text-red-500 dark:text-red-400 hover:underline"
+              className="mt-2 inline-flex items-center text-xs text-red-500 hover:underline"
             >
               <LogOut className="mr-1 h-4 w-4" />
               <span>Log Out</span>

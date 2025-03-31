@@ -29,7 +29,10 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
     try {
       const response = await apiClient.get("/proctoring/list-exams/");
       if (response.data.status === "success") {
-        setExams(response.data.exams);
+        const sortedExams = response.data.exams.sort( // Sort for most recent date to appear first.
+          (a: Exam, b: Exam) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setExams(sortedExams);
         setError("");
       } else {
         setError(response.data.message || "Failed to load exams");
@@ -39,17 +42,17 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
     }
     setLoading(false);
   };
+  
 
   useEffect(() => {
     fetchExams();
-  }, [refreshTrigger]); // Re-fetch exams on refreshTrigger change
+  }, [refreshTrigger]);
 
   const handleDeleteExam = async (examId: number) => {
     if (!confirm("Are you sure you want to delete this exam?")) return;
-
     try {
       await apiClient.post("/proctoring/delete-exam/", { exam_id: examId });
-      fetchExams(); // Refetch exams after deletion
+      fetchExams();
     } catch {
       setError("Error deleting exam. Please try again.");
     }
@@ -62,24 +65,28 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
   return (
     <div className="overflow-x-auto">
       {error && <div className="text-red-500 mb-2">{error}</div>}
-      <table className="min-w-full border bg-white">
-        <thead className="bg-gray-200">
-          <tr className="text-red-800">
-            <th className="py-2 px-4">Course</th>
-            <th className="py-2 px-4">Date</th>
-            <th className="py-2 px-4">Start - End</th>
-            <th className="py-2 px-4">Classroom</th>
-            <th className="py-2 px-4">Proctors</th>
-            <th className="py-2 px-4">Students</th>
-            <th className="py-2 px-4">Actions</th>
+      <table className="min-w-full table-fixed border-collapse">
+        <thead className="bg-gray-200 text-gray-800">
+          <tr>
+            <th className="py-2 px-4 w-40 whitespace-nowrap">Course</th>
+            <th className="py-2 px-4 w-28 whitespace-nowrap">Date</th>
+            <th className="py-2 px-4 w-32 whitespace-nowrap">Start - End</th>
+            <th className="py-2 px-4 w-32 whitespace-nowrap">Classroom</th>
+            <th className="py-2 px-4 w-28 whitespace-nowrap">Proctors</th>
+            <th className="py-2 px-4 w-28 whitespace-nowrap">Students</th>
+            <th className="py-2 px-4 w-32 whitespace-nowrap">Actions</th>
           </tr>
         </thead>
-        <tbody className="bg-red-50">
+        <tbody className="bg-gray-50">
           {exams.map((exam) => (
-            <tr className="text-blue-950" key={exam.id}>
-              <td className="text-center p-3 whitespace-nowrap">{exam.course_code} - {exam.course_name}</td>
+            <tr className="hover:bg-gray-100" key={exam.id}>
+              <td className="text-center p-3 whitespace-nowrap">
+                {exam.course_code} - {exam.course_name}
+              </td>
               <td className="text-center p-3 whitespace-nowrap">{exam.date}</td>
-              <td className="text-center p-3 whitespace-nowrap">{exam.start_time} - {exam.end_time}</td>
+              <td className="text-center p-3 whitespace-nowrap">
+                {exam.start_time} - {exam.end_time}
+              </td>
               <td className="text-center p-3 whitespace-nowrap">{exam.classroom_name}</td>
               <td className="text-center p-3 whitespace-nowrap">{exam.num_proctors}</td>
               <td className="text-center p-3 whitespace-nowrap">{exam.student_count}</td>
@@ -97,5 +104,5 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
       </table>
     </div>
   );
-  
+
 }

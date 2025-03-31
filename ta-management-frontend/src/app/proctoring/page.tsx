@@ -1,18 +1,27 @@
 "use client";
 
 import React from "react";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
 import apiClient from "@/lib/axiosClient";
 
 export default function Proctoring() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      
-      <h1 className="text-4xl font-bold text-gray-700">
-        This is initial proctoring page.    
-      </h1>
+  const { user, loading } = useUser();
 
-    </div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">Loading...</div>;
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">No user found</div>;
+
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full bg-gray-50 text-gray-700">
+        <AppSidebar user={user} />
+        <SidebarInset className="bg-white p-8">
+          <h1 className="text-4xl font-bold">
+            This is the initial exams page.
+          </h1>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

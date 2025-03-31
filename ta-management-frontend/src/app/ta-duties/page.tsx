@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
 import apiClient from "@/lib/axiosClient";
+import { ClipboardList } from "lucide-react";
 
 // Data interfaces
 interface Course {
@@ -21,7 +22,7 @@ interface Duty {
   start_time: string;
   end_time: string;
   duration_hours: number; // decimal hours (e.g. 2.98)
-  status: string;        // "Pending", "Approved", or "Rejected"
+  status: string;         // "Pending", "Approved", or "Rejected"
   description: string;
 }
 
@@ -32,7 +33,6 @@ export default function TADutiesPage() {
   const [message, setMessage] = useState("");
 
   // Local state for new duty form
-  // duty_type is initially "" so user must select
   const [newDuty, setNewDuty] = useState({
     duty_type: "",
     date: "",
@@ -50,21 +50,21 @@ export default function TADutiesPage() {
     return `${hours}h ${minutes}m`;
   }
 
-  // Helper: color-coding for statuses
+  // Helper: color-coding for statuses (lighter approach)
   function getStatusColor(status: string) {
     switch (status) {
       case "Pending":
-        return "bg-yellow-500 text-black";
+        return "bg-yellow-100 text-yellow-800";
       case "Approved":
-        return "bg-green-500 text-white";
+        return "bg-green-100 text-green-800";
       case "Rejected":
-        return "bg-red-500 text-white";
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-500 text-white";
+        return "bg-gray-100 text-gray-800";
     }
   }
 
-  // 1) Fetch TA's existing duties
+  // Fetch TA's existing duties
   const fetchDuties = async () => {
     try {
       const res = await apiClient.get("/taduties/my-duties/");
@@ -78,7 +78,7 @@ export default function TADutiesPage() {
     }
   };
 
-  // 2) Fetch all courses for the dropdown
+  // Fetch all courses for the dropdown
   const fetchCourses = async () => {
     try {
       const res = await apiClient.get("/list/courses/");
@@ -126,10 +126,25 @@ export default function TADutiesPage() {
     }
   };
 
-  // Loading or user checks
-  if (loading) return <div className="text-white p-8">Loading...</div>;
-  if (!user) return <div className="text-white p-8">No user found</div>;
-  if (!user.isTA) return <div className="text-white p-8">Only TAs can access this page</div>;
+  // Loading and error messages
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+        Loading...
+      </div>
+    );
+  if (!user)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+        No user found.
+      </div>
+    );
+  if (!user.isTA)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+        Only TAs can access this page.
+      </div>
+    );
 
   // Separate duties into pending vs. past
   const pendingDuties = duties.filter((d) => d.status === "Pending");
@@ -137,15 +152,18 @@ export default function TADutiesPage() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full bg-black text-white">
+      {/* Main layout with lighter background and dark text */}
+      <div className="flex min-h-screen w-full bg-gray-100 text-gray-900">
         <AppSidebar user={user} />
-        <SidebarInset className="bg-gray-950 p-8">
-          <h1 className="text-3xl font-bold mb-6">My TA Duties</h1>
+        <SidebarInset className="bg-white p-8">
+          <h1 className="mb-6 text-3xl font-bold flex items-center gap-2">
+            <ClipboardList className="h-8 w-8 text-blue-600"/> My Duties
+          </h1>
 
-          {message && <div className="mb-4 text-red-400">{message}</div>}
+          {message && <div className="mb-4 text-red-600">{message}</div>}
 
           {/* Create Duty Form */}
-          <div className="mb-8 bg-gray-800 p-6 rounded shadow">
+          <div className="mb-8 bg-gray-50 p-6 rounded shadow">
             <h2 className="text-2xl font-semibold mb-4">Create New Duty</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Duty Type Dropdown */}
@@ -153,10 +171,8 @@ export default function TADutiesPage() {
                 <label className="block mb-1">Duty Type:</label>
                 <select
                   value={newDuty.duty_type}
-                  onChange={(e) =>
-                    setNewDuty({ ...newDuty, duty_type: e.target.value })
-                  }
-                  className="p-2 rounded border border-gray-700 bg-gray-700 text-white"
+                  onChange={(e) => setNewDuty({ ...newDuty, duty_type: e.target.value })}
+                  className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                   required
                 >
                   <option value="">-- Select a Duty Type --</option>
@@ -176,10 +192,8 @@ export default function TADutiesPage() {
                   <input
                     type="date"
                     value={newDuty.date}
-                    onChange={(e) =>
-                      setNewDuty({ ...newDuty, date: e.target.value })
-                    }
-                    className="p-2 rounded border border-gray-700 bg-gray-700 text-white"
+                    onChange={(e) => setNewDuty({ ...newDuty, date: e.target.value })}
+                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                     required
                   />
                 </div>
@@ -188,10 +202,8 @@ export default function TADutiesPage() {
                   <input
                     type="time"
                     value={newDuty.start_time}
-                    onChange={(e) =>
-                      setNewDuty({ ...newDuty, start_time: e.target.value })
-                    }
-                    className="p-2 rounded border border-gray-700 bg-gray-700 text-white"
+                    onChange={(e) => setNewDuty({ ...newDuty, start_time: e.target.value })}
+                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                     required
                   />
                 </div>
@@ -200,10 +212,8 @@ export default function TADutiesPage() {
                   <input
                     type="time"
                     value={newDuty.end_time}
-                    onChange={(e) =>
-                      setNewDuty({ ...newDuty, end_time: e.target.value })
-                    }
-                    className="p-2 rounded border border-gray-700 bg-gray-700 text-white"
+                    onChange={(e) => setNewDuty({ ...newDuty, end_time: e.target.value })}
+                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                     required
                   />
                 </div>
@@ -214,10 +224,8 @@ export default function TADutiesPage() {
                 <label className="block mb-1">Course:</label>
                 <select
                   value={newDuty.course_code}
-                  onChange={(e) =>
-                    setNewDuty({ ...newDuty, course_code: e.target.value })
-                  }
-                  className="p-2 rounded border border-gray-700 bg-gray-700 text-white"
+                  onChange={(e) => setNewDuty({ ...newDuty, course_code: e.target.value })}
+                  className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                   required
                 >
                   <option value="">-- Select a Course --</option>
@@ -234,11 +242,9 @@ export default function TADutiesPage() {
                 <label className="block mb-1">Description:</label>
                 <textarea
                   value={newDuty.description}
-                  onChange={(e) =>
-                    setNewDuty({ ...newDuty, description: e.target.value })
-                  }
+                  onChange={(e) => setNewDuty({ ...newDuty, description: e.target.value })}
                   placeholder="Optional description"
-                  className="p-2 w-full rounded border border-gray-700 bg-gray-700 text-white"
+                  className="p-2 w-full rounded border border-gray-300 bg-white text-gray-900"
                 />
               </div>
 
@@ -252,41 +258,41 @@ export default function TADutiesPage() {
           </div>
 
           {/* Pending Requests */}
-          <div className="bg-gray-800 p-6 rounded shadow mb-8">
+          <div className="bg-gray-50 p-6 rounded shadow mb-8">
             <h2 className="text-2xl font-semibold mb-4">Pending Requests</h2>
             {pendingDuties.length === 0 ? (
-              <p>No pending requests.</p>
+              <p className="text-gray-700">No pending requests.</p>
             ) : (
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr>
-                    <th className="border p-2">Course Code</th>
-                    <th className="border p-2">Type</th>
-                    <th className="border p-2">Date</th>
-                    <th className="border p-2">Start</th>
-                    <th className="border p-2">End</th>
-                    <th className="border p-2">Duration</th>
-                    <th className="border p-2">Status</th>
-                    <th className="border p-2">Description</th>
+                  <tr className="bg-gray-200 text-gray-800">
+                    <th className="border border-gray-300 p-2">Course Code</th>
+                    <th className="border border-gray-300 p-2">Type</th>
+                    <th className="border border-gray-300 p-2">Date</th>
+                    <th className="border border-gray-300 p-2">Start</th>
+                    <th className="border border-gray-300 p-2">End</th>
+                    <th className="border border-gray-300 p-2">Duration</th>
+                    <th className="border border-gray-300 p-2">Status</th>
+                    <th className="border border-gray-300 p-2">Description</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pendingDuties.map((duty) => (
-                    <tr key={duty.id}>
-                      <td className="border p-2">{duty.course || "N/A"}</td>
-                      <td className="border p-2">{duty.duty_type}</td>
-                      <td className="border p-2">{duty.date}</td>
-                      <td className="border p-2">{duty.start_time}</td>
-                      <td className="border p-2">{duty.end_time}</td>
-                      <td className="border p-2">
+                    <tr key={duty.id} className="hover:bg-gray-100">
+                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
+                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
+                      <td className="border border-gray-300 p-2">{duty.date}</td>
+                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
+                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
+                      <td className="border border-gray-300 p-2">
                         {formatDuration(duty.duration_hours)}
                       </td>
-                      <td className="border p-2">
+                      <td className="border border-gray-300 p-2">
                         <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
                           {duty.status}
                         </span>
                       </td>
-                      <td className="border p-2">{duty.description}</td>
+                      <td className="border border-gray-300 p-2">{duty.description}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -295,41 +301,41 @@ export default function TADutiesPage() {
           </div>
 
           {/* Past Duties */}
-          <div className="bg-gray-800 p-6 rounded shadow">
+          <div className="bg-gray-50 p-6 rounded shadow">
             <h2 className="text-2xl font-semibold mb-4">Past Duties</h2>
             {pastDuties.length === 0 ? (
-              <p>No past duties.</p>
+              <p className="text-gray-700">No past duties.</p>
             ) : (
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr>
-                    <th className="border p-2">Course Code</th>
-                    <th className="border p-2">Type</th>
-                    <th className="border p-2">Date</th>
-                    <th className="border p-2">Start</th>
-                    <th className="border p-2">End</th>
-                    <th className="border p-2">Duration</th>
-                    <th className="border p-2">Status</th>
-                    <th className="border p-2">Description</th>
+                  <tr className="bg-gray-200 text-gray-800">
+                    <th className="border border-gray-300 p-2">Course Code</th>
+                    <th className="border border-gray-300 p-2">Type</th>
+                    <th className="border border-gray-300 p-2">Date</th>
+                    <th className="border border-gray-300 p-2">Start</th>
+                    <th className="border border-gray-300 p-2">End</th>
+                    <th className="border border-gray-300 p-2">Duration</th>
+                    <th className="border border-gray-300 p-2">Status</th>
+                    <th className="border border-gray-300 p-2">Description</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pastDuties.map((duty) => (
-                    <tr key={duty.id}>
-                      <td className="border p-2">{duty.course || "N/A"}</td>
-                      <td className="border p-2">{duty.duty_type}</td>
-                      <td className="border p-2">{duty.date}</td>
-                      <td className="border p-2">{duty.start_time}</td>
-                      <td className="border p-2">{duty.end_time}</td>
-                      <td className="border p-2">
+                    <tr key={duty.id} className="hover:bg-gray-100">
+                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
+                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
+                      <td className="border border-gray-300 p-2">{duty.date}</td>
+                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
+                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
+                      <td className="border border-gray-300 p-2">
                         {formatDuration(duty.duration_hours)}
                       </td>
-                      <td className="border p-2">
+                      <td className="border border-gray-300 p-2">
                         <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
                           {duty.status}
                         </span>
                       </td>
-                      <td className="border p-2">{duty.description}</td>
+                      <td className="border border-gray-300 p-2">{duty.description}</td>
                     </tr>
                   ))}
                 </tbody>
