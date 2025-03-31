@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
-import MailForm from "@/app/home-page/contact-button/MailForm";
+import MailForm from "@/app/home-page/mail-system/MailForm";
 
 type MailStage = "menu" | "mail";
 

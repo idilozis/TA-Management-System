@@ -8,7 +8,7 @@ import AddExamModal from "@/app/exams/add-exam/AddExamModal";
 import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { FileText } from "lucide-react";
-import MailPopover from "@/app/home-page/contact-button/MailPopover";
+import MailPopover from "@/app/home-page/mail-system/MailPopover";
 
 export default function HomePage() {
   // Shared user hook
