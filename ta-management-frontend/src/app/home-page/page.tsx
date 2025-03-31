@@ -1,41 +1,72 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { useUser } from "@/components/general/user-data";
-import WeeklyScheduleModal from "@/app/home-page/ta-schedule/WeeklyScheduleModal";
-import AddExamModal from "@/app/exams/add-exam/AddExamModal";
-import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal";
-import { AppSidebar } from "@/components/general/app-sidebar";
-import { FileText } from "lucide-react";
-import MailPopover from "@/app/home-page/mail-system/MailPopover";
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { useUser } from "@/components/general/user-data"
+import WeeklyScheduleModal from "@/app/home-page/ta-schedule/WeeklyScheduleModal"
+import AddExamModal from "@/app/exams/add-exam/AddExamModal"
+import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal"
+import { AppSidebar } from "@/components/general/app-sidebar"
+import { FileText } from "lucide-react"
+import MailPopover from "@/app/home-page/mail-system/MailPopover"
+import { PageLoader } from "@/components/ui/loading-spinner"
 
 export default function HomePage() {
+  // Get URL parameters
+  const searchParams = useSearchParams()
+
   // Shared user hook
-  const { user, loading } = useUser();
-  
+  const { user, loading } = useUser()
+
   // Local state for exam modal
-  const [showExamModal, setShowExamModal] = useState(false);
-  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0);
+  const [showExamModal, setShowExamModal] = useState(false)
+  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0)
+
+  // Mail parameters state
+  const [mailOpen, setMailOpen] = useState(false)
+  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null)
+  const [mailEmail, setMailEmail] = useState<string | null>(null)
+
+  // Check for mail parameters on page load
+  useEffect(() => {
+    const mailParam = searchParams.get("mail")
+    const roleParam = searchParams.get("role") as "TA" | "Staff" | null
+    const emailParam = searchParams.get("email")
+
+    if (mailParam === "true" && roleParam && emailParam) {
+      setMailOpen(true)
+      setMailRole(roleParam)
+      setMailEmail(emailParam)
+    }
+  }, [searchParams])
 
   // Loading screens
   if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        Loading...
-      </div>
-    );
+    return <PageLoader />
   if (!user)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        No user found.
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">No user found.</div>
 
   const handleExamModalClose = () => {
-    setShowExamModal(false);
-    setExamRefreshTrigger((prev) => prev + 1);
-  };
+    setShowExamModal(false)
+    setExamRefreshTrigger((prev) => prev + 1)
+  }
+
+  // Handle mail popover close and clean URL
+  const handleMailClose = () => {
+    setMailOpen(false)
+    setMailRole(null)
+    setMailEmail(null)
+
+    // Clean URL parameters
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("mail")
+      url.searchParams.delete("role")
+      url.searchParams.delete("email")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -47,7 +78,12 @@ export default function HomePage() {
             <SidebarTrigger className="text-gray-900" />
 
             {/* Mail Popover on the right top*/}
-            <MailPopover />
+            <MailPopover
+              forceOpen={mailOpen}
+              initialRole={mailRole}
+              initialEmail={mailEmail}
+              onClose={handleMailClose}
+            />
           </div>
 
           {/* Greetings Section */}
@@ -62,11 +98,7 @@ export default function HomePage() {
                 </p>
               </div>
               {/* Welcome icon */}
-              <img
-                src="/welcome.png"
-                alt="Welcome Illustration"
-                className="w-38 h-auto md:mr-8"
-              />
+              <img src="/welcome.png" alt="Welcome Illustration" className="w-38 h-auto md:mr-8" />
             </div>
           </div>
 
@@ -114,6 +146,6 @@ export default function HomePage() {
       {/* Show exam modal if user is Staff & wants to add exam */}
       {showExamModal && !user.isTA && <AddExamModal onClose={handleExamModalClose} />}
     </SidebarProvider>
-  );
-
+  )
 }
+

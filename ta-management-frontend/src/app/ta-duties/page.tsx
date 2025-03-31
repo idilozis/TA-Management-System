@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
 import apiClient from "@/lib/axiosClient";
 import { ClipboardList } from "lucide-react";
+import { PageLoader } from "@/components/ui/loading-spinner";
 
 // Data interfaces
 interface Course {
@@ -128,11 +129,7 @@ export default function TADutiesPage() {
 
   // Loading and error messages
   if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        Loading...
-      </div>
-    );
+    return<PageLoader />;
   if (!user)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
