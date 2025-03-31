@@ -40,8 +40,8 @@ export function useUser() {
       .get("/auth/whoami/")
       .then((res) => {
         if (res.data.status !== "success") {
-          // Not authenticated => redirect
-          router.push("/login");
+          // Not authenticated => redirect to login page
+          router.push("/auth/login");
           return null; // don't continue
         }
 
@@ -50,7 +50,7 @@ export function useUser() {
         // If Staff, fetch courses
         if (!userData.isTA) {
           return apiClient
-            .get("/proctoring/list-courses/")
+            .get("/exams/list-courses/")
             .then((coursesRes) => {
               if (coursesRes.data.status === "success") {
                 userData.courses = coursesRes.data.courses;
@@ -69,7 +69,7 @@ export function useUser() {
         }
       })
       .catch(() => {
-        router.push("/login");
+        router.push("/auth/login");
       })
       .finally(() => {
         setLoading(false);
