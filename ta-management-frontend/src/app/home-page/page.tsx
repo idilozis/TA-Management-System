@@ -8,16 +8,17 @@ import AddExamModal from "@/app/exams/add-exam/AddExamModal";
 import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { FileText } from "lucide-react";
+import MailPopover from "@/app/home-page/contact-button/MailPopover";
 
 export default function HomePage() {
   // Shared user hook
   const { user, loading } = useUser();
-
+  
   // Local state for exam modal
   const [showExamModal, setShowExamModal] = useState(false);
   const [examRefreshTrigger, setExamRefreshTrigger] = useState(0);
 
-  // If still loading user data, show a spinner
+  // Loading screens
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
@@ -41,9 +42,12 @@ export default function HomePage() {
       <div className="flex min-h-screen w-full bg-gray-100 text-gray-900">
         <AppSidebar user={user} />
 
-        <SidebarInset className="bg-white p-8">
-          <div className="mb-4">
+        <SidebarInset className="bg-white p-8 relative">
+          <div className="mb-4 flex justify-between items-center">
             <SidebarTrigger className="text-gray-900" />
+
+            {/* Mail Popover on the right top*/}
+            <MailPopover />
           </div>
 
           {/* Greetings Section */}
@@ -107,7 +111,7 @@ export default function HomePage() {
         </SidebarInset>
       </div>
 
-      {/* Show modal if user is Staff & wants to add exam */}
+      {/* Show exam modal if user is Staff & wants to add exam */}
       {showExamModal && !user.isTA && <AddExamModal onClose={handleExamModalClose} />}
     </SidebarProvider>
   );
