@@ -1,6 +1,6 @@
 "use client";
 
-import MyExams from "@/app/proctoring/my-exams/my-exams";
+import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal";
 import { motion } from "framer-motion";
 
 export default function MyExamsPage() {
@@ -12,7 +12,7 @@ export default function MyExamsPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <MyExams />
+        <StaffExamsModal />
       </motion.div>
     </div>
   );

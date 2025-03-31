@@ -3,6 +3,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from myapp.models import Course
 
+"""
+This file will essentially be used for frontend's "Tables" page.
+"""
+
 # -----------------------------
 # LIST ALL COURSES
 # -----------------------------

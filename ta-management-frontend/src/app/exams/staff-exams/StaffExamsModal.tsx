@@ -19,7 +19,7 @@ interface MyExamsProps {
   refreshTrigger?: number;
 }
 
-export default function MyExams({ refreshTrigger }: MyExamsProps) {
+export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,7 +27,7 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
   const fetchExams = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get("/proctoring/list-exams/");
+      const response = await apiClient.get("/exams/list-exams/");
       if (response.data.status === "success") {
         const sortedExams = response.data.exams.sort( // Sort for most recent date to appear first.
           (a: Exam, b: Exam) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -51,7 +51,7 @@ export default function MyExams({ refreshTrigger }: MyExamsProps) {
   const handleDeleteExam = async (examId: number) => {
     if (!confirm("Are you sure you want to delete this exam?")) return;
     try {
-      await apiClient.post("/proctoring/delete-exam/", { exam_id: examId });
+      await apiClient.post("/exams/delete-exam/", { exam_id: examId });
       fetchExams();
     } catch {
       setError("Error deleting exam. Please try again.");

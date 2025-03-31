@@ -141,7 +141,7 @@ export default function SettingsPage() {
 
           {/* PASSWORD UPDATE */}
           <div className="mb-12 bg-gray-50 p-6 rounded shadow border border-gray-800">
-            <h2 className="mb-6 text-2xl font-semibold">Update Password</h2>
+            <h2 className="mb-6 text-2xl font-semibold">Change Password</h2>
             <div className="max-w-3xl space-y-6">
               {/* NEW PASSWORD */}
               <div className="grid gap-6 md:grid-cols-2">
@@ -201,7 +201,7 @@ export default function SettingsPage() {
                   onClick={handleSave}
                   className="bg-blue-600 text-white hover:bg-blue-700"
                 >
-                  Change Password
+                  Update
                 </Button>
               </div>
             </div>

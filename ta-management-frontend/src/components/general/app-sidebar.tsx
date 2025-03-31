@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { HomeIcon, FileText, CheckCircle, SettingsIcon, LogOut } from "lucide-react";
+import { HomeIcon, FileText, CheckCircle, UserCog, LogOut, Table2 } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu,
          SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import type { UserData } from "@/components/general/user-data";
@@ -40,11 +40,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
       path: "/home-page",
       icon: HomeIcon,
     },
-    {
-      name: "Exams",
-      path: "/proctoring",
-      icon: FileText,
-    },
     ...(user && user.isTA
       ? [
           {
@@ -64,9 +59,19 @@ export function AppSidebar({ user }: AppSidebarProps) {
         ]
       : []),
     {
+      name: "Exams",
+      path: "/proctoring",
+      icon: FileText,
+    },
+    {
+      name: "Tables",
+      path: "/tables",
+      icon: Table2,
+    },
+    {
       name: "Settings",
       path: "/settings",
-      icon: SettingsIcon,
+      icon: UserCog,
     },
   ];
 

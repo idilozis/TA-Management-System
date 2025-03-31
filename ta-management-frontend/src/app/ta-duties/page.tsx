@@ -164,18 +164,18 @@ export default function TADutiesPage() {
 
           {/* Create Duty Form */}
           <div className="mb-8 bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Create New Duty</h2>
+            <h2 className="text-2xl font-semibold mb-4">Create New Task</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Duty Type Dropdown */}
               <div>
-                <label className="block mb-1">Duty Type:</label>
+                <label className="block mb-1">Task Type:</label>
                 <select
                   value={newDuty.duty_type}
                   onChange={(e) => setNewDuty({ ...newDuty, duty_type: e.target.value })}
                   className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                   required
                 >
-                  <option value="">-- Select a Duty Type --</option>
+                  <option value="">-- Select --</option>
                   <option value="lab">Lab</option>
                   <option value="grading">Grading</option>
                   <option value="recitation">Recitation</option>
@@ -221,14 +221,14 @@ export default function TADutiesPage() {
 
               {/* Course Dropdown */}
               <div>
-                <label className="block mb-1">Course:</label>
+                <label className="block mb-1">Course Name:</label>
                 <select
                   value={newDuty.course_code}
                   onChange={(e) => setNewDuty({ ...newDuty, course_code: e.target.value })}
                   className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
                   required
                 >
-                  <option value="">-- Select a Course --</option>
+                  <option value="">-- Select --</option>
                   {courses.map((course) => (
                     <option key={course.id} value={course.code}>
                       {course.code} - {course.name}
@@ -252,7 +252,7 @@ export default function TADutiesPage() {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 rounded text-white hover:bg-blue-500"
               >
-                Create Duty
+                Send Request
               </button>
             </form>
           </div>
@@ -302,9 +302,9 @@ export default function TADutiesPage() {
 
           {/* Past Duties */}
           <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Past Duties</h2>
+            <h2 className="text-2xl font-semibold mb-4">Past Requests</h2>
             {pastDuties.length === 0 ? (
-              <p className="text-gray-700">No past duties.</p>
+              <p className="text-gray-700">No past requests.</p>
             ) : (
               <table className="w-full border-collapse text-sm">
                 <thead>

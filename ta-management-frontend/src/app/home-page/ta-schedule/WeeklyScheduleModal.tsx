@@ -58,7 +58,7 @@ function ScheduleCell({
   );
 }
 
-export default function TAWeeklySchedule() {
+export default function WeeklyScheduleModal() {
   const [slots, setSlots] = useState<SlotData[]>([]);
   const [editSlot, setEditSlot] = useState<SlotData | null>(null);
   const [newCourse, setNewCourse] = useState("");

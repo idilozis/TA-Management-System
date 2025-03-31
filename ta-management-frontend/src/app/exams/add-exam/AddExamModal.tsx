@@ -30,7 +30,7 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
   // Fetch staff's courses
   useEffect(() => {
     apiClient
-      .get("/proctoring/list-courses/")
+      .get("/exams/list-courses/")
       .then((res) => {
         if (res.data.status === "success") {
           setCourses(res.data.courses);
@@ -62,7 +62,7 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
     }
 
     try {
-      const response = await apiClient.post("/proctoring/create-exam/", {
+      const response = await apiClient.post("/exams/create-exam/", {
         course_id: selectedCourse,
         date,
         start_time: startTime,

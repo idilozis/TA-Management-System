@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useUser } from "@/components/general/user-data";
-import TAWeeklySchedule from "@/components/general/schedule";
-import AddExamModal from "@/app/proctoring/add-exam/page";
-import MyExams from "@/app/proctoring/my-exams/my-exams";
+import WeeklyScheduleModal from "@/app/home-page/ta-schedule/WeeklyScheduleModal";
+import AddExamModal from "@/app/exams/add-exam/AddExamModal";
+import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { FileText } from "lucide-react";
 
@@ -67,7 +67,7 @@ export default function HomePage() {
           </div>
 
           {/* If TA, show Weekly Schedule */}
-          {user.isTA && <TAWeeklySchedule />}
+          {user.isTA && <WeeklyScheduleModal />}
 
           {/* If Staff, show Courses & Add Exam section */}
           {!user.isTA && user.courses && (
@@ -103,7 +103,7 @@ export default function HomePage() {
             </div>
           )}
 
-          {!user.isTA && <MyExams refreshTrigger={examRefreshTrigger} />}
+          {!user.isTA && <StaffExamsModal refreshTrigger={examRefreshTrigger} />}
         </SidebarInset>
       </div>
 

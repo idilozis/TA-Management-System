@@ -6,7 +6,7 @@ import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
 import apiClient from "@/lib/axiosClient";
 
-export default function Proctoring() {
+export default function Tables() {
   const { user, loading } = useUser();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">Loading...</div>;
@@ -18,7 +18,7 @@ export default function Proctoring() {
         <AppSidebar user={user} />
         <SidebarInset className="bg-white p-8">
           <h1 className="text-4xl font-bold">
-            This is the initial PROCTORING page.
+            This is the initial TABLES page.
           </h1>
         </SidebarInset>
       </div>

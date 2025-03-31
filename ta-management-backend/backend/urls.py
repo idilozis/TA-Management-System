@@ -11,8 +11,10 @@ urlpatterns = [
     path('list/', include('myapp.urls')),                   # Call "myapp" functions
     path('auth/', include('myapp.userauth.urls')),          # Call "myapp -> userauth" functions
     path('schedule/', include('myapp.schedule.urls')),      # Call "myapp -> schedule" functions
-    path('proctoring/', include('myapp.proctoring.urls')),  # Call "myapp -> proctoring" functions
+    path('exams/', include('myapp.exams.urls')),            # Call "myapp -> exams" functions
     path('taduties/', include('myapp.taduties.urls')),      # Call "myapp -> taduties" functions
+    path('taleave/', include('myapp.taleave.urls')),        # Call "myapp -> taleave" functions
+    path('proctoring/', include('myapp.proctoring.urls')),  # Call "myapp -> proctoring" functions
 
     # Default root view
     path('', initial_backend_view), 
