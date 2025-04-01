@@ -15,7 +15,6 @@ import { PageLoader } from "@/components/ui/loading-spinner"
 export default function HomePage() {
   // Get URL parameters
   const searchParams = useSearchParams()
-
   // Shared user hook
   const { user, loading } = useUser()
 
@@ -127,8 +126,7 @@ export default function HomePage() {
           {!user.isTA && (
             <div className="mb-3 mt-8 flex items-center justify-between">
               <h2 className="flex items-center text-xl font-semibold">
-                <FileText className="mr-2 h-6 w-6 text-blue-600" />
-                MY EXAMS
+                <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
               </h2>
               <button
                 onClick={() => setShowExamModal(true)}
@@ -147,5 +145,5 @@ export default function HomePage() {
       {showExamModal && !user.isTA && <AddExamModal onClose={handleExamModalClose} />}
     </SidebarProvider>
   )
-}
 
+}

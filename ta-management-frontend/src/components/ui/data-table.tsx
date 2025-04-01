@@ -24,24 +24,19 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search } from "
 const globalFilterFn: FilterFn<any> = (row, columnId, value) => {
   const searchableValues = Object.entries(row.original)
     .filter(
-      ([key, val]) =>
-        // Filter out arrays and objects unless they're strings
+      ([, val]) =>
         typeof val === "string" ||
         typeof val === "number" ||
-        (Array.isArray(val) && val.every((item) => typeof item === "string")),
+        (Array.isArray(val) && val.every((item) => typeof item === "string"))
     )
-    .map(([key, val]) => {
-      // Handle arrays by joining them
+    .map(([, val]) => {
       if (Array.isArray(val)) {
         return val.join(" ").toLowerCase()
       }
-      // Convert to string and lowercase for case-insensitive search
       return String(val).toLowerCase()
     })
 
   const searchTerm = value.toLowerCase()
-
-  // Check if any value contains the search term
   return searchableValues.some((val) => val.includes(searchTerm))
 }
 
@@ -50,6 +45,10 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchPlaceholder?: string
   handleOpenMail?: (email: string, role: "TA" | "Staff") => void
+  // Additional props for UI control
+  toolbarClassName?: string
+  hideRowCount?: boolean
+  tableClassName?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -57,6 +56,9 @@ export function DataTable<TData, TValue>({
   data,
   searchPlaceholder = "Search all columns...",
   handleOpenMail,
+  toolbarClassName = "",
+  hideRowCount = false,
+  tableClassName = "",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -88,7 +90,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center py-4">
+      <div className={`flex items-center py-4 ${toolbarClassName}`}>
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -98,41 +100,46 @@ export function DataTable<TData, TValue>({
             className="max-w-sm pl-8"
           />
         </div>
+        {!hideRowCount && (
+          <div className="ml-4 text-sm text-muted-foreground">
+            Total: {table.getFilteredRowModel().rows.length} row(s)
+          </div>
+        )}
       </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className={tableClassName}>
+          <TableHeader className="bg-blue-50">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  )
-                })}
+              <TableRow key={headerGroup.id} className="px-2 py-1">
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="px-3 py-1 text-blue-700">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
-                // Add handleOpenMail to the row object
                 if (handleOpenMail) {
                   ;(row as any).handleOpenMail = handleOpenMail
                 }
-
                 return (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-gray-50">
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                      <TableCell key={cell.id} className="px-3 py-1 border-b">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
                     ))}
                   </TableRow>
                 )
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-16 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -141,9 +148,11 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} row(s) total.
-        </div>
+        {!hideRowCount && (
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} row(s) total.
+          </div>
+        )}
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -178,3 +187,4 @@ export function DataTable<TData, TValue>({
   )
 }
 
+export default DataTable

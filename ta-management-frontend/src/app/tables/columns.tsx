@@ -10,7 +10,6 @@ export interface CourseData {
   name: string
   instructors: string[]
 }
-
 export interface TAData {
   email: string
   name: string
@@ -20,7 +19,6 @@ export interface TAData {
   student_id: string
   phone: string
 }
-
 export interface StaffData {
   email: string
   name: string
@@ -34,12 +32,16 @@ function EmailButton({
   email,
   role,
   onClick,
-}: { email: string; role: "TA" | "Staff"; onClick: (email: string, role: "TA" | "Staff") => void }) {
+}: { 
+  email: string; 
+  role: "TA" | "Staff"; 
+  onClick: (email: string, role: "TA" | "Staff") => void 
+}) {
   return (
     <Button
       variant="ghost"
       size="icon"
-      className="h-6 w-6 rounded-full p-0 text-blue-600 hover:bg-blue-100"
+      className="h-6 w-6 rounded-full p-0 text-blue-600 hover:bg-emerald-300"
       onClick={() => onClick(email, role)}
     >
       <Mail className="h-3.5 w-3.5" />
@@ -136,8 +138,8 @@ export const taColumns: ColumnDef<TAData>[] = [
     cell: ({ row }) => {
       const email = row.getValue("email") as string
       return (
-        <div className="flex items-center">
-          <span>{email}</span>
+        <div className="flex items-center justify-between w-full px-2">
+          <span className="truncate">{email}</span>
           <EmailButton
             email={email}
             role="TA"
@@ -192,8 +194,8 @@ export const staffColumns: ColumnDef<StaffData>[] = [
     cell: ({ row }) => {
       const email = row.getValue("email") as string
       return (
-        <div className="flex items-center">
-          <span>{email}</span>
+        <div className="flex items-center justify-between w-full px-2">
+          <span className="truncate">{email}</span>
           <EmailButton
             email={email}
             role="Staff"
@@ -208,4 +210,3 @@ export const staffColumns: ColumnDef<StaffData>[] = [
     },
   },
 ]
-

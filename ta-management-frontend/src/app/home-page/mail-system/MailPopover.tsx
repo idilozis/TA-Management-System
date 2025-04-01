@@ -13,6 +13,7 @@ interface MailPopoverProps {
   initialEmail?: string | null
   onClose?: () => void
   hideButton?: boolean
+  hideSearchAndChoose?: boolean
 }
 
 export default function MailPopover({
@@ -21,12 +22,13 @@ export default function MailPopover({
   initialEmail = null,
   onClose,
   hideButton = false,
+  hideSearchAndChoose = false,
 }: MailPopoverProps) {
   const [open, setOpen] = useState(forceOpen)
   const [stage, setStage] = useState<MailStage>(initialRole ? "mail" : "menu")
   const [role, setRole] = useState<"TA" | "Staff" | null>(initialRole)
 
-  // Update state when props change
+  // Open logic if forced by props
   useEffect(() => {
     if (forceOpen) {
       setOpen(true)
@@ -37,14 +39,13 @@ export default function MailPopover({
     }
   }, [forceOpen, initialRole])
 
-  // Handle close
+  // Close logic
   const handleClose = () => {
     setOpen(false)
     if (!forceOpen) {
       setStage("menu")
       setRole(null)
     }
-
     if (onClose) {
       onClose()
     }
@@ -52,25 +53,20 @@ export default function MailPopover({
 
   return (
     <>
-      {/* Trigger button - only shown if not explicitly hidden */}
       {!hideButton && (
         <Button
           onClick={() => setOpen(true)}
           className="flex items-center space-x-1 bg-emerald-600 text-white px-4 py-3 rounded hover:bg-emerald-500"
         >
           <Mail className="h-5 w-5" />
-          <span>Send Mail</span>
+          <span>Contact with Users</span>
         </Button>
       )}
 
-      {/* Custom modal implementation */}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={(e) => {
-            // Prevent closing when clicking the backdrop
-            e.stopPropagation()
-          }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div
             className="bg-white rounded-lg p-6 max-w-md w-full mx-auto shadow-xl"
@@ -78,27 +74,27 @@ export default function MailPopover({
           >
             {stage === "menu" && (
               <div className="flex flex-col space-y-2">
-                <h2 className="text-lg font-semibold mb-2">Send Mail</h2>
+                <h2 className="font-semibold mb-2 text-blue-800 text-left">** Please choose user type before sending mail.</h2>
                 <button
                   onClick={() => {
                     setRole("TA")
                     setStage("mail")
                   }}
-                  className="w-full text-left px-4 py-2 rounded hover:bg-emerald-100 transition-colors"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-emerald-100 transition-colors bg-gray-100"
                 >
-                  Contact TAs
+                  Contact with TAs
                 </button>
                 <button
                   onClick={() => {
                     setRole("Staff")
                     setStage("mail")
                   }}
-                  className="w-full text-left px-4 py-2 rounded hover:bg-emerald-100 transition-colors"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-emerald-100 transition-colors bg-gray-100"
                 >
-                  Contact Staff
+                  Contact with Staff
                 </button>
-                <div className="flex justify-end mt-4">
-                  <Button variant="secondary" className="bg-gray-200" onClick={handleClose}>
+                <div className="flex justify-end">
+                  <Button variant="secondary" className="bg-blue-600 text-white hover:bg-blue-500" onClick={handleClose}>
                     Cancel
                   </Button>
                 </div>
@@ -106,12 +102,17 @@ export default function MailPopover({
             )}
 
             {stage === "mail" && role && (
-              <MailForm role={role} preselectedEmail={initialEmail || undefined} onClose={handleClose} />
+              <MailForm
+                role={role}
+                preselectedEmail={initialEmail || undefined}
+                onClose={handleClose}
+                hideSearchAndChoose={hideSearchAndChoose}
+              />
             )}
           </div>
         </div>
       )}
     </>
   )
-}
 
+}

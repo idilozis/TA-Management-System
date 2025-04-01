@@ -8,13 +8,19 @@ import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
 import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { courseColumns, taColumns, staffColumns, type CourseData, type TAData, type StaffData } from "./columns"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  courseColumns,
+  taColumns,
+  staffColumns,
+  type CourseData,
+  type TAData,
+  type StaffData,
+} from "./columns"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import MailPopover from "@/app/home-page/mail-system/MailPopover"
-import { PageLoader } from "@/components/ui/loading-spinner"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { PageLoader, LoadingSpinner } from "@/components/ui/loading-spinner"
 
 type Tab = "courses" | "tas" | "staff"
 
@@ -38,7 +44,6 @@ export default function TablesPage() {
     async function fetchData() {
       setLoadingData(true)
       setError("")
-
       try {
         if (activeTab === "courses") {
           const res = await apiClient.get("/list/courses/")
@@ -86,15 +91,15 @@ export default function TablesPage() {
     setMailEmail(null)
   }
 
-  // If user data is still loading
   if (loading) {
     return <PageLoader />
   }
 
-  // If no user
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">No user found</div>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        No user found
+      </div>
     )
   }
 
@@ -102,10 +107,12 @@ export default function TablesPage() {
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar user={user} />
+
         <SidebarInset className="p-8">
-          <div className="flex items-center gap-2 mb-6">
-            <Table2 className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Tables</h1>
+          <div className="flex items-center gap-2 mb-4">
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Table2 className="h-8 w-8 text-blue-600" /> Tables
+              </h1>
           </div>
 
           <Tabs
@@ -114,10 +121,16 @@ export default function TablesPage() {
             onValueChange={(value) => setActiveTab(value as Tab)}
             className="w-full"
           >
-            <TabsList className="mb-6">
-              <TabsTrigger value="courses" className="cursor-pointer">Courses</TabsTrigger>
-              <TabsTrigger value="tas" className="cursor-pointer">TAs</TabsTrigger>
-              <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
+            <TabsList className="mb-4">
+              <TabsTrigger value="courses" className="cursor-pointer">
+                Courses
+              </TabsTrigger>
+              <TabsTrigger value="tas" className="cursor-pointer">
+                TAs
+              </TabsTrigger>
+              <TabsTrigger value="staff" className="cursor-pointer">
+                Staff
+              </TabsTrigger>
             </TabsList>
 
             {error && (
@@ -134,77 +147,83 @@ export default function TablesPage() {
               </div>
             ) : (
               <>
+                {/* COURSES TAB */}
                 <TabsContent value="courses">
-                  <Card>
+                  <Card className="border-black">
                     <CardHeader>
-                      <CardTitle>Courses</CardTitle>
-                      <CardDescription>List of all courses in the system</CardDescription>
+                      <CardTitle className="text-blue-700">COURSES</CardTitle>
                     </CardHeader>
+
                     <CardContent>
-                      {courses.length === 0 ? (
-                        <div className="text-center py-4">No courses found.</div>
-                      ) : (
-                        <DataTable columns={courseColumns} data={courses} searchPlaceholder="Search courses..." />
-                      )}
+                      <DataTable
+                        columns={courseColumns}
+                        data={courses}
+                        // Move search bar to the left & hide row count
+                        toolbarClassName="justify-start"
+                        hideRowCount
+                        tableClassName="text-sm"
+                        searchPlaceholder="Search Courses..."
+                      />
                     </CardContent>
                   </Card>
                 </TabsContent>
 
+                {/* TAs TAB */}
                 <TabsContent value="tas">
-                  <Card>
+                  <Card className="border-black">
                     <CardHeader>
-                      <CardTitle>Teaching Assistants</CardTitle>
-                      <CardDescription>List of all TAs in the system</CardDescription>
+                      <CardTitle className="text-blue-700">TEACHING ASSISTANTS</CardTitle>
                     </CardHeader>
+
                     <CardContent>
-                      {tas.length === 0 ? (
-                        <div className="text-center py-4">No TAs found.</div>
-                      ) : (
-                        <DataTable
-                          columns={taColumns}
-                          data={tas}
-                          searchPlaceholder="Search TAs..."
-                          handleOpenMail={handleOpenMail}
-                        />
-                      )}
+                      <DataTable
+                        columns={taColumns}
+                        data={tas}
+                        toolbarClassName="justify-start"
+                        hideRowCount
+                        tableClassName="text-sm"
+                        searchPlaceholder="Search TAs..."
+                        handleOpenMail={handleOpenMail}
+                      />
                     </CardContent>
                   </Card>
                 </TabsContent>
 
+                {/* STAFF TAB */}
                 <TabsContent value="staff">
-                  <Card>
+                  <Card className="border-black">
                     <CardHeader>
-                      <CardTitle>Staff</CardTitle>
-                      <CardDescription>List of all staff members in the system</CardDescription>
+                      <CardTitle className="text-blue-700">STAFF</CardTitle>
                     </CardHeader>
+
                     <CardContent>
-                      {staff.length === 0 ? (
-                        <div className="text-center py-4">No staff found.</div>
-                      ) : (
-                        <DataTable
-                          columns={staffColumns}
-                          data={staff}
-                          searchPlaceholder="Search staff..."
-                          handleOpenMail={handleOpenMail}
-                        />
-                      )}
+                      <DataTable
+                        columns={staffColumns}
+                        data={staff}
+                        toolbarClassName="justify-start"
+                        hideRowCount
+                        tableClassName="text-sm"
+                        searchPlaceholder="Search Staff..."
+                        handleOpenMail={handleOpenMail}
+                      />
                     </CardContent>
                   </Card>
                 </TabsContent>
               </>
             )}
           </Tabs>
-          {/* Mail Popover - without trigger button */}
+
+          {/* Mail Popover - no visible trigger button here */}
           <MailPopover
             forceOpen={mailOpen}
             initialRole={mailRole}
             initialEmail={mailEmail}
             onClose={handleMailClose}
-            hideButton={true}
+            hideButton
+            hideSearchAndChoose
           />
         </SidebarInset>
       </div>
     </SidebarProvider>
   )
 }
-

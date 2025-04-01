@@ -16,9 +16,15 @@ interface MailFormProps {
   role: "TA" | "Staff"
   onClose: () => void
   preselectedEmail?: string
+  hideSearchAndChoose?: boolean
 }
 
-export default function MailForm({ role, onClose, preselectedEmail }: MailFormProps) {
+export default function MailForm({
+  role,
+  onClose,
+  preselectedEmail,
+  hideSearchAndChoose = false,
+}: MailFormProps) {
   const [users, setUsers] = useState<UserOption[]>([])
   const [selectedUserEmail, setSelectedUserEmail] = useState(preselectedEmail || "")
   const [searchQuery, setSearchQuery] = useState("")
@@ -26,25 +32,29 @@ export default function MailForm({ role, onClose, preselectedEmail }: MailFormPr
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
 
-  // Fetch TAs or Staff
+  // Fetch TAs or Staff if we want the user list
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await apiClient.get(`/list/mail-users/?role=${role}`)
-        if (res.data.status === "success") {
-          setUsers(res.data.users)
-        } else {
-          setError(res.data.message || "Error loading users.")
+    if (!hideSearchAndChoose) {
+      const fetchUsers = async () => {
+        try {
+          const res = await apiClient.get(`/list/mail-users/?role=${role}`)
+          if (res.data.status === "success") {
+            setUsers(res.data.users)
+          } else {
+            setError(res.data.message || "Error loading users.")
+          }
+        } catch (err: any) {
+          setError("Error fetching users.")
+          console.error(err)
         }
-      } catch (err: any) {
-        setError("Error fetching users.")
-        console.error(err)
       }
+      fetchUsers()
     }
-    fetchUsers()
-  }, [role])
+  }, [role, hideSearchAndChoose])
 
-  const filteredUsers = users.filter((u) => u.label.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredUsers = users.filter((u) =>
+    u.label.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   async function handleSendMail() {
     if (!selectedUserEmail || !message.trim()) {
@@ -59,7 +69,6 @@ export default function MailForm({ role, onClose, preselectedEmail }: MailFormPr
       const res = await apiClient.post("/list/mail-sender/", formData)
       if (res.data.status === "success") {
         setSuccessMessage("Mail sent successfully!")
-        // auto-close after 1.5s
         setTimeout(() => {
           setSuccessMessage("")
           onClose()
@@ -75,47 +84,61 @@ export default function MailForm({ role, onClose, preselectedEmail }: MailFormPr
 
   return (
     <div className="space-y-2">
-      <h2 className="text-base font-semibold">Contact {role === "TA" ? "TAs" : "Staff"}</h2>
-
       {error && <div className="text-red-600">{error}</div>}
       {successMessage && <div className="text-green-600">{successMessage}</div>}
 
-      {/* Search bar */}
+      {/* Conditionally render search and choose fields */}
+      {!hideSearchAndChoose && (
+        <>
+          <div>
+            <Label className="text-sm font-medium mb-1">
+              Search {role === "TA" ? "TAs" : "Staff"}
+            </Label>
+            <Input
+              placeholder={`Search among ${
+                role === "TA" ? "TAs" : "Staff"
+              }...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium mb-1">Choose Recipient:</Label>
+            <select
+              className="border border-gray-300 p-2 w-full rounded"
+              value={selectedUserEmail}
+              onChange={(e) => setSelectedUserEmail(e.target.value)}
+            >
+              <option value="">-- Select --</option>
+              {filteredUsers.map((u) => (
+                <option key={u.email} value={u.email}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* "To:" field (always shown, read-only) */}
       <div>
-        <Label className="text-sm font-medium mb-1">Search {role === "TA" ? "TAs" : "Staff"}</Label>
         <Input
-          placeholder={`Search among ${role === "TA" ? "TAs" : "Staff"}...`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          readOnly
+          className="bg-blue-50 text-blue-800"
+          value={selectedUserEmail}
+          placeholder="to:"
         />
       </div>
 
-      {/* Choose recipient */}
-      <div>
-        <Label className="text-sm font-medium mb-1">Choose Recipient:</Label>
-        <select
-          className="border border-gray-300 p-2 w-full rounded"
-          value={selectedUserEmail}
-          onChange={(e) => setSelectedUserEmail(e.target.value)}
-        >
-          <option value="">-- Select --</option>
-          {filteredUsers.map((u) => (
-            <option key={u.email} value={u.email}>
-              {u.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Non-editable "To" field */}
-      <div>
-        <Input readOnly className="bg-blue-50 text-blue-800" value={selectedUserEmail} placeholder="to:" />
-      </div>
-
-      {/* Message text area */}
+      {/* Subject (message) text area */}
       <div>
         <Label className="text-sm font-medium mb-1">Subject</Label>
-        <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
+        <Textarea
+          rows={4}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
@@ -128,5 +151,5 @@ export default function MailForm({ role, onClose, preselectedEmail }: MailFormPr
       </div>
     </div>
   )
-}
 
+}
