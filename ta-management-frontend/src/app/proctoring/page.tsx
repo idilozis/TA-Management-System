@@ -5,20 +5,21 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
 import { PageLoader } from "@/components/ui/loading-spinner";
-import AssignmentModal from "./AssignmentModal"; // Your existing assignment component
-import TALeaveTA from "./TALeaveTA";
-import TALeaveStaff from "./TALeaveStaff";
+import ProctoringStaff from "./staff-ui/ProctoringStaff";
+import ProctoringTA from "./ta-ui/ProctoringTA";
+import TALeaveTA from "./ta-ui/TALeaveTA";
+import TALeaveStaff from "./staff-ui/TALeaveStaff";
 
 export default function ProctoringPage() {
   const { user, loading } = useUser();
   const [activeTab, setActiveTab] = useState<"assignments" | "leave">("assignments");
 
   if (loading) return <PageLoader />;
-  if (!user) return <div>No user found.</div>;
+  if (!user) return <div className="min-h-screen flex items-center justify-center">No user found.</div>;
 
   const renderContent = () => {
     if (activeTab === "assignments") {
-      return <AssignmentModal />;
+      return user.isTA ? <ProctoringTA /> : <ProctoringStaff />;
     } else {
       return user.isTA ? <TALeaveTA /> : <TALeaveStaff />;
     }
@@ -33,9 +34,7 @@ export default function ProctoringPage() {
             <button
               onClick={() => setActiveTab("assignments")}
               className={`px-4 py-2 rounded ${
-                activeTab === "assignments"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800"
+                activeTab === "assignments" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
               }`}
             >
               Proctor Assignments
@@ -43,9 +42,7 @@ export default function ProctoringPage() {
             <button
               onClick={() => setActiveTab("leave")}
               className={`px-4 py-2 rounded ${
-                activeTab === "leave"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800"
+                activeTab === "leave" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
               }`}
             >
               TA Leave Requests

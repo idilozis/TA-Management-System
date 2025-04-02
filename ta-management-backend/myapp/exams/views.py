@@ -61,9 +61,7 @@ def create_exam(request):
     if start_obj >= end_obj:
         return JsonResponse({"status": "error", "message": "Start time must be before end time."}, status=400)
     
-    is_available, message = is_classroom_available(
-        classroom_name, date_obj, start_obj, end_obj
-    )
+    is_available, message = is_classroom_available(classroom_name, date_obj, start_obj, end_obj)
     if not is_available:
         return JsonResponse({
             "status": "error", 
@@ -112,7 +110,7 @@ def list_staff_courses(request):
 
 
 # -----------------------------
-# LIST EXAMS OF AN INSTRUCTOR
+# LIST EXAMS OF AN INSTRUCTOR (with confirmed assignments)
 # -----------------------------
 @require_GET
 def list_staff_exams(request):
@@ -129,6 +127,8 @@ def list_staff_exams(request):
     
     exams_data = []
     for exam in exams:
+        # Get confirmed TA assignments from the ProctoringAssignment relation.
+        assigned_tas = list(exam.proctoringassignment.values_list('ta__email', flat=True))
         exams_data.append({
             "id": exam.id,
             "course_code": exam.course.code,
@@ -138,14 +138,48 @@ def list_staff_exams(request):
             "end_time": exam.end_time.strftime("%H:%M"),
             "classroom_name": exam.classroom_name,
             "num_proctors": exam.num_proctors,
-            "student_count": exam.student_count
+            "student_count": exam.student_count,
+            "assigned_tas": assigned_tas,
         })
 
     return JsonResponse({"status": "success", "exams": exams_data})
 
 
 # -----------------------------
-# DELETE AN EXAM
+# LIST ASSIGNED EXAMS OF TAs
+# -----------------------------
+@require_GET
+def list_ta_exams(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    if not user or user_type != "TA":
+        return JsonResponse({"status": "error", "message": "You are not a TA."}, status=403)
+
+    # Use the reverse relationship 'proctored_exams' defined on TAUser.
+    assignments = user.proctored_exams.select_related('exam__course').all()
+    exams_data = []
+    for assignment in assignments:
+        exam = assignment.exam
+        exams_data.append({
+            "id": exam.id,
+            "course_code": exam.course.code,
+            "course_name": exam.course.name,
+            "date": exam.date.strftime("%Y-%m-%d"),
+            "start_time": exam.start_time.strftime("%H:%M"),
+            "end_time": exam.end_time.strftime("%H:%M"),
+            "classroom_name": exam.classroom_name,
+            "num_proctors": exam.num_proctors,
+            "student_count": exam.student_count,
+        })
+
+    return JsonResponse({"status": "success", "exams": exams_data})
+
+
+# -----------------------------
+# DELETE AN EXAM (with workload adjustment)
 # -----------------------------
 @require_POST
 def delete_exam(request):
@@ -172,7 +206,17 @@ def delete_exam(request):
         if exam.instructor != user:
             return JsonResponse({"status": "error", "message": "You can only delete exams you created."}, status=403)
         
-        # Delete the exam
+        # Calculate the exam duration in hours.
+        duration_hours = (datetime.combine(exam.date, exam.end_time) - datetime.combine(exam.date, exam.start_time)).seconds // 3600
+        
+        # Decrement the workload for each assigned TA.
+        assignments = exam.proctoringassignment.all()
+        for assignment in assignments:
+            ta = assignment.ta
+            ta.workload = max(0, ta.workload - duration_hours)
+            ta.save()
+        
+        # Delete the exam (which will cascade-delete the assignments).
         exam.delete()
         return JsonResponse({"status": "success", "message": "Exam deleted successfully."})
     
@@ -181,11 +225,8 @@ def delete_exam(request):
 
 
 # -----------------------------
-# CHECK AVAILABILITY
+# CHECK CLASSROOM AVAILABILITY
 # -----------------------------
-"""
-    Check if a classroom is available during the specified time period.
-"""
 def is_classroom_available(classroom_name, date_obj, start_time, end_time, exclude_exam_id=None):
     overlapping_exams = Exam.objects.filter(
         classroom_name=classroom_name,
