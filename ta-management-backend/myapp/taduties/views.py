@@ -8,7 +8,8 @@ from django.db import transaction
 from myapp.taduties.models import TADuty
 from myapp.models import Course
 from myapp.userauth.helpers import find_user_by_email
-
+from myapp.notificationsystem.views import create_notification
+from myapp.models import StaffUser
 
 # -----------------------------
 # CREATE A DUTY
@@ -61,7 +62,13 @@ def create_duty(request):
         status="pending"
     )
 
-    # (Optional) might notify the course instructor(s) by email here
+    # NEW: Notify all instructors of the course
+    if duty.course:
+        for instructor in duty.course.instructors.all():
+            create_notification(
+                recipient_email=instructor.email,
+                message=f"{user.name} {user.surname} created a duty request for course {duty.course.code}."
+            )
     
     return JsonResponse({
         "status": "success",
@@ -74,7 +81,7 @@ def create_duty(request):
 # LIST TA'S ALL DUTIES
 # -----------------------------
 """
-TAs can see all duties they have created (pending, approved, or rejected).
+    TAs can see all duties they have created (pending, approved, or rejected).
 """
 @require_GET
 def list_my_duties(request):
@@ -118,8 +125,8 @@ def list_my_duties(request):
 # LIST STAFF'S PENDING DUTIES
 # -----------------------------
 """
-Staff (instructors) can see all 'pending' duties for courses they teach.
-Only duties with an associated course that the staff instructs are returned.
+    Staff (instructors) can see all 'pending' duties for courses they teach.
+    Only duties with an associated course that the staff instructs are returned.
 """
 @require_GET
 def list_pending_duties(request):
@@ -166,9 +173,9 @@ def list_pending_duties(request):
 # UPDATE DUTY STATUS
 # -----------------------------
 """
-Staff can approve or reject a duty if the duty's course is one they teach.
-If approved, its duration is added to the TA's total workload.
-Only pending duties can be updated.
+    Staff can approve or reject a duty if the duty's course is one they teach.
+    If approved, its duration is added to the TA's total workload.
+    Only pending duties can be updated.
 """
 @csrf_exempt
 @require_POST
@@ -210,6 +217,12 @@ def update_duty_status(request, duty_id):
     # Update the duty status
     duty.status = new_status
     duty.save()
+
+    # Notify the TA about the updated duty status
+    create_notification(
+        recipient_email=duty.ta_user.email,
+        message=f"Your duty request for course {duty.course.code} has been {new_status}."
+    )
 
     # If approved, add the duty's duration to the TA's workload
     if new_status == "approved":

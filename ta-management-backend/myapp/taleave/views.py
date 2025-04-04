@@ -12,6 +12,8 @@ import mimetypes
 
 from myapp.taleave.models import TALeaveRequests
 from myapp.userauth.helpers import find_user_by_email
+from myapp.notificationsystem.views import create_notification
+from myapp.models import StaffUser
 
 # -----------------------------
 # CREATE LEAVE REQUEST (TA side)
@@ -66,7 +68,18 @@ def create_leave(request):
         document=document,
         status="pending"
     )
-    
+
+    # Notify the advisor with notification system
+    if user.advisor:
+        advisor_name = user.advisor.strip().split()  # assume "First Last"
+        if len(advisor_name) == 2:
+            staff_advisor = StaffUser.objects.filter(name__iexact=advisor_name[0], surname__iexact=advisor_name[1]).first()
+            if staff_advisor:
+                create_notification(
+                    recipient_email=staff_advisor.email,
+                    message=f"{user.name} {user.surname} sent you a leave request."
+                )
+        
     return JsonResponse({
         "status": "success",
         "message": "Leave request created successfully.",
@@ -227,6 +240,12 @@ def update_leave_status(request, leave_id):
     
     leave.status = new_status
     leave.save()
+
+    # Notify the TA about the updated leave status
+    create_notification(
+        recipient_email=leave.ta_user.email,
+        message=f"Your leave request has been {new_status}."
+    )
     
     return JsonResponse({"status": "success", "message": f"Leave request {new_status}."})
 

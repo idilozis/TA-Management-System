@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/components/general/user-data"
+import { AppSidebar } from "@/components/general/app-sidebar"
+import { FileText } from "lucide-react"
+import { PageLoader } from "@/components/ui/loading-spinner"
 import WeeklyScheduleModal from "@/app/home-page/ta-schedule/WeeklyScheduleModal"
 import AddExamModal from "@/app/exams/add-exam/AddExamModal"
 import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal"
-import { AppSidebar } from "@/components/general/app-sidebar"
-import { FileText } from "lucide-react"
 import MailPopover from "@/app/home-page/mail-system/MailPopover"
-import { PageLoader } from "@/components/ui/loading-spinner"
+import NotificationModal from "@/app/home-page/notification-system/NotificationPopover"
 
 export default function HomePage() {
   // Get URL parameters
@@ -75,14 +76,17 @@ export default function HomePage() {
         <SidebarInset className="bg-white p-8 relative">
           <div className="mb-4 flex justify-between items-center">
             <SidebarTrigger className="text-gray-900" />
-
-            {/* Mail Popover on the right top*/}
-            <MailPopover
-              forceOpen={mailOpen}
-              initialRole={mailRole}
-              initialEmail={mailEmail}
-              onClose={handleMailClose}
-            />
+              <div className="flex items-center space-x-4">
+                {/* Mail System*/}
+                <MailPopover
+                  forceOpen={mailOpen}
+                  initialRole={mailRole}
+                  initialEmail={mailEmail}
+                  onClose={handleMailClose}
+                />
+                {/* Notification System*/}
+                <NotificationModal />
+              </div>
           </div>
 
           {/* Greetings Section */}
