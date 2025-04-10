@@ -43,6 +43,9 @@ const Login = () => {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,20 +71,29 @@ const Login = () => {
   }, [form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    setMessage("");
+    setMessageType("");
+  
     try {
       const response = await apiClient.post("/auth/login/", values, {
         headers: { "Content-Type": "application/json" },
       });
-
+  
       setMessage(response.data.message);
-
+  
       if (response.data.status === "success") {
+        setMessageType("success");
+  
         if (values.rememberMe) {
           localStorage.setItem("rememberEmail", values.email);
         } else {
           localStorage.removeItem("rememberEmail");
         }
+  
         setTimeout(() => router.push("/home-page"), 1000);
+      } else {
+        setMessageType("error");
       }
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
@@ -89,8 +101,12 @@ const Login = () => {
       } else {
         setMessage("Login failed. Please try again.");
       }
+      setMessageType("error");
+    } finally {
+      setIsSubmitting(false); 
     }
   };
+  
 
   return (
     <div className="relative flex flex-col min-h-screen bg-blue-950 overflow-hidden z-0">
@@ -203,16 +219,25 @@ const Login = () => {
                       type="submit"
                       className="w-full text-white border border-transparent hover:border-white bg-blue-600 transition duration-200"
                     >
-                      Sign In {">"}
+                      Sign In 
                     </Button>
+                    {isSubmitting && (<div className="text-center text-sm text-blue-700 font-medium">Loading...</div>)}
+
                   </form>
                 </Form>
 
                 {message && (
-                  <Alert variant="destructive" className="mt-4">
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
+                  <div
+                    className={`mt-4 px-4 py-2 rounded-md text-sm font-medium ${
+                      messageType === "success"
+                        ? "bg-green-100 text-green-800 border border-green-300"
+                        : "bg-red-100 text-red-800 border border-red-300"
+                    }`}
+                  >
+                    {message}
+                  </div>
                 )}
+
               </CardContent>
 
               <CardFooter className="justify-start">
