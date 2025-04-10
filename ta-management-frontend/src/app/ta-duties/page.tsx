@@ -1,347 +1,442 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/general/app-sidebar";
-import { useUser } from "@/components/general/user-data";
-import apiClient from "@/lib/axiosClient";
-import { ClipboardList } from "lucide-react";
-import { PageLoader } from "@/components/ui/loading-spinner";
+import { useState, useEffect } from "react"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/general/app-sidebar"
+import { useUser } from "@/components/general/user-data"
+import apiClient from "@/lib/axiosClient"
+import { ClipboardList, Calendar, Clock } from "lucide-react"
+import { PageLoader } from "@/components/ui/loading-spinner"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
 
 // Data interfaces
 interface Course {
-  id: number;
-  code: string;
-  name: string;
+  id: number
+  code: string
+  name: string
 }
 
 interface Duty {
-  id: number;
-  course: string | null; // This holds the course CODE from the backend
-  duty_type: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  duration_hours: number; // decimal hours (e.g. 2.98)
-  status: string;         // "Pending", "Approved", or "Rejected"
-  description: string;
+  id: number
+  course: string | null // This holds the course CODE from the backend
+  duty_type: string
+  date: string
+  start_time: string
+  end_time: string
+  duration_hours: number // decimal hours (e.g. 2.98)
+  status: string // "Pending", "Approved", or "Rejected"
+  description: string
 }
 
-export default function TADutiesPage() {
-  const { user, loading } = useUser();
-  const [duties, setDuties] = useState<Duty[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [message, setMessage] = useState("");
+// Form validation schema
+const dutyFormSchema = z.object({
+  duty_type: z.string().min(1, { message: "Please select a task type" }),
+  date: z.string().min(1, { message: "Please select a date" }),
+  start_time: z.string().min(1, { message: "Please select a start time" }),
+  end_time: z.string().min(1, { message: "Please select an end time" }),
+  course_code: z.string().min(1, { message: "Please select a course" }),
+  description: z.string().optional(),
+})
 
-  // Local state for new duty form
-  const [newDuty, setNewDuty] = useState({
-    duty_type: "",
-    date: "",
-    start_time: "",
-    end_time: "",
-    description: "",
-    course_code: "",
-  });
+type DutyFormValues = z.infer<typeof dutyFormSchema>
+
+export default function TADutiesPage() {
+  const { user, loading } = useUser()
+  const [duties, setDuties] = useState<Duty[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState<"success" | "error">("error")
+  const [activeTab, setActiveTab] = useState("pending")
+
+  // Initialize form
+  const form = useForm<DutyFormValues>({
+    resolver: zodResolver(dutyFormSchema),
+    defaultValues: {
+      duty_type: "",
+      date: "",
+      start_time: "",
+      end_time: "",
+      course_code: "",
+      description: "",
+    },
+  })
 
   // Helper: convert decimal hours to "Hh Mm"
   function formatDuration(durationInHours: number): string {
-    const totalMinutes = Math.round(durationInHours * 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
+    const totalMinutes = Math.round(durationInHours * 60)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return `${hours}h ${minutes}m`
   }
 
-  // Helper: color-coding for statuses (lighter approach)
-  function getStatusColor(status: string) {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Approved":
-        return "bg-green-100 text-green-800";
-      case "Rejected":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+  // Helper: format duty type for display
+  function formatDutyType(dutyType: string): string {
+    return dutyType
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
   }
 
   // Fetch TA's existing duties
   const fetchDuties = async () => {
     try {
-      const res = await apiClient.get("/taduties/my-duties/");
+      const res = await apiClient.get("/taduties/my-duties/")
       if (res.data.status === "success") {
-        setDuties(res.data.duties);
+        setDuties(res.data.duties)
       } else {
-        setMessage(res.data.message || "Error fetching duties.");
+        setMessage(res.data.message || "Error fetching duties.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error fetching duties.");
+      setMessage("Error fetching duties.")
+      setMessageType("error")
     }
-  };
+  }
 
   // Fetch all courses for the dropdown
   const fetchCourses = async () => {
     try {
-      const res = await apiClient.get("/list/courses/");
+      const res = await apiClient.get("/list/courses/")
       if (res.data.status === "success") {
-        setCourses(res.data.courses);
+        setCourses(res.data.courses)
       } else {
-        setMessage(res.data.message || "Error fetching courses.");
+        setMessage(res.data.message || "Error fetching courses.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error fetching courses.");
+      setMessage("Error fetching courses.")
+      setMessageType("error")
     }
-  };
+  }
 
   // On mount (and once user is known), fetch duties if TA, and fetch courses
   useEffect(() => {
     if (user && user.isTA) {
-      fetchDuties();
-      fetchCourses();
+      fetchDuties()
+      fetchCourses()
     }
-  }, [user]);
+  }, [user])
 
   // Submit handler for creating a new duty
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage("");
+  const onSubmit = async (data: DutyFormValues) => {
+    setMessage("")
     try {
-      const res = await apiClient.post("/taduties/create-duty/", newDuty);
+      const res = await apiClient.post("/taduties/create-duty/", data)
       if (res.data.status === "success") {
-        setMessage("Duty created successfully!");
-        fetchDuties();
+        setMessage("Duty created successfully!")
+        setMessageType("success")
+        fetchDuties()
         // Reset form
-        setNewDuty({
-          duty_type: "",
-          date: "",
-          start_time: "",
-          end_time: "",
-          description: "",
-          course_code: "",
-        });
+        form.reset()
       } else {
-        setMessage(res.data.message || "Error creating duty.");
+        setMessage(res.data.message || "Error creating duty.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error creating duty.");
+      setMessage("Error creating duty.")
+      setMessageType("error")
     }
-  };
+  }
 
   // Loading and error messages
-  if (loading)
-    return<PageLoader />;
-  if (!user)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        No user found.
-      </div>
-    );
+  if (loading) return <PageLoader />
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-background">No user found.</div>
   if (!user.isTA)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        Only TAs can access this page.
-      </div>
-    );
+      <div className="min-h-screen flex items-center justify-center bg-background">Only TAs can access this page.</div>
+    )
 
   // Separate duties into pending vs. past
-  const pendingDuties = duties.filter((d) => d.status === "Pending");
-  const pastDuties = duties.filter((d) => d.status !== "Pending");
+  const pendingDuties = duties.filter((d) => d.status === "Pending")
+  const pastDuties = duties.filter((d) => d.status !== "Pending")
 
   return (
     <SidebarProvider defaultOpen={true}>
-      {/* Main layout with lighter background and dark text */}
-      <div className="flex min-h-screen w-full bg-gray-100 text-gray-900">
+      <div className="flex min-h-screen w-full bg-background">
         <AppSidebar user={user} />
-        <SidebarInset className="bg-white p-8">
-          <h1 className="mb-6 text-3xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-8 w-8 text-blue-600"/> My Duties
-          </h1>
+        <SidebarInset className="p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <ClipboardList className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold">My Duties</h1>
+          </div>
 
-          {message && <div className="mb-4 text-red-600">{message}</div>}
+          {message && (
+            <Alert variant={messageType === "success" ? "default" : "destructive"} className="mb-6">
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
 
           {/* Create Duty Form */}
-          <div className="mb-8 bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Create New Task</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Duty Type Dropdown */}
-              <div>
-                <label className="block mb-1">Task Type:</label>
-                <select
-                  value={newDuty.duty_type}
-                  onChange={(e) => setNewDuty({ ...newDuty, duty_type: e.target.value })}
-                  className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
-                  required
-                >
-                  <option value="">-- Select --</option>
-                  <option value="lab">Lab</option>
-                  <option value="grading">Grading</option>
-                  <option value="recitation">Recitation</option>
-                  <option value="office_hours">Office Hours</option>
-                  <option value="exam_proctoring">Proctoring</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-blue-600">Create New Task</CardTitle>
+              <CardDescription>Submit a new duty request for approval</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Duty Type */}
+                    <FormField
+                      control={form.control}
+                      name="duty_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Task Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select task type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="lab">Lab</SelectItem>
+                              <SelectItem value="grading">Grading</SelectItem>
+                              <SelectItem value="recitation">Recitation</SelectItem>
+                              <SelectItem value="office_hours">Office Hours</SelectItem>
+                              <SelectItem value="exam_proctoring">Proctoring</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {/* Date, Start, End times */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block mb-1">Date:</label>
-                  <input
-                    type="date"
-                    value={newDuty.date}
-                    onChange={(e) => setNewDuty({ ...newDuty, date: e.target.value })}
-                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
-                    required
+                    {/* Course */}
+                    <FormField
+                      control={form.control}
+                      name="course_code"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Course</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select course" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {courses.map((course) => (
+                                <SelectItem key={course.id} value={course.code}>
+                                  {course.code} - {course.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      {/* Date */}
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date</FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input type="date" {...field} className="appearance-auto w-full" />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Start Time */}
+                      <FormField
+                        control={form.control}
+                        name="start_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Start Time</FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input type="time" {...field} className="appearance-auto w-full" />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* End Time */}
+                      <FormField
+                        control={form.control}
+                        name="end_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>End Time</FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input type="time" {...field} className="appearance-auto w-full" />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                  {/* Description */}
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Optional description of the task" {...field} />
+                        </FormControl>
+                        <FormDescription>Provide any additional details about this duty</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div>
-                  <label className="block mb-1">Start Time:</label>
-                  <input
-                    type="time"
-                    value={newDuty.start_time}
-                    onChange={(e) => setNewDuty({ ...newDuty, start_time: e.target.value })}
-                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">End Time:</label>
-                  <input
-                    type="time"
-                    value={newDuty.end_time}
-                    onChange={(e) => setNewDuty({ ...newDuty, end_time: e.target.value })}
-                    className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
-                    required
-                  />
-                </div>
-              </div>
 
-              {/* Course Dropdown */}
-              <div>
-                <label className="block mb-1">Course Name:</label>
-                <select
-                  value={newDuty.course_code}
-                  onChange={(e) => setNewDuty({ ...newDuty, course_code: e.target.value })}
-                  className="p-2 rounded border border-gray-300 bg-white text-gray-900 w-full"
-                  required
-                >
-                  <option value="">-- Select --</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.code}>
-                      {course.code} - {course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <Button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-500">
+                    Send Request
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
 
-              {/* Description */}
-              <div>
-                <label className="block mb-1">Description:</label>
-                <textarea
-                  value={newDuty.description}
-                  onChange={(e) => setNewDuty({ ...newDuty, description: e.target.value })}
-                  placeholder="Optional description"
-                  className="p-2 w-full rounded border border-gray-300 bg-white text-gray-900"
-                />
-              </div>
+          {/* Duties Tables */}
+          <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="pending" className="text-blue-600 font-medium">
+                Pending Requests
+              </TabsTrigger>
+              <TabsTrigger value="past" className="text-blue-600 font-medium">
+                Past Requests
+              </TabsTrigger>
+            </TabsList>
 
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 rounded text-white hover:bg-blue-500"
-              >
-                Send Request
-              </button>
-            </form>
-          </div>
+            <TabsContent value="pending">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-blue-600">Pending Requests</CardTitle>
+                  <CardDescription>Duties awaiting approval from instructors</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pendingDuties.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No pending requests.</div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Course</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Duration</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingDuties.map((duty) => (
+                            <TableRow key={duty.id}>
+                              <TableCell className="font-medium">{duty.course || "N/A"}</TableCell>
+                              <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
+                              <TableCell>{duty.date}</TableCell>
+                              <TableCell>
+                                {duty.start_time} - {duty.end_time}
+                              </TableCell>
+                              <TableCell>{formatDuration(duty.duration_hours)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                                  {duty.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-[200px] truncate">{duty.description || "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Pending Requests */}
-          <div className="bg-gray-50 p-6 rounded shadow mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Pending Requests</h2>
-            {pendingDuties.length === 0 ? (
-              <p className="text-gray-700">No pending requests.</p>
-            ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-200 text-gray-800">
-                    <th className="border border-gray-300 p-2">Course Code</th>
-                    <th className="border border-gray-300 p-2">Type</th>
-                    <th className="border border-gray-300 p-2">Date</th>
-                    <th className="border border-gray-300 p-2">Start</th>
-                    <th className="border border-gray-300 p-2">End</th>
-                    <th className="border border-gray-300 p-2">Duration</th>
-                    <th className="border border-gray-300 p-2">Status</th>
-                    <th className="border border-gray-300 p-2">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingDuties.map((duty) => (
-                    <tr key={duty.id} className="hover:bg-gray-100">
-                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
-                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{duty.date}</td>
-                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
-                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
-                      <td className="border border-gray-300 p-2">
-                        {formatDuration(duty.duration_hours)}
-                      </td>
-                      <td className="border border-gray-300 p-2">
-                        <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
-                          {duty.status}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 p-2">{duty.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Past Duties */}
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Past Requests</h2>
-            {pastDuties.length === 0 ? (
-              <p className="text-gray-700">No past requests.</p>
-            ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-200 text-gray-800">
-                    <th className="border border-gray-300 p-2">Course Code</th>
-                    <th className="border border-gray-300 p-2">Type</th>
-                    <th className="border border-gray-300 p-2">Date</th>
-                    <th className="border border-gray-300 p-2">Start</th>
-                    <th className="border border-gray-300 p-2">End</th>
-                    <th className="border border-gray-300 p-2">Duration</th>
-                    <th className="border border-gray-300 p-2">Status</th>
-                    <th className="border border-gray-300 p-2">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pastDuties.map((duty) => (
-                    <tr key={duty.id} className="hover:bg-gray-100">
-                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
-                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{duty.date}</td>
-                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
-                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
-                      <td className="border border-gray-300 p-2">
-                        {formatDuration(duty.duration_hours)}
-                      </td>
-                      <td className="border border-gray-300 p-2">
-                        <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
-                          {duty.status}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 p-2">{duty.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+            <TabsContent value="past">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-blue-600">Past Requests</CardTitle>
+                  <CardDescription>History of approved and rejected duties</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pastDuties.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No past requests.</div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Course</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Duration</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pastDuties.map((duty) => (
+                            <TableRow key={duty.id}>
+                              <TableCell className="font-medium">{duty.course || "N/A"}</TableCell>
+                              <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
+                              <TableCell>{duty.date}</TableCell>
+                              <TableCell>
+                                {duty.start_time} - {duty.end_time}
+                              </TableCell>
+                              <TableCell>{formatDuration(duty.duration_hours)}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    duty.status === "Approved"
+                                      ? "bg-green-100 text-green-800 border-green-200"
+                                      : "bg-red-100 text-red-800 border-red-200"
+                                  }
+                                >
+                                  {duty.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-[200px] truncate">{duty.description || "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
-
+  )
 }
