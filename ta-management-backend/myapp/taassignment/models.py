@@ -34,7 +34,7 @@ class TAAssignment(models.Model):
 
     # Number of graders needed
     num_graders = models.PositiveIntegerField(
-        default=1,
+        default=0,
         help_text="Number of graders needed for this course."
     )
 

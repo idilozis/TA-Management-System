@@ -21,6 +21,19 @@ class TAUser(models.Model):
     
     isTA = models.BooleanField(default=True)  
     workload = models.IntegerField(default=0)
+
+    load = models.IntegerField(default=0)
+
+    TA_TYPE = [
+        ('FT', 'Full-time'),
+        ('PT', 'Part-time'),
+    ]
+    ta_type = models.CharField(
+        max_length=2,
+        choices=TA_TYPE,
+        null=True,
+        blank=True
+    )
     
     class Meta:
         db_table = 'ta_users' # use the existing ta_users table in MySQL
@@ -35,7 +48,8 @@ class TAUser(models.Model):
     # Method to verify a raw password against the DB hash.
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
-    
+
+
 # STAFF Users
 class StaffUser(models.Model):
     name = models.CharField(max_length=255)
@@ -60,7 +74,7 @@ class StaffUser(models.Model):
         return check_password(raw_password, self.password)
 
 
-# COURSES
+# COURSES of Instructors (StaffUser)
 class Course(models.Model):
     code = models.CharField(max_length=15, unique=True)
     name = models.CharField(max_length=255)
@@ -77,4 +91,11 @@ class Course(models.Model):
         return f"{self.code} - {self.name}"
 
 
+# Import module's models:
 from myapp.taassignment.models import TAAssignment
+from myapp.taduties.models import TADuty
+from myapp.taleave.models import TALeaveRequests
+from myapp.schedule.models import TAWeeklySlot
+from myapp.proctoring.models import ProctoringAssignment
+from myapp.notificationsystem.models import Notification
+from myapp.exams.models import Exam
