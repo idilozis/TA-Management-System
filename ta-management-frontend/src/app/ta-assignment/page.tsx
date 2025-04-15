@@ -1,158 +1,157 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/general/app-sidebar"
-import { useUser } from "@/components/general/user-data"
-import { PageLoader } from "@/components/ui/loading-spinner"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import apiClient from "@/lib/axiosClient"
+import React, { useState, useEffect } from "react";
+import apiClient from "@/lib/axiosClient";
+import { AppSidebar } from "@/components/general/app-sidebar";
+import { useUser, UserData } from "@/components/general/user-data";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
-interface Assignment {
-  ta_email: string
-  ta_name: string
-  assignment_type: string
-  load?: number
+// Type definitions for the assignment data
+interface Staff {
+  name: string;
+  surname: string;
+  email: string;
 }
 
-interface Section {
-  id: number
-  course_code: string
-  section: number
-  min_tas_required: number
-  student_count: number
-  assignments: Assignment[]
+interface Course {
+  code: string;
+  name: string;
 }
 
 interface TA {
-  email: string
-  name: string
-  surname: string
+  name: string;
+  surname: string;
+  email: string;
 }
 
-const ASSIGNMENT_OPTIONS = [
-  { value: "load_1", label: "1 Load" },
-  { value: "load_2", label: "2 Loads" },
-  { value: "must_have", label: "Must-Have" },
-  { value: "preferred", label: "Preferred" },
-  { value: "avoid", label: "Avoid" },
-  { value: "none", label: "None" },
-]
+interface Assignment {
+  staff: Staff;
+  course: Course;
+  min_load: number;
+  max_load: number;
+  num_graders: number;
+  must_have_ta: TA[];
+  preferred_tas: TA[];
+  preferred_graders: TA[];
+  avoided_tas: TA[];
+}
 
-export default function SimpleAssignmentMatrix() {
-  const { user, loading: userLoading } = useUser()
-  const [activeCell, setActiveCell] = useState<{ sectionId: number; taEmail: string } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [sections, setSections] = useState<Section[]>([])
-  const [tas, setTAs] = useState<TA[]>([])
+export default function AssignmentsPage() {
+  const { user, loading } = useUser();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      const response = await apiClient.get("/taassign/get/")
-      if (response.data.status === "success") {
-        setSections(response.data.data as Section[])
-        setTAs(response.data.ta_lookup as TA[])
-      }
-      setLoading(false)
-    }
-    if (user && !user.isTA) fetchData()
-  }, [user])
-
-  const handleAssignmentChange = async (sectionId: number, taEmail: string, value: string) => {
-    await apiClient.post("/taassign/update/", {
-      section_id: sectionId,
-      ta_email: taEmail,
-      assignment_type: value,
-    })
-    setSections(prev =>
-      prev.map(section => {
-        if (section.id === sectionId) {
-          const updated = section.assignments.filter(a => a.ta_email !== taEmail)
-          if (value !== "none") {
-            const ta = tas.find(t => t.email === taEmail)
-            if (ta) {
-              updated.push({ ta_email: taEmail, ta_name: `${ta.name} ${ta.surname}`, assignment_type: value })
-            }
-          }
-          return { ...section, assignments: updated }
+    // Call the Django API endpoint for assignment preferences
+    apiClient
+      .get("/assignment/list-assignments/")
+      .then((res) => {
+        if (res.data.status === "success") {
+          setAssignments(res.data.assignments);
+        } else {
+          setMessage(res.data.message || "Error fetching assignments.");
         }
-        return section
       })
-    )
-    setActiveCell(null)
-  }
+      .catch((err) => {
+        console.error("Error fetching assignments:", err);
+        setMessage("Error fetching assignments.");
+      });
+  }, []);
 
-  const getAssignmentType = (section: Section, taEmail: string) => {
-    const found = section.assignments.find(a => a.ta_email === taEmail)
-    return found?.assignment_type || "none"
-  }
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-900">
+        Loading...
+      </div>
+    );
 
-  if (userLoading || loading) return <PageLoader />
-  if (user?.isTA) return <div className="p-10 text-center">Only staff can view this page.</div>
+  if (!user)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-900">
+        No user found.
+      </div>
+    );
 
   return (
-    <SidebarProvider defaultOpen>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar user={user} />
-        <SidebarInset className="p-6">
-          <h1 className="text-2xl font-bold mb-4">TA Assignment Matrix</h1>
-          <div className="overflow-auto border rounded">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Section</TableHead>
-                  <TableHead>Min TAs</TableHead>
-                  {tas.map(ta => (
-                    <TableHead key={ta.email}>{ta.name} {ta.surname}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sections.map(section => (
-                  <TableRow key={section.id}>
-                    <TableCell>{section.course_code}</TableCell>
-                    <TableCell>{section.section}</TableCell>
-                    <TableCell>{section.min_tas_required}</TableCell>
-                    {tas.map(ta => (
-                      <TableCell
-                        key={ta.email}
-                        className="text-center cursor-pointer"
-                        onClick={() => setActiveCell({ sectionId: section.id, taEmail: ta.email })}
-                      >
-                        {activeCell?.sectionId === section.id && activeCell?.taEmail === ta.email ? (
-                          <Popover open onOpenChange={() => setActiveCell(null)}>
-                            <PopoverTrigger asChild><div>-</div></PopoverTrigger>
-                            <PopoverContent className="w-64">
-                              <RadioGroup
-                                defaultValue={getAssignmentType(section, ta.email)}
-                                onValueChange={(val) => handleAssignmentChange(section.id, ta.email, val)}
-                              >
-                                {ASSIGNMENT_OPTIONS.map(opt => (
-                                  <div key={opt.value} className="flex items-center space-x-2">
-                                    <RadioGroupItem value={opt.value} id={`${section.id}-${ta.email}-${opt.value}`} />
-                                    <Label htmlFor={`${section.id}-${ta.email}-${opt.value}`}>{opt.label}</Label>
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          getAssignmentType(section, ta.email)
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen bg-gray-100">
+        {/* AppSidebar is now wrapped within SidebarProvider, so useSidebar will work */}
+        <AppSidebar user={user as UserData} />
+        <SidebarInset className="flex-1 p-6">
+          <h1 className="text-3xl font-bold mb-6">TA Assignment Preferences</h1>
+          {message && (
+            <p className="mb-4 text-center text-red-600">{message}</p>
+          )}
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-2 border">Instructor</th>
+                  <th className="px-4 py-2 border">Course</th>
+                  <th className="px-4 py-2 border">Min Load</th>
+                  <th className="px-4 py-2 border">Max Load</th>
+                  <th className="px-4 py-2 border">Num Graders</th>
+                  <th className="px-4 py-2 border">Must-Have TAs</th>
+                  <th className="px-4 py-2 border">Preferred TAs</th>
+                  <th className="px-4 py-2 border">Preferred Graders</th>
+                  <th className="px-4 py-2 border">Avoided TAs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.length > 0 ? (
+                  assignments.map((a, idx) => (
+                    <tr key={idx} className="border-b odd:bg-white even:bg-gray-50">
+                      <td className="px-4 py-2 border">
+                        {a.staff.name} {a.staff.surname}
+                      </td>
+                      <td className="px-4 py-2 border">
+                        {a.course.code} – {a.course.name}
+                      </td>
+                      <td className="px-4 py-2 border">{a.min_load}</td>
+                      <td className="px-4 py-2 border">{a.max_load}</td>
+                      <td className="px-4 py-2 border">{a.num_graders}</td>
+                      <td className="px-4 py-2 border">
+                        {a.must_have_ta.length > 0
+                          ? a.must_have_ta
+                              .map((ta) => `${ta.name} ${ta.surname}`)
+                              .join(", ")
+                          : "None"}
+                      </td>
+                      <td className="px-4 py-2 border">
+                        {a.preferred_tas.length > 0
+                          ? a.preferred_tas
+                              .map((ta) => `${ta.name} ${ta.surname}`)
+                              .join(", ")
+                          : "None"}
+                      </td>
+                      <td className="px-4 py-2 border">
+                        {a.preferred_graders.length > 0
+                          ? a.preferred_graders
+                              .map((ta) => `${ta.name} ${ta.surname}`)
+                              .join(", ")
+                          : "None"}
+                      </td>
+                      <td className="px-4 py-2 border">
+                        {a.avoided_tas.length > 0
+                          ? a.avoided_tas
+                              .map((ta) => `${ta.name} ${ta.surname}`)
+                              .join(", ")
+                          : "None"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-4 text-center text-gray-600">
+                      No assignments found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </SidebarInset>
       </div>
     </SidebarProvider>
-  )
+  );
 }

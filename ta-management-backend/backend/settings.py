@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     
     # MyApp:
     'myapp.apps.MyAppConfig',
-    'myapp.taassignment',
 ]
 
 MIDDLEWARE = [

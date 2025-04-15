@@ -1,9 +1,8 @@
 # myapp/taassignment/urls.py
-
 from django.urls import path
-from . import views
+from .views import *
 
+# Call with assignment/... (Look at backend > urls.py)
 urlpatterns = [
-    path('get/', views.get_assignments, name='get_assignments'),
-    path('update/', views.update_assignment, name='update_assignment'),
+    path('list-assignments/', list_assignment_preferences, name='assignment_list'),
 ]

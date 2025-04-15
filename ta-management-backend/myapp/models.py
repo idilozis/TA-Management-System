@@ -73,9 +73,8 @@ class Course(models.Model):
         blank=True
     )
 
-    # TA relations for CS department (for later usage)
-    must_have_tas = models.ManyToManyField(TAUser, blank=True, related_name="must_have_for_courses")
-    preferred_tas = models.ManyToManyField(TAUser, blank=True, related_name="preferred_for_courses")
-
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+from myapp.taassignment.models import TAAssignment

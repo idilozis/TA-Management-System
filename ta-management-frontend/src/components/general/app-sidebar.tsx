@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { HomeIcon, FileText, CheckCircle, UserCog, LogOut, Table2 } from "lucide-react";
+import { HomeIcon, FileText, CheckCircle, UserCog, LogOut, Table2, SquareChartGantt } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu,
          SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import type { UserData } from "@/components/general/user-data";
@@ -68,11 +68,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
       path: "/tables",
       icon: Table2,
     },
-    {
-      name: "assignment",
-      path: "/ta-assignment",
-      icon: UserCog,
-    },
+    ...(user && !user.isTA
+      ? [
+          {
+            name: "Assign TAs",
+            path: "/ta-assignment",
+            icon: SquareChartGantt,
+          },
+        ]
+      : []),
     {
       name: "Settings",
       path: "/settings",
