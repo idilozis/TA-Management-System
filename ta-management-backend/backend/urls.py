@@ -17,7 +17,8 @@ urlpatterns = [
     path('taleave/', include('myapp.taleave.urls')),        # Call "myapp -> taleave" functions
     path('proctoring/', include('myapp.proctoring.urls')),  # Call "myapp -> proctoring" functions
     path('swap/', include('myapp.swap.urls')),              # Call "myapp -> swap" functions
-    path('assignment/', include('myapp.taassignment.urls')),# Call "myapp -> taassignment" functions
+    #path('assignment/', include('myapp.taassignment.urls')),# Call "myapp -> taassignment" functions
+    path('taassign/', include('myapp.taassignment.urls')),# Call "myapp -> taassignment" functions
 
     # Default root view
     path('', initial_backend_view), 

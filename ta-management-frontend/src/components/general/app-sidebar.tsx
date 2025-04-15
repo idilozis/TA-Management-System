@@ -69,6 +69,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
       icon: Table2,
     },
     {
+      name: "assignment",
+      path: "/ta-assignment",
+      icon: UserCog,
+    },
+    {
       name: "Settings",
       path: "/settings",
       icon: UserCog,
