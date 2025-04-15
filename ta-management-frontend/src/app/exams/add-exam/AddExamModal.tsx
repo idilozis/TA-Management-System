@@ -1,31 +1,40 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import apiClient from "@/lib/axiosClient";
+import type React from "react"
+
+import { useEffect, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import apiClient from "@/lib/axiosClient"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, Check, X } from "lucide-react"
 
 interface AddExamModalProps {
-  onClose: () => void;
+  onClose: () => void
 }
 
 interface CourseOption {
-  id: number;
-  code: string;
-  name: string;
+  id: number
+  code: string
+  name: string
 }
 
 export default function AddExamModal({ onClose }: AddExamModalProps) {
-  const [courses, setCourses] = useState<CourseOption[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [numProctors, setNumProctors] = useState(1);
-  const [classroomName, setClassroomName] = useState("");
-  const [studentCount, setStudentCount] = useState(0);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [courses, setCourses] = useState<CourseOption[]>([])
+  const [selectedCourse, setSelectedCourse] = useState("")
+  const [date, setDate] = useState("")
+  const [startTime, setStartTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [numProctors, setNumProctors] = useState(1)
+  const [classroomName, setClassroomName] = useState("")
+  const [studentCount, setStudentCount] = useState(0)
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch staff's courses
   useEffect(() => {
@@ -33,32 +42,32 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
       .get("/exams/list-courses/")
       .then((res) => {
         if (res.data.status === "success") {
-          setCourses(res.data.courses);
+          setCourses(res.data.courses)
         }
       })
       .catch((err) => {
-        console.error("Error fetching staff courses:", err);
-        setError("Failed to load courses. Please try again.");
-      });
-  }, []);
+        console.error("Error fetching staff courses:", err)
+        setError("Failed to load courses. Please try again.")
+      })
+  }, [])
 
   const handleCreateExam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
-    setMessage("");
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError("")
+    setMessage("")
 
     // Basic validations
     if (!selectedCourse || !date || !startTime || !endTime || !classroomName) {
-      setError("Please fill in all required fields.");
-      setIsSubmitting(false);
-      return;
+      setError("Please fill in all required fields.")
+      setIsSubmitting(false)
+      return
     }
 
     if (startTime >= endTime) {
-      setError("Start time must be before end time.");
-      setIsSubmitting(false);
-      return;
+      setError("Start time must be before end time.")
+      setIsSubmitting(false)
+      return
     }
 
     try {
@@ -70,38 +79,38 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
         num_proctors: numProctors,
         classroom_name: classroomName,
         student_count: studentCount,
-      });
-      
+      })
+
       if (response.data.status === "success") {
-        setMessage(response.data.message || "Exam created successfully!");
+        setMessage(response.data.message || "Exam created successfully!")
         // Reset form
-        setSelectedCourse("");
-        setDate("");
-        setStartTime("");
-        setEndTime("");
-        setNumProctors(1);
-        setClassroomName("");
-        setStudentCount(0);
-        
+        setSelectedCourse("")
+        setDate("")
+        setStartTime("")
+        setEndTime("")
+        setNumProctors(1)
+        setClassroomName("")
+        setStudentCount(0)
+
         // Close the modal after a short delay
         setTimeout(() => {
-          onClose();
-        }, 2000);
+          onClose()
+        }, 2000)
       } else {
-        setError(response.data.message || "Error creating exam");
+        setError(response.data.message || "Error creating exam")
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Error creating exam. Please try again.");
-      console.error("Error creating exam:", err);
+      setError(err.response?.data?.message || "Error creating exam. Please try again.")
+      console.error("Error creating exam:", err)
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 flex items-center justify-center z-50"
+        className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -110,148 +119,146 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
         {/* Modal content */}
         <motion.div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white p-6 rounded shadow border-blue-700 border-2 w-96"
+          className="w-full max-w-md mx-4"
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -50, opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <h2 className="text-xl font-semibold mb-4">Add Exam</h2>
+          <Card className="border-blue-600 border-2">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <CardTitle>Add Exam</CardTitle>
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {message && (
+                <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+                  <Check className="h-4 w-4" />
+                  <AlertDescription>{message}</AlertDescription>
+                </Alert>
+              )}
 
-          {message && (
-            <div className="mb-4 p-2 bg-green-100 border border-green-300 text-green-800 rounded">
-              {message}
-            </div>
-          )}
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          {error && (
-            <div className="mb-4 p-2 bg-red-100 border border-red-300 text-red-800 rounded">
-              {error}
-            </div>
-          )}
+              <form onSubmit={handleCreateExam} className="space-y-4">
+                {/* Course selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="course">
+                    Course <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={selectedCourse} onValueChange={setSelectedCourse} required>
+                    <SelectTrigger id="course">
+                      <SelectValue placeholder="Select a course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((c) => (
+                        <SelectItem key={c.id} value={c.id.toString()}>
+                          {c.code} - {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <form onSubmit={handleCreateExam} className="space-y-4">
-            {/* Course selection */}
-            <div>
-              <label className="block mb-1 font-medium">
-                Course <span className="text-red-500">*</span>
-              </label>
-              <select
-                className="border p-2 w-full"
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                required
-              >
-                <option value="">Select a course</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} - {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">
+                    Date <span className="text-red-500">*</span>
+                  </Label>
+                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                </div>
 
-            {/* Date */}
-            <div>
-              <label className="block mb-1 font-medium">
-                Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                className="border p-2 w-full"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
+                {/* Time fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startTime">
+                      Start Time <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
 
-            {/* Start Time */}
-            <div>
-              <label className="block mb-1 font-medium">
-                Start Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                className="border p-2 w-full"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-              />
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endTime">
+                      End Time <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
 
-            {/* End Time */}
-            <div>
-              <label className="block mb-1 font-medium">
-                End Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                className="border p-2 w-full"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-              />
-            </div>
+                {/* Classroom Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="classroomName">
+                    Classroom Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="classroomName"
+                    type="text"
+                    value={classroomName}
+                    onChange={(e) => setClassroomName(e.target.value)}
+                    required
+                    placeholder="e.g., Room 101"
+                  />
+                </div>
 
-            {/* Classroom Name */}
-            <div>
-              <label className="block mb-1 font-medium">
-                Classroom Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                className="border p-2 w-full"
-                value={classroomName}
-                onChange={(e) => setClassroomName(e.target.value)}
-                required
-                placeholder="e.g., Room 101"
-              />
-            </div>
+                {/* Number fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numProctors">Number of Proctors</Label>
+                    <Input
+                      id="numProctors"
+                      type="number"
+                      min={1}
+                      value={numProctors}
+                      onChange={(e) => setNumProctors(Number.parseInt(e.target.value, 10) || 1)}
+                    />
+                  </div>
 
-            {/* Num Proctors */}
-            <div>
-              <label className="block mb-1 font-medium">Number of Proctors</label>
-              <input
-                type="number"
-                min={1}
-                className="border p-2 w-full"
-                value={numProctors}
-                onChange={(e) => setNumProctors(parseInt(e.target.value, 10) || 1)}
-              />
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="studentCount">Student Count</Label>
+                    <Input
+                      id="studentCount"
+                      type="number"
+                      min={0}
+                      value={studentCount}
+                      onChange={(e) => setStudentCount(Number.parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                </div>
 
-            {/* Student Count */}
-            <div>
-              <label className="block mb-1 font-medium">Student Count</label>
-              <input
-                type="number"
-                min={0}
-                className="border p-2 w-full"
-                value={studentCount}
-                onChange={(e) => setStudentCount(parseInt(e.target.value, 10) || 0)}
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="bg-gray-200 text-gray-700 px-3 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-3 py-2 rounded"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </form>
+                <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-500">
+                    {isSubmitting ? "Saving..." : "Save"}
+                  </Button>
+                </CardFooter>
+              </form>
+            </CardContent>
+          </Card>
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
-
+  )
 }

@@ -1,108 +1,160 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import apiClient from "@/lib/axiosClient";
+import { useEffect, useState } from "react"
+import apiClient from "@/lib/axiosClient"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { FileText, Trash2 } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 interface Exam {
-  id: number;
-  course_code: string;
-  course_name: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  classroom_name: string;
-  num_proctors: number;
-  student_count: number;
+  id: number
+  course_code: string
+  course_name: string
+  date: string
+  start_time: string
+  end_time: string
+  classroom_name: string
+  num_proctors: number
+  student_count: number
 }
 
 interface MyExamsProps {
-  refreshTrigger?: number;
+  refreshTrigger?: number
 }
 
 export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [examToDelete, setExamToDelete] = useState<number | null>(null)
 
   const fetchExams = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await apiClient.get("/exams/list-exams/");
+      const response = await apiClient.get("/exams/list-exams/")
       if (response.data.status === "success") {
-        const sortedExams = response.data.exams.sort( // Sort for most recent date to appear first.
-          (a: Exam, b: Exam) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setExams(sortedExams);
-        setError("");
+        const sortedExams = response.data.exams.sort(
+          // Sort for most recent date to appear first.
+          (a: Exam, b: Exam) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        )
+        setExams(sortedExams)
+        setError("")
       } else {
-        setError(response.data.message || "Failed to load exams");
+        setError(response.data.message || "Failed to load exams")
       }
     } catch {
-      setError("Failed to fetch exams");
+      setError("Failed to fetch exams")
     }
-    setLoading(false);
-  };
-  
+    setLoading(false)
+  }
 
   useEffect(() => {
-    fetchExams();
-  }, [refreshTrigger]);
+    fetchExams()
+  }, [refreshTrigger])
 
-  const handleDeleteExam = async (examId: number) => {
-    if (!confirm("Are you sure you want to delete this exam?")) return;
+  const handleDeleteExam = async () => {
+    if (!examToDelete) return
+
     try {
-      await apiClient.post("/exams/delete-exam/", { exam_id: examId });
-      fetchExams();
+      await apiClient.post("/exams/delete-exam/", { exam_id: examToDelete })
+      fetchExams()
     } catch {
-      setError("Error deleting exam. Please try again.");
+      setError("Error deleting exam. Please try again.")
+    } finally {
+      setExamToDelete(null)
     }
-  };
+  }
 
   if (loading) {
-    return <div className="text-center p-4">Loading your exams...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    )
   }
 
   return (
-    <div className="overflow-x-auto">
-      {error && <div className="text-red-500 mb-2">{error}</div>}
-      <table className="min-w-full table-fixed border-collapse">
-        <thead className="bg-gray-200 text-gray-800">
-          <tr>
-            <th className="py-2 px-4 w-40 whitespace-nowrap">Course</th>
-            <th className="py-2 px-4 w-28 whitespace-nowrap">Date</th>
-            <th className="py-2 px-4 w-32 whitespace-nowrap">Start - End</th>
-            <th className="py-2 px-4 w-32 whitespace-nowrap">Classroom</th>
-            <th className="py-2 px-4 w-28 whitespace-nowrap">Proctors</th>
-            <th className="py-2 px-4 w-28 whitespace-nowrap">Students</th>
-            <th className="py-2 px-4 w-32 whitespace-nowrap">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-gray-50">
-          {exams.map((exam) => (
-            <tr className="hover:bg-gray-100" key={exam.id}>
-              <td className="text-center p-3 whitespace-nowrap">
-                {exam.course_code} - {exam.course_name}
-              </td>
-              <td className="text-center p-3 whitespace-nowrap">{exam.date}</td>
-              <td className="text-center p-3 whitespace-nowrap">
-                {exam.start_time} - {exam.end_time}
-              </td>
-              <td className="text-center p-3 whitespace-nowrap">{exam.classroom_name}</td>
-              <td className="text-center p-3 whitespace-nowrap">{exam.num_proctors}</td>
-              <td className="text-center p-3 whitespace-nowrap">{exam.student_count}</td>
-              <td className="text-center p-3 whitespace-nowrap">
-                <button
-                  onClick={() => handleDeleteExam(exam.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+    <>
+      <Card>
+        <CardContent>
+          {error && <div className="text-red-500 mb-4 p-3 bg-red-50 rounded-md border border-red-200">{error}</div>}
 
+          {exams.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No exams found.</div>
+          ) : (
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="font-semibold whitespace-nowrap">Course</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Date</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Start - End</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Classroom</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Proctors</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Students</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exams.map((exam) => (
+                    <TableRow key={exam.id} className="hover:bg-muted/30">
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {exam.course_code} - {exam.course_name}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{exam.date}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {exam.start_time} - {exam.end_time}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{exam.classroom_name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{exam.num_proctors}</TableCell>
+                      <TableCell className="whitespace-nowrap">{exam.student_count}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setExamToDelete(exam.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={examToDelete !== null} onOpenChange={(open) => !open && setExamToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this exam?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteExam} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 }
