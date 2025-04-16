@@ -63,11 +63,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
       path: "/proctoring",
       icon: FileText,
     },
-    {
-      name: "Tables",
-      path: "/tables",
-      icon: Table2,
-    },
     ...(user && !user.isTA
       ? [
           {
@@ -77,6 +72,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
+    {
+      name: "Tables",
+      path: "/tables",
+      icon: Table2,
+    },
     {
       name: "Settings",
       path: "/settings",

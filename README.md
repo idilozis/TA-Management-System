@@ -50,8 +50,7 @@ The **TA Management System** is designed to efficiently manage Teaching Assistan
 * **Admins:** Manage roles, workload caps, and import data.
 
 ## Contributing
-* Burak Kağan Gür
+* Yunus Günay
 * Daib Malik
 * Bilge İdil Öziş
-* Yunus Günay
-* Yusufbek Karamatov
+* Burak Kağan Gür
