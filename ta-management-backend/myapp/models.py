@@ -74,7 +74,7 @@ class StaffUser(models.Model):
         return check_password(raw_password, self.password)
 
 
-# COURSES of Instructors (StaffUser)
+# COURSES of Instructors
 class Course(models.Model):
     code = models.CharField(max_length=15, unique=True)
     name = models.CharField(max_length=255)
@@ -90,7 +90,7 @@ class Course(models.Model):
         return f"{self.code} - {self.name}"
 
 
-# Import module's models:
+# Import all models for migrations.
 from myapp.taassignment.models import TAAssignment
 from myapp.taassignment.models import TAAllocation
 from myapp.taduties.models import TADuty

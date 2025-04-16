@@ -83,22 +83,27 @@ class TAAssignment(models.Model):
 
 class TAAllocation(models.Model):
     """
-    Records the manual assignment of TA(s) to a course.
+    Records the manual assignment of TA(s) and Grader(s) to a course.
     """
     # Uğur Doğrusöz for CS department.
     staff = models.ForeignKey(
         StaffUser,
         on_delete=models.CASCADE,
-        related_name="ta_allocations"
+        related_name="ta_allocation_staff"
     )
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
-        related_name="ta_allocations"
+        related_name="ta_allocation_course"
     )
     assigned_tas = models.ManyToManyField(
         TAUser,
-        related_name="allocations"
+        related_name="ta_allocations"
+    )
+    assigned_graders = models.ManyToManyField(
+        TAUser,
+        related_name="grader_allocations",
+        blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

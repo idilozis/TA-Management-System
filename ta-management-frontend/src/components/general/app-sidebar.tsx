@@ -25,7 +25,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <>
           {user.program} Student
           <br />
-          Your Advisor: {user.advisor}
+          Advisor: {user.advisor}
         </>
       );
     } else {
