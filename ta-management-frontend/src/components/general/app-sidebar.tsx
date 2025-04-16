@@ -29,7 +29,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </>
       );
     } else {
-      return <>Staff of {user.department}</>;
+      return <>Department of {user.department}</>;
     }
   };
 
@@ -59,7 +59,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         ]
       : []),
     {
-      name: "Exams",
+      name: "Proctoring",
       path: "/proctoring",
       icon: FileText,
     },
@@ -71,7 +71,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     ...(user && !user.isTA
       ? [
           {
-            name: "Assign TAs",
+            name: "Assignment",
             path: "/ta-assignment",
             icon: SquareChartGantt,
           },

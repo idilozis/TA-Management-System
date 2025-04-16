@@ -79,8 +79,7 @@ class Course(models.Model):
     code = models.CharField(max_length=15, unique=True)
     name = models.CharField(max_length=255)
 
-    # Many-to-many: a course can have multiple staff instructors,
-    # and a staff can teach multiple courses.
+    # Many-to-many: a course can have multiple staff instructors, and a staff can teach multiple courses.
     instructors = models.ManyToManyField(
         StaffUser, 
         related_name="courses_taught",
@@ -93,6 +92,7 @@ class Course(models.Model):
 
 # Import module's models:
 from myapp.taassignment.models import TAAssignment
+from myapp.taassignment.models import TAAllocation
 from myapp.taduties.models import TADuty
 from myapp.taleave.models import TALeaveRequests
 from myapp.schedule.models import TAWeeklySlot

@@ -182,7 +182,7 @@ export default function ProctoringStaff() {
       </div>
 
       {showPopover && assignmentResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-lg w-96 p-6">
             <h2 className="text-xl font-bold mb-4">Review Assigned TAs</h2>
             <ul className="mb-4">

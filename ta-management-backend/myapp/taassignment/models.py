@@ -1,10 +1,10 @@
+# myapp/taassignment/models.py
 from django.db import models
-# Import the StaffUser, TAUser, and Course models
 from myapp.models import StaffUser, TAUser, Course
 
 class TAAssignment(models.Model):
     """
-    Stores each instructor's TA assignment configuration for a given course (to be imported from Excel).
+    Stores each instructor's TA assignment preferences for a given course (to be imported from Excel).
     """
     # The instructor making the TA assignment config
     staff = models.ForeignKey(
@@ -22,18 +22,18 @@ class TAAssignment(models.Model):
         help_text="Course for which TAs are being assigned."
     )
 
-    # TA workload limits (in hours or other units)
-    min_load = models.PositiveIntegerField(
+    # TA limits (Part-Time: 1 load, Full-Time: 2 loads)
+    min_load = models.IntegerField(
         default=0,
-        help_text="Minimum workload required from a TA in this course."
+        help_text="Minimum load allowed for TA(s) in this course."
     )
-    max_load = models.PositiveIntegerField(
+    max_load = models.IntegerField(
         default=0,
-        help_text="Maximum workload allowed for a TA in this course."
+        help_text="Maximum load allowed for TA(s) in this course."
     )
 
     # Number of graders needed
-    num_graders = models.PositiveIntegerField(
+    num_graders = models.IntegerField(
         default=0,
         help_text="Number of graders needed for this course."
     )
@@ -79,3 +79,28 @@ class TAAssignment(models.Model):
 
     def __str__(self):
         return f"Assignment Config for {self.course.code} by {self.staff.email}"
+
+
+class TAAllocation(models.Model):
+    """
+    Records the manual assignment of TA(s) to a course.
+    """
+    # Uğur Doğrusöz for CS department.
+    staff = models.ForeignKey(
+        StaffUser,
+        on_delete=models.CASCADE,
+        related_name="ta_allocations"
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="ta_allocations"
+    )
+    assigned_tas = models.ManyToManyField(
+        TAUser,
+        related_name="allocations"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+         return f"Allocation for {self.course.code} by {self.staff.email}"
