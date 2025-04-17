@@ -22,11 +22,9 @@ class TAUser(models.Model):
     isTA = models.BooleanField(default=True)  
     workload = models.IntegerField(default=0)
 
-    load = models.IntegerField(default=0)
-
     TA_TYPE = [
-        ('FT', 'Full-time'),
-        ('PT', 'Part-time'),
+        ('FT', 'Full-time'), # 2 loads
+        ('PT', 'Part-time'), # 1 load
     ]
     ta_type = models.CharField(
         max_length=2,
@@ -88,6 +86,35 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+
+# Authorized Users: Department Secretaries, Dean Office, and Admin
+class AuthorizedUser(models.Model):
+    ROLE_CHOICES = [
+        ('SECRETARY', 'Secretary'),
+        ('DEAN',      'Dean'),
+        ('ADMIN',     'Admin'),
+    ]
+
+    name = models.CharField(max_length=255)
+    surname = models.CharField(max_length=255)
+    email = models.EmailField(primary_key=True)  # Email PK
+    password = models.CharField(max_length=255, blank=True, null=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    isTA = models.BooleanField(default=False)
+    isAuth = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'authorized_users'
+
+    def __str__(self):
+        return f'{self.role}: {self.name} {self.surname}'
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
 
 
 # Import all models for migrations.

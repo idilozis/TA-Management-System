@@ -63,32 +63,37 @@ def get_current_user(request):
         return JsonResponse({"status": "error", "message": "User not found"}, status=404)
 
     if user_type == "TA":
-        # TA data
-        return JsonResponse({
-            "status": "success",
-            "user": {
-                "name": user.name,
-                "surname": user.surname,
-                "email": user.email,
-                "program": user.program,
-                "advisor": user.advisor,
-                "isTA": True,
-            }
-        })
-    else:
-        # Staff data
-        return JsonResponse({
-            "status": "success",
-            "user": {
-                "name": user.name,
-                "surname": user.surname,
-                "department": user.department,
-                "email": user.email,
-                "isTA": False,
-            }
-        })
+        payload = {
+            "name": user.name,
+            "surname": user.surname,
+            "email": user.email,
+            "program": user.program,
+            "advisor": user.advisor,
+            "isTA": True,
+            "isAuth": False,
+        }
+    elif user_type == "Staff":
+        payload = {
+            "name": user.name,
+            "surname": user.surname,
+            "department": user.department,
+            "email": user.email,
+            "isTA": False,
+            "isAuth": False,
+        }
+    else:  # Authorized
+        payload = {
+            "name":  user.name,
+            "surname": user.surname,
+            "email": user.email,
+            "role":  user.role,
+            "isTA":  False,
+            "isAuth": True,
+        }
+    
+    return JsonResponse({"status":"success","user": payload})
 
-
+        
 # -----------------------------
 # FORGOT PASSWORD
 # -----------------------------

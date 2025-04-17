@@ -129,7 +129,7 @@ export default function TablesPage() {
                 TAs
               </TabsTrigger>
               <TabsTrigger value="staff" className="cursor-pointer">
-                Staff
+                Instructors
               </TabsTrigger>
             </TabsList>
 

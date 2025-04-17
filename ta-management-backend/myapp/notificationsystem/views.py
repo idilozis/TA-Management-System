@@ -23,12 +23,12 @@ def list_notifications(request):
     ).order_by("-created_at")
 
     notif_list = []
-    for n in notifications:
+    for notif in notifications:
         notif_list.append({
-            "id": n.id,
-            "message": n.message,
-            "is_read": n.is_read,
-            "created_at": n.created_at.isoformat(),
+            "id": notif.id,
+            "message": notif.message,
+            "is_read": notif.is_read,
+            "created_at": notif.created_at.isoformat(),
         })
 
     return JsonResponse({

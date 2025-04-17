@@ -247,12 +247,6 @@ export default function TAAssignmentPage() {
     }
   }
 
-  const refreshData = async () => {
-    setIsRefreshing(true)
-    await fetchData()
-    setIsRefreshing(false)
-  }
-
   const openAssignDialog = (course: Course, preference: AssignmentPreference, type: "tas" | "graders") => {
     setCurrentCourse(course)
     setCurrentPreference(preference)

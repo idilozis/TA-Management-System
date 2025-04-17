@@ -1,5 +1,4 @@
 # myapp/reports/views.py
-
 import requests
 from django.http import HttpResponse
 from pylatex import Document, Section, Subsection, Tabular, Package

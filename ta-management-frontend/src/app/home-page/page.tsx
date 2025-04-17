@@ -109,7 +109,7 @@ export default function HomePage() {
           {user.isTA && <WeeklyScheduleModal />}
 
           {/* If Staff, show Courses & Add Exam section */}
-          {!user.isTA && user.courses && (
+          {!user.isTA && !user.isAuth && user.courses && (
             <div className="mt-4">
               <h2 className="text-xl font-semibold mb-3">Given Courses:</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -127,7 +127,7 @@ export default function HomePage() {
           )}
 
           {/* Add Exam section */}
-          {!user.isTA && (
+          {!user.isTA && !user.isAuth && (
             <div className="mb-3 mt-8 flex items-center justify-between">
               <h2 className="flex items-center text-xl font-semibold">
                 <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
@@ -141,12 +141,12 @@ export default function HomePage() {
             </div>
           )}
 
-          {!user.isTA && <StaffExamsModal refreshTrigger={examRefreshTrigger} />}
+          {!user.isTA && !user.isAuth && <StaffExamsModal refreshTrigger={examRefreshTrigger} />}
         </SidebarInset>
       </div>
 
       {/* Show exam modal if user is Staff & wants to add exam */}
-      {showExamModal && !user.isTA && <AddExamModal onClose={handleExamModalClose} />}
+      {showExamModal && !user.isTA && !user.isAuth && <AddExamModal onClose={handleExamModalClose} />}
     </SidebarProvider>
   )
 

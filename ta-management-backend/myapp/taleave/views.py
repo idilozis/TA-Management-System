@@ -13,7 +13,7 @@ import mimetypes
 from myapp.taleave.models import TALeaveRequests
 from myapp.userauth.helpers import find_user_by_email
 from myapp.notificationsystem.views import create_notification
-from myapp.models import StaffUser
+from myapp.models import StaffUser, AuthorizedUser
 
 # -----------------------------
 # CREATE LEAVE REQUEST (TA side)
@@ -69,16 +69,13 @@ def create_leave(request):
         status="pending"
     )
 
-    # Notify the advisor with notification system
-    if user.advisor:
-        advisor_name = user.advisor.strip().split()  # assume "First Last"
-        if len(advisor_name) == 2:
-            staff_advisor = StaffUser.objects.filter(name__iexact=advisor_name[0], surname__iexact=advisor_name[1]).first()
-            if staff_advisor:
-                create_notification(
-                    recipient_email=staff_advisor.email,
-                    message=f"{user.name} {user.surname} sent you a leave request."
-                )
+    # Notify authorized users (SECRETARY and DEAN roles) about the new leave request
+    authorizedUsers = AuthorizedUser.objects.filter(role__in=['SECRETARY', 'DEAN'])
+    for auth in authorizedUsers:
+        create_notification(
+            recipient_email=auth.email,
+            message=f"{user.name} {user.surname} created a leave request."
+        )
         
     return JsonResponse({
         "status": "success",
@@ -119,7 +116,7 @@ def list_my_leaves(request):
 
 
 # -----------------------------
-# LIST PENDING LEAVE REQUESTS (Staff/Advisor side)
+# LIST PENDING LEAVE REQUESTS (Authorized User side)
 # -----------------------------
 @require_GET
 def list_pending_leaves(request):
@@ -128,14 +125,13 @@ def list_pending_leaves(request):
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
     user, user_type = find_user_by_email(session_email)
-    # Only staff/advisors can view leave requests
-    if not user or user_type == "TA":
-        return JsonResponse({"status": "error", "message": "Only staff can view leave requests"}, status=403)
+    # Only authorized users can view pending leave requests
+    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+        return JsonResponse({"status": "error", "message": "Only authorized users can view pending leave requests"}, status=403)
     
-    # Filter pending leaves where TA's advisor matches current staff user's full name (case-insensitive)
+    # Filter pending leaves
     pending_leaves = TALeaveRequests.objects.filter(
-        status="pending",
-        ta_user__advisor__iexact=f"{user.name} {user.surname}"
+        status="pending"
     ).order_by("-start_date")
     
     def compute_total_days(start_date, end_date):
@@ -164,7 +160,7 @@ def list_pending_leaves(request):
 
 
 # -----------------------------
-# LIST PAST LEAVE REQUESTS (Staff/Advisor side)
+# LIST PAST LEAVE REQUESTS (Authorized User side)
 # -----------------------------
 @require_GET
 def list_past_leaves(request):
@@ -173,12 +169,11 @@ def list_past_leaves(request):
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
     user, user_type = find_user_by_email(session_email)
-    if not user or user_type == "TA":
-        return JsonResponse({"status": "error", "message": "Only staff can view past leave requests"}, status=403)
+    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+        return JsonResponse({"status": "error", "message": "Only authorized users can view past leave requests"}, status=403)
     
     past_leaves_qs = TALeaveRequests.objects.filter(
-        status__in=["approved", "rejected"],
-        ta_user__advisor__iexact=f"{user.name} {user.surname}"
+        status__in=["approved", "rejected"]
     ).order_by("-start_date")
     
     def compute_total_days(start_date, end_date):
@@ -207,7 +202,7 @@ def list_past_leaves(request):
 
 
 # -----------------------------
-# UPDATE LEAVE REQUEST STATUS (Staff/Advisor side)
+# UPDATE LEAVE REQUEST STATUS (Authorized User side)
 # -----------------------------
 @csrf_exempt
 @require_POST
@@ -218,8 +213,8 @@ def update_leave_status(request, leave_id):
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
     user, user_type = find_user_by_email(session_email)
-    if not user or user_type == "TA":
-        return JsonResponse({"status": "error", "message": "Only staff can update leave requests"}, status=403)
+    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+        return JsonResponse({"status": "error", "message": "Only authorized users can update leave requests"}, status=403)
     
     try:
         leave = TALeaveRequests.objects.get(id=leave_id)
@@ -228,10 +223,6 @@ def update_leave_status(request, leave_id):
     
     if leave.status != "pending":
         return JsonResponse({"status": "error", "message": "Leave request status cannot be updated"}, status=400)
-    
-    # Verify that the current staff user is the advisor for the TA (comparing full names, case-insensitive)
-    if leave.ta_user.advisor.strip().lower() != f"{user.name} {user.surname}".strip().lower():
-        return JsonResponse({"status": "error", "message": "You are not authorized to update this leave request"}, status=403)
     
     data = json.loads(request.body)
     new_status = data.get("status")
@@ -267,11 +258,11 @@ def download_document(request, leave_id):
     except TALeaveRequests.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Leave request not found"}, status=404)
     
-    # Security check: Only allow the TA who owns the leave or their advisor to download
+    # Security check: Only allow the TA who owns the leave or authorized users to download
     is_owner = user_type == "TA" and leave.ta_user.email == user.email
-    is_advisor = user_type != "TA" and leave.ta_user.advisor.strip().lower() == f"{user.name} {user.surname}".strip().lower()
+    is_authorized = user_type == "Authorized" and getattr(user, 'isAuth', False)
     
-    if not (is_owner or is_advisor):
+    if not (is_owner or is_authorized):
         return JsonResponse({"status": "error", "message": "You don't have permission to download this file"}, status=403)
     
     if not leave.document:

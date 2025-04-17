@@ -2,6 +2,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from myapp.userauth.helpers import find_user_by_email
 import json
 from myapp.models import StaffUser, TAUser, Course
 from myapp.taassignment.models import TAAssignment, TAAllocation
@@ -170,6 +171,13 @@ def assign_graders(request):
     except TAAssignment.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
     
+    required = assignment.num_graders
+    if len(assigned_graders_emails) != required:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Exactly {required} grader(s) must be assigned."
+        }, status=400)
+
     assigned_graders_list = []
     for email in assigned_graders_emails:
         try:
@@ -187,36 +195,54 @@ def assign_graders(request):
     allocation.save()
     return JsonResponse({"status": "success", "message": "Grader(s) assigned successfully."})
 
+
 @require_GET
 def list_allocations(request):
     email = request.session.get("user_email")
     if not email:
-        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
 
-    try:
-        staff = StaffUser.objects.get(email=email)
-    except StaffUser.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Staff user not found"}, status=404)
+    user_obj, user_type = find_user_by_email(email)
 
-    allocations = TAAllocation.objects.filter(staff=staff).select_related("course").prefetch_related("assigned_tas", "assigned_graders")
-    data = []
-    for alloc in allocations:
-        data.append({
+    # Only Staff and Authorized can see allocations
+    if user_type not in ("Staff", "Authorized"):
+        return JsonResponse({"status":"error","message":"Access denied"}, status=403)
+
+    # Both Staff and Authorized Users can see all allocations
+    assignments = TAAllocation.objects.all() \
+        .select_related("course") \
+        .prefetch_related("assigned_tas", "assigned_graders")
+
+    allocations_data = []
+    for allocation in assignments:
+        tas = allocation.assigned_tas.all()
+        graders = allocation.assigned_graders.all()
+
+        ta_list = []
+        for ta in tas:
+            is_pt = getattr(ta, "ta_type", None) == "PT"
+            ta_list.append({
+                "name": ta.name,
+                "surname": ta.surname,
+                "email": ta.email,
+                "is_full_time": not is_pt,
+            })
+
+        grader_list = [
+            {"name": grader.name, "surname": grader.surname, "email": grader.email}
+            for grader in graders
+        ]
+
+        total_load = sum(2 if getattr(ta, "ta_type", None) != "PT" else 1 for ta in tas)
+
+        allocations_data.append({
             "course": {
-                "code": alloc.course.code,
-                "name": alloc.course.name
+                "code": allocation.course.code,
+                "name": allocation.course.name,
             },
-            "assigned_tas": [
-                {"name": ta.name, "surname": ta.surname, "email": ta.email}
-                for ta in alloc.assigned_tas.all()
-            ],
-            "assigned_graders": [
-                {"name": ta.name, "surname": ta.surname, "email": ta.email}
-                for ta in alloc.assigned_graders.all()
-            ],
-            "total_load": sum([
-                2 if not ta.ta_type or ta.ta_type == "FT" else 1
-                for ta in alloc.assigned_tas.all()
-            ])
+            "assigned_tas": ta_list,
+            "assigned_graders": grader_list,
+            "total_load": total_load,
         })
-    return JsonResponse({"status": "success", "allocations": data})
+
+    return JsonResponse({"status":"success","allocations": allocations_data})

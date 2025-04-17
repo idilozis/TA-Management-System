@@ -42,7 +42,7 @@ function computeTotalDays(start_date: string, end_date: string): string {
   return `${diffDays} day(s)`;
 }
 
-export default function TALeaveStaff() {
+export default function TALeaveAuthorized() {
   const { user, loading } = useUser();
   const [message, setMessage] = useState("");
   const [pendingLeaves, setPendingLeaves] = useState<StaffLeave[]>([]);

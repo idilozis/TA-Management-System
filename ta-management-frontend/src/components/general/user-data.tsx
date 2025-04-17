@@ -16,6 +16,7 @@ export interface UserData {
   surname: string;
   email: string;
   isTA: boolean;
+  isAuth: boolean;
 
   // TAs
   program?: string;
@@ -24,6 +25,9 @@ export interface UserData {
   // Staff
   department?: string;
   courses?: Course[];
+
+  // Authorized User
+  role?: 'SECRETARY' | 'DEAN' | 'ADMIN';
 }
 
 /**
@@ -48,7 +52,7 @@ export function useUser() {
         const userData: UserData = res.data.user;
 
         // If Staff, fetch courses
-        if (!userData.isTA) {
+        if (!userData.isTA && !userData.isAuth) {
           return apiClient
             .get("/exams/list-courses/")
             .then((coursesRes) => {
@@ -60,7 +64,7 @@ export function useUser() {
             .catch(() => userData); // if fetch fails, just return user anyway
         }
 
-        // If TA, no extra fetch needed
+        // If TA or Authorized user, no extra fetch needed
         return userData;
       })
       .then((finalUser) => {

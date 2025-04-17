@@ -272,28 +272,27 @@ export default function SettingsPage() {
           </div>
 
           {/* Admin-only settings */}
-          {user.isTA === false && (
-            <div className="mb-12 bg-gray-50 p-6 rounded shadow border border-gray-800">
-              <div className="max-w-3xl grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-800">
-                    Current Semester
-                  </label>
-                  <div className="rounded border border-gray-800 p-3">
-                    2024-2025 Spring
-                  </div>
+          <div className="mb-12 bg-gray-50 p-6 rounded shadow border border-gray-800">
+            <div className="max-w-3xl grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-800">
+                  Current Semester
+                </label>
+                <div className="rounded border border-gray-800 p-3">
+                  2024-2025 Spring
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-800">
-                    Max Workload for a TA
-                  </label>
-                  <div className="rounded border border-gray-800 p-3">
-                    60 Hours
-                  </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-800">
+                  Max Workload for a TA
+                </label>
+                <div className="rounded border border-gray-800 p-3">
+                  60 Hours
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
         </SidebarInset>
       </div>
     </SidebarProvider>

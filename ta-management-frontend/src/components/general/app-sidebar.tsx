@@ -20,6 +20,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   // User Role Text
   const getRoleString = (user: UserData) => {
+    // TAs
     if (user.isTA) {
       return (
         <>
@@ -28,8 +29,21 @@ export function AppSidebar({ user }: AppSidebarProps) {
           Advisor: {user.advisor}
         </>
       );
-    } else {
+    }
+    // Staff (Instructors)
+    if (!user.isTA && !user.isAuth) {
       return <>Department of {user.department}</>;
+    }
+    // Authorized Users
+    switch (user.role) {
+      case "DEAN":
+        return <>Dean Office</>;
+      case "SECRETARY":
+        return <>Department Secretary</>;
+      case "ADMIN":
+        return <>System Administrator</>;
+      default:
+        return <>Authorized User</>;
     }
   };
 
@@ -43,13 +57,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
     ...(user && user.isTA
       ? [
           {
-            name: "My Duties",
+            name: "Duty Requests",
             path: "/ta-duties",
             icon: CheckCircle,
           },
         ]
       : []),
-    ...(user && !user.isTA
+    ...(user && !user.isTA && !user.isAuth
       ? [
           {
             name: "Requests",
@@ -59,7 +73,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         ]
       : []),
     {
-      name: "Proctoring",
+      name: user?.isAuth ? "Leave Requests" : "Proctoring",
       path: "/proctoring",
       icon: FileText,
     },
