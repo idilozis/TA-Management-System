@@ -110,14 +110,20 @@ def assign_tas(request):
             "message": f"Total load ({total_load}) exceeds the maximum allowed ({assignment.max_load})."
         }, status=400)
     
-    # Check that all must-have TAs are included.
+    force_override = data.get("force", False)
+
+    # Check if all must-have TAs are included
     must_have_emails = [ta.email for ta in assignment.must_have_ta.all()]
-    for email in must_have_emails:
-        if email not in assigned_tas_emails:
-            return JsonResponse({
-                "status": "error", 
-                "message": f"Must-have TA {email} is missing from the assignment."
-            }, status=400)
+    missing_must_haves = [email for email in must_have_emails if email not in assigned_tas_emails]
+
+    if missing_must_haves and not force_override:
+        return JsonResponse({
+            "status": "warning",
+            "message": f"The following must-have TAs are missing: {', '.join(missing_must_haves)}. Submit again with force=true to override.",
+            "missing_must_have": missing_must_haves,
+            "require_confirmation": True
+        }, status=202)
+
     
     # Get or create the TAAllocation record.
     allocation, created = TAAllocation.objects.get_or_create(
@@ -180,3 +186,37 @@ def assign_graders(request):
         allocation.assigned_graders.add(ta)
     allocation.save()
     return JsonResponse({"status": "success", "message": "Grader(s) assigned successfully."})
+
+@require_GET
+def list_allocations(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    try:
+        staff = StaffUser.objects.get(email=email)
+    except StaffUser.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Staff user not found"}, status=404)
+
+    allocations = TAAllocation.objects.filter(staff=staff).select_related("course").prefetch_related("assigned_tas", "assigned_graders")
+    data = []
+    for alloc in allocations:
+        data.append({
+            "course": {
+                "code": alloc.course.code,
+                "name": alloc.course.name
+            },
+            "assigned_tas": [
+                {"name": ta.name, "surname": ta.surname, "email": ta.email}
+                for ta in alloc.assigned_tas.all()
+            ],
+            "assigned_graders": [
+                {"name": ta.name, "surname": ta.surname, "email": ta.email}
+                for ta in alloc.assigned_graders.all()
+            ],
+            "total_load": sum([
+                2 if not ta.ta_type or ta.ta_type == "FT" else 1
+                for ta in alloc.assigned_tas.all()
+            ])
+        })
+    return JsonResponse({"status": "success", "allocations": data})
