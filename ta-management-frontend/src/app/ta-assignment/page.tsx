@@ -85,50 +85,6 @@ export default function TAAssignmentPage() {
   const [confirmationMessage, setConfirmationMessage] = useState("")
   const [pendingOverrideAction, setPendingOverrideAction] = useState(false)
 
-  // Fallback data for development/testing
-  const FALLBACK_DATA = {
-    assignments: [
-      {
-        staff: {
-          name: "John",
-          surname: "Doe",
-          email: "john.doe@example.com",
-        },
-        course: {
-          code: "CS101",
-          name: "Introduction to Programming",
-        },
-        min_load: 2,
-        max_load: 4,
-        num_graders: 2,
-        must_have_ta: [{ name: "Alice", surname: "Smith", email: "alice@example.com" }],
-        preferred_tas: [
-          { name: "Bob", surname: "Johnson", email: "bob@example.com" },
-          { name: "Charlie", surname: "Brown", email: "charlie@example.com" },
-        ],
-        preferred_graders: [{ name: "Diana", surname: "Prince", email: "diana@example.com" }],
-        avoided_tas: [{ name: "Eve", surname: "Wilson", email: "eve@example.com" }],
-      },
-      {
-        staff: {
-          name: "Jane",
-          surname: "Smith",
-          email: "jane.smith@example.com",
-        },
-        course: {
-          code: "CS201",
-          name: "Data Structures",
-        },
-        min_load: 1,
-        max_load: 3,
-        num_graders: 1,
-        must_have_ta: [],
-        preferred_tas: [{ name: "Frank", surname: "Miller", email: "frank@example.com" }],
-        preferred_graders: [{ name: "Grace", surname: "Lee", email: "grace@example.com" }],
-        avoided_tas: [],
-      },
-    ],
-  }
 
   // Fetch data on component mount
   useEffect(() => {
@@ -136,7 +92,6 @@ export default function TAAssignmentPage() {
   }, [])
 
   const fetchData = async () => {
-    try {
       setLoading(true)
       setError("")
       let useFallbackData = false
@@ -204,47 +159,7 @@ export default function TAAssignmentPage() {
         console.error("API error:", apiError)
         useFallbackData = true
       }
-
-      // Use fallback data if API calls failed
-      if (useFallbackData) {
-        console.log("Using fallback data for development")
-        setPreferences(FALLBACK_DATA.assignments)
-
-        // Initialize allocations with empty arrays
-        const newAllocations: Record<string, TAAllocation> = {}
-        FALLBACK_DATA.assignments.forEach((pref: AssignmentPreference) => {
-          newAllocations[pref.course.code] = {
-            course: pref.course,
-            assigned_tas: [],
-            assigned_graders: [],
-            total_load: 0,
-          }
-        })
-        setAllocations(newAllocations)
-
-        setError("Using demo data - API connection failed. Check your backend server.")
-      }
-    } catch (err) {
-      setError("Error loading data. Using demo data for now.")
-      console.error(err)
-
-      // Use fallback data as last resort
-      setPreferences(FALLBACK_DATA.assignments)
-
-      // Initialize allocations with empty arrays
-      const newAllocations: Record<string, TAAllocation> = {}
-      FALLBACK_DATA.assignments.forEach((pref: AssignmentPreference) => {
-        newAllocations[pref.course.code] = {
-          course: pref.course,
-          assigned_tas: [],
-          assigned_graders: [],
-          total_load: 0,
-        }
-      })
-      setAllocations(newAllocations)
-    } finally {
-      setLoading(false)
-    }
+    setLoading(false)
   }
 
   const refreshData = async () => {
@@ -707,8 +622,53 @@ export default function TAAssignmentPage() {
 
             <TabsContent value="preferences">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-blue-600">Assignment Preferences</CardTitle>
+              <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-blue-600">Assignment Preferences</CardTitle>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" className="flex items-center gap-2">
+                            <Info className="h-4 w-4 text-blue-600" />
+                            <span>Legend</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="end" className="w-[280px] bg-white border-2 text-black">
+                          <div className="space-y-2 p-1">
+                            <p className="font-medium">Color Legend</p>
+                            <div className="grid grid-cols-1 gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-blue-100 border border-blue-300"></div>
+                                <span className="text-xs">Must-Have TA</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-green-100 border border-green-400"></div>
+                                <span className="text-xs">Preferred TA</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-purple-100 border border-purple-300"></div>
+                                <span className="text-xs">Preferred Grader</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-red-100 border border-red-300"></div>
+                                <span className="text-xs">Avoided TA</span>
+                              </div>
+                              <p className="text-xs">Loads Info</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">Full-Time TA = 2 Loads</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">Part-Time TA = 1 Load</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs">Graders = 1 Load</span>
+                              </div>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <CardDescription>View instructor preferences for TA assignments</CardDescription>
                 </CardHeader>
                 <CardContent>
