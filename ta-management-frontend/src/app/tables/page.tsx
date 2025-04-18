@@ -111,7 +111,7 @@ export default function TablesPage() {
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-4">
               <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Table2 className="h-8 w-8 text-blue-600" /> Tables
+                <Table2 className="h-8 w-8 text-blue-600" /> Records
               </h1>
           </div>
 

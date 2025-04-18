@@ -247,6 +247,12 @@ export default function TAAssignmentPage() {
     }
   }
 
+  const refreshData = async () => {
+    setIsRefreshing(true)
+    await fetchData()
+    setIsRefreshing(false)
+  }
+
   const openAssignDialog = (course: Course, preference: AssignmentPreference, type: "tas" | "graders") => {
     setCurrentCourse(course)
     setCurrentPreference(preference)
@@ -469,7 +475,7 @@ export default function TAAssignmentPage() {
         <AppSidebar user={user} />
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-6">
-            <ClipboardList className="h-8 w-8 text-primary" />
+            <ClipboardList className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold">TA Assignment</h1>
           </div>
 
@@ -486,7 +492,7 @@ export default function TAAssignmentPage() {
           )}
 
           <div className="flex justify-between items-center mb-6">
-            <div className="relative w-84">
+            <div className="relative w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search courses..."
@@ -495,7 +501,6 @@ export default function TAAssignmentPage() {
                 className="pl-8"
               />
             </div>
-
           </div>
 
           <Tabs defaultValue="assignments" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
@@ -507,17 +512,17 @@ export default function TAAssignmentPage() {
             <TabsContent value="assignments">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex justify-between items-center">
                     <CardTitle className="text-blue-600">Course Assignments</CardTitle>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" className="flex items-center gap-2 ">
+                          <Button variant="outline" className="flex items-center gap-2">
                             <Info className="h-4 w-4 text-blue-600" />
                             <span>Legend</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left" align="end" className="w-[280px]">
+                        <TooltipContent side="top" align="end" className="w-[280px] bg-white border-2 text-black">
                           <div className="space-y-2 p-1">
                             <p className="font-medium">Color Legend</p>
                             <div className="grid grid-cols-1 gap-2">
@@ -537,9 +542,7 @@ export default function TAAssignmentPage() {
                                 <div className="w-4 h-4 bg-red-100 border border-red-300"></div>
                                 <span className="text-xs">Avoided TA</span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Loads Info</span>
-                              </div>
+                              <p className="text-xs">Loads Info</p>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs">Full-Time TA = 2 Loads</span>
                               </div>
@@ -613,7 +616,7 @@ export default function TAAssignmentPage() {
                                   )}
                                   {!allMustHaveAssigned && mustHaveEmails.length > 0 && (
                                     <Badge variant="outline" className="ml-2 bg-red-100 text-red-800 border-red-200">
-                                      Missing must-have TA
+                                      Missing must-have TAs
                                     </Badge>
                                   )}
                                 </div>
@@ -705,54 +708,7 @@ export default function TAAssignmentPage() {
             <TabsContent value="preferences">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-blue-600">Assignment Preferences</CardTitle>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" className="flex items-center gap-2">
-                            <Info className="h-4 w-4 text-blue-600" />
-                            <span>Legend</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" align="end" className="w-[280px]">
-                          <div className="space-y-2 p-1">
-                            <p className="font-medium">Color Legend</p>
-                            <div className="grid grid-cols-1 gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-blue-100 border border-blue-300"></div>
-                                <span className="text-xs">Must-Have TA</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-green-100 border border-green-400"></div>
-                                <span className="text-xs">Preferred TA</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-purple-100 border border-purple-300"></div>
-                                <span className="text-xs">Preferred Grader</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-red-100 border border-red-300"></div>
-                                <span className="text-xs">Avoided TA</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Loads Info</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Full-Time TA = 2 Loads</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Part-Time TA = 1 Load</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Graders = 1 Load</span>
-                              </div>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <CardTitle className="text-blue-600">Assignment Preferences</CardTitle>
                   <CardDescription>View instructor preferences for TA assignments</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1045,7 +1001,7 @@ export default function TAAssignmentPage() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-white text-black">
           <DialogHeader>
             <DialogTitle>Confirmation Required</DialogTitle>
           </DialogHeader>
@@ -1065,9 +1021,9 @@ export default function TAAssignmentPage() {
 
       {/* Confirmation Dialog for Must-Have TAs */}
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
-        <DialogContent className="sm:max-w-md backdrop-blur-md bg-white">
+        <DialogContent className="sm:max-w-md bg-white text-black">
           <DialogHeader>
-            <DialogTitle className="text-amber-600">Warning: Missing Must-Have TA</DialogTitle>
+            <DialogTitle className="text-amber-600">Warning: Missing Must-Have TAs</DialogTitle>
           </DialogHeader>
 
           <div className="py-4">

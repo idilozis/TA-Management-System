@@ -5,9 +5,9 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
-import { ClipboardList, Calendar, Clock } from "lucide-react"
+import { ClipboardList, Plus } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,6 +20,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { motion } from "framer-motion"
 
 // Data interfaces
 interface Course {
@@ -59,6 +60,7 @@ export default function TADutiesPage() {
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error">("error")
   const [activeTab, setActiveTab] = useState("pending")
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   // Initialize form
   const form = useForm<DutyFormValues>({
@@ -140,6 +142,8 @@ export default function TADutiesPage() {
         fetchDuties()
         // Reset form
         form.reset()
+        // Close modal
+        setShowCreateModal(false)
       } else {
         setMessage(res.data.message || "Error creating duty.")
         setMessageType("error")
@@ -148,6 +152,12 @@ export default function TADutiesPage() {
       setMessage("Error creating duty.")
       setMessageType("error")
     }
+  }
+
+  // Handle cancel button click
+  const handleCancel = () => {
+    form.reset()
+    setShowCreateModal(false)
   }
 
   // Loading and error messages
@@ -173,151 +183,17 @@ export default function TADutiesPage() {
           </div>
 
           {message && (
-            <Alert variant={messageType === "success" ? "default" : "destructive"} className="mb-6">
+            <Alert
+              variant={messageType === "success" ? "default" : "destructive"}
+              className={`mb-6 ${
+                messageType === "success"
+                  ? "text-green-500 bg-green-100 border-green-200"
+                  : "bg-red-100 text-red-800 border-red-200"
+              }`}
+            >
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           )}
-
-          {/* Create Duty Form */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-blue-600">Create New Task</CardTitle>
-              <CardDescription>Submit a new duty request for approval</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Duty Type */}
-                    <FormField
-                      control={form.control}
-                      name="duty_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Task Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select task type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="lab">Lab</SelectItem>
-                              <SelectItem value="grading">Grading</SelectItem>
-                              <SelectItem value="recitation">Recitation</SelectItem>
-                              <SelectItem value="office_hours">Office Hours</SelectItem>
-                              <SelectItem value="exam_proctoring">Proctoring</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Course */}
-                    <FormField
-                      control={form.control}
-                      name="course_code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Course</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select course" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {courses.map((course) => (
-                                <SelectItem key={course.id} value={course.code}>
-                                  {course.code} - {course.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      {/* Date */}
-                      <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date</FormLabel>
-                            <div className="relative">
-                              <FormControl>
-                                <Input type="date" {...field} className="appearance-auto w-full" />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Start Time */}
-                      <FormField
-                        control={form.control}
-                        name="start_time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Start Time</FormLabel>
-                            <div className="relative">
-                              <FormControl>
-                                <Input type="time" {...field} className="appearance-auto w-full" />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* End Time */}
-                      <FormField
-                        control={form.control}
-                        name="end_time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>End Time</FormLabel>
-                            <div className="relative">
-                              <FormControl>
-                                <Input type="time" {...field} className="appearance-auto w-full" />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                  {/* Description */}
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Optional description of the task" {...field} />
-                        </FormControl>
-                        <FormDescription>Provide any additional details about this duty</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-500">
-                    Send Request
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
 
           {/* Duties Tables */}
           <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
@@ -332,9 +208,14 @@ export default function TADutiesPage() {
 
             <TabsContent value="pending">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-blue-600">Pending Requests</CardTitle>
-                  <CardDescription>Duties awaiting approval from instructors</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <div>
+                    <CardTitle className="text-blue-600">Pending Requests</CardTitle>
+                    <CardDescription>Duties awaiting approval from instructors</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 ">
+                    <Plus className="mr-0.5 h-4 w-4" />Create New Duty
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {pendingDuties.length === 0 ? (
@@ -381,9 +262,14 @@ export default function TADutiesPage() {
 
             <TabsContent value="past">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-blue-600">Past Requests</CardTitle>
-                  <CardDescription>History of approved and rejected duties</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <div>
+                    <CardTitle className="text-blue-600">Past Requests</CardTitle>
+                    <CardDescription>History of approved and rejected duties</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
+                    <Plus className="mr-2 h-4 w-4" /> Create New Duty
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {pastDuties.length === 0 ? (
@@ -437,6 +323,160 @@ export default function TADutiesPage() {
           </Tabs>
         </SidebarInset>
       </div>
+
+      {/* Create Duty Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl mx-4"
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="border-blue-600 border-2">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-blue-600">Create New Task</CardTitle>
+                </div>
+                <CardDescription>Submit a new duty request for approval</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Duty Type */}
+                      <FormField
+                        control={form.control}
+                        name="duty_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Task Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select task type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="lab">Lab</SelectItem>
+                                <SelectItem value="grading">Grading</SelectItem>
+                                <SelectItem value="recitation">Recitation</SelectItem>
+                                <SelectItem value="office_hours">Office Hours</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Course */}
+                      <FormField
+                        control={form.control}
+                        name="course_code"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Course</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select course" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {courses.map((course) => (
+                                  <SelectItem key={course.id} value={course.code}>
+                                    {course.code} - {course.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Date */}
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} className="w-36" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Start Time */}
+                      <FormField
+                        control={form.control}
+                        name="start_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Start Time</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} className="w-30" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* End Time */}
+                      <FormField
+                        control={form.control}
+                        name="end_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>End Time</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} className="w-30" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Optional description of the task" {...field} />
+                          </FormControl>
+                          <FormDescription>Provide any additional details about this duty</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
+                      <Button type="button" variant="outline" onClick={handleCancel}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
+                        Send Request
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      )}
     </SidebarProvider>
   )
 }
