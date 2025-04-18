@@ -4,5 +4,7 @@ from myapp.proctoring.views import *
 # Call with proctoring/... (Look at backend > urls.py)
 urlpatterns = [
     path('automatic-assignment/<int:exam_id>/', automatic_proctor_assignment, name='automatic_proctoring_assignment'),
-    path('confirm-assignment/<int:exam_id>/', confirm_assignment, name="confirm_assignment")
+    path('confirm-assignment/<int:exam_id>/', confirm_assignment, name="confirm_assignment"),
+    path('candidate-tas/<int:exam_id>/', candidate_tas, name='candidate_tas'),
+    path('ta-details/', ta_details, name='ta_details'),
 ]

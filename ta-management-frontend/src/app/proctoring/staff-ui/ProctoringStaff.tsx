@@ -1,214 +1,267 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState } from "react";
-import apiClient from "@/lib/axiosClient";
-import { useRouter } from "next/navigation";
-import { PageLoader } from "@/components/ui/loading-spinner";
+import React, { useEffect, useState } from "react"
+import apiClient from "@/lib/axiosClient"
+import { PageLoader } from "@/components/ui/loading-spinner"
 
 interface Exam {
-  id: number;
-  course_code: string;
-  course_name: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  classroom_name: string;
-  num_proctors: number;
-  student_count: number;
-  assigned_tas: string[];
+  id: number
+  course_code: string
+  course_name: string
+  date: string
+  start_time: string
+  end_time: string
+  classroom_name: string
+  num_proctors: number
+  student_count: number
+  assigned_tas: string[]
+}
+
+interface TA {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  workload: number
+  program: string
+  department: string
+  assignable: boolean
+  reason?: string
+  penalty?: number
 }
 
 interface AssignmentResult {
-  examId: number;
-  assignedTas: string[];
-  overrideInfo: any;
+  examId: number
+  assignedTas: string[]
+  overrideInfo: {
+    consecutive_overridden: boolean
+    ms_phd_overridden: boolean
+    department_overridden: boolean
+  }
 }
 
-export default function ProctoringStaff() {
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  // Holds the result from the automatic assignment popover.
-  const [assignmentResult, setAssignmentResult] = useState<AssignmentResult | null>(null);
-  // Controls popover visibility for assignment review.
-  const [showPopover, setShowPopover] = useState(false);
-  const router = useRouter();
+export default function ProctorStaff() {
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const fetchExams = async () => {
-    setLoading(true);
-    try {
-      const response = await apiClient.get("/exams/list-exams/");
-      if (response.data.status === "success") {
-        const sortedExams = response.data.exams.sort(
-          (a: Exam, b: Exam) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setExams(sortedExams);
-        setError("");
-      } else {
-        setError(response.data.message || "Failed to load exams");
-      }
-    } catch {
-      setError("Failed to fetch exams");
-    }
-    setLoading(false);
-  };
+  // automatic
+  const [autoResult, setAutoResult] = useState<AssignmentResult | null>(null)
+  const [autoTAs, setAutoTAs] = useState<TA[]>([])
+  const [showAuto, setShowAuto] = useState(false)
+
+  // manual
+  const [showManual, setShowManual] = useState(false)
+  const [currentExam, setCurrentExam] = useState<Exam | null>(null)
+  const [manualTAs, setManualTAs] = useState<TA[]>([])
+  const [selected, setSelected] = useState<string[]>([])
 
   useEffect(() => {
-    fetchExams();
-  }, []);
+    apiClient.get("/exams/list-exams/")
+      .then(res => {
+        if (res.data.status === "success") {
+          setExams(res.data.exams)
+        } else {
+          setError(res.data.message || "Failed to load exams")
+        }
+      })
+      .catch(() => setError("Network error"))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const handleAutomaticAssignment = async (examId: number) => {
-    try {
-      const response = await apiClient.post(`/proctoring/automatic-assignment/${examId}/`);
-      if (response.data.success) {
-        setAssignmentResult({
-          examId,
-          assignedTas: response.data.assigned_tas,
-          overrideInfo: response.data.override_info,
-        });
-        setShowPopover(true);
-      } else {
-        alert("Automatic assignment failed: " + response.data.message);
-      }
-    } catch (err) {
-      alert("Error during automatic assignment.");
+  // fetch details (names) for auto-assigned emails
+  async function fetchAutoDetails(emails: string[]) {
+    const res = await apiClient.post("/proctoring/ta-details/", { emails })
+    if (res.data.success) {
+      setAutoTAs(res.data.tas)
     }
-  };
+  }
 
-  const handleManualAssignment = (examId: number) => {
-    router.push(`/proctoring/manual-assignment/${examId}`);
-  };
-
-  const handleAcceptAssignment = async () => {
-    if (!assignmentResult) return;
-    try {
-      const response = await apiClient.post(
-        `/proctoring/confirm-assignment/${assignmentResult.examId}/`,
-        { assigned_tas: assignmentResult.assignedTas }
-      );
-      if (response.data.success) {
-        alert("Assignment confirmed.");
-        fetchExams();
-      } else {
-        alert("Error confirming assignment: " + response.data.message);
-      }
-    } catch (err) {
-      alert("Error confirming assignment.");
-    } finally {
-      setShowPopover(false);
-      setAssignmentResult(null);
+  async function handleAuto(exam: Exam) {
+    setCurrentExam(exam)
+    const res = await apiClient.post(`/proctoring/automatic-assignment/${exam.id}/`)
+    if (!res.data.success) {
+      return alert("Auto failed")
     }
-  };
+    const result: AssignmentResult = {
+      examId: exam.id,
+      assignedTas: res.data.assigned_tas,
+      overrideInfo: res.data.override_info,
+    }
+    setAutoResult(result)
+    await fetchAutoDetails(result.assignedTas)
+    setShowAuto(true)
+  }
 
-  const handleRejectAssignment = () => {
-    alert("Assignment rejected. Please consider manual assignment.");
-    setShowPopover(false);
-    setAssignmentResult(null);
-  };
+  async function confirmAuto() {
+    if (!autoResult) return
+    await apiClient.post(`/proctoring/confirm-assignment/${autoResult.examId}/`, {
+      assigned_tas: autoResult.assignedTas
+    })
+    setShowAuto(false)
+    window.location.reload()
+  }
 
-  if (loading) return <PageLoader />;
-  if (error)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-500">
-        {error}
-      </div>
-    );
+  async function handleManual(exam: Exam) {
+    setCurrentExam(exam)
+    const res = await apiClient.get(`/proctoring/candidate-tas/${exam.id}/`)
+    if (res.data.status !== "success") {
+      return alert("Failed loading TAs")
+    }
+    setManualTAs(res.data.tas)
+    setSelected([])
+    setShowManual(true)
+  }
+
+  function toggle(email: string) {
+    if (!currentExam) return
+    if (selected.includes(email)) {
+      setSelected(selected.filter(e => e !== email))
+    } else if (selected.length < currentExam.num_proctors) {
+      setSelected([...selected, email])
+    }
+  }
+
+  async function confirmManual() {
+    if (!currentExam || selected.length !== currentExam.num_proctors) return
+    await apiClient.post(`/proctoring/confirm-assignment/${currentExam.id}/`, {
+      assigned_tas: selected
+    })
+    setShowManual(false)
+    window.location.reload()
+  }
+
+  if (loading) return <PageLoader />
+  if (error) return <div className="p-4 text-red-600">{error}</div>
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Proctoring Assignment - Exams</h1>
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-fixed border-collapse">
-          <thead className="bg-gray-200 text-gray-800">
-            <tr>
-              <th className="py-2 px-4 w-40 whitespace-nowrap">Course</th>
-              <th className="py-2 px-4 w-28 whitespace-nowrap">Date</th>
-              <th className="py-2 px-4 w-32 whitespace-nowrap">Start - End</th>
-              <th className="py-2 px-4 w-32 whitespace-nowrap">Classroom</th>
-              <th className="py-2 px-4 w-28 whitespace-nowrap">Proctors</th>
-              <th className="py-2 px-4 w-28 whitespace-nowrap">Students</th>
-              <th className="py-2 px-4 w-64 whitespace-nowrap">Actions / Assigned TAs</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-50">
-            {exams.map((exam) => (
-              <tr className="hover:bg-gray-100" key={exam.id}>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.course_code} - {exam.course_name}
-                </td>
-                <td className="text-center p-3 whitespace-nowrap">{exam.date}</td>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.start_time} - {exam.end_time}
-                </td>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.classroom_name}
-                </td>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.num_proctors}
-                </td>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.student_count}
-                </td>
-                <td className="text-center p-3 whitespace-nowrap">
-                  {exam.assigned_tas && exam.assigned_tas.length > 0 ? (
-                    <div className="space-y-1">
-                      {exam.assigned_tas.map((ta, index) => (
-                        <div key={index} className="text-sm font-medium">
-                          {ta}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-x-2">
-                      <button
-                        onClick={() => handleAutomaticAssignment(exam.id)}
-                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
-                      >
-                        Automatic Assignment
-                      </button>
-                      <button
-                        onClick={() => handleManualAssignment(exam.id)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
-                      >
-                        Manual Assignment
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
+      <h1 className="text-2xl mb-4">Proctoring</h1>
+      <table className="min-w-full border">
+        <thead className="bg-gray-100">
+          <tr>
+            {["Course","Date","Time","Room","#Proctors","#Students","Actions"].map(h => (
+              <th key={h} className="px-2 py-1">{h}</th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {exams.map(exam => (
+            <tr key={exam.id} className="hover:bg-gray-50">
+              <td className="px-2 py-1">{exam.course_code}</td>
+              <td className="px-2 py-1">{exam.date}</td>
+              <td className="px-2 py-1">{exam.start_time}-{exam.end_time}</td>
+              <td className="px-2 py-1">{exam.classroom_name}</td>
+              <td className="px-2 py-1 text-center">{exam.num_proctors}</td>
+              <td className="px-2 py-1 text-center">{exam.student_count}</td>
+              <td className="px-2 py-1">
+                {exam.assigned_tas.length > 0
+                  ? exam.assigned_tas.map(e => <div key={e}>{e}</div>)
+                  : <>
+                      <button
+                        onClick={() => handleAuto(exam)}
+                        className="bg-green-500 text-white px-2 rounded mr-1"
+                      >Automatic</button>
+                      <button
+                        onClick={() => handleManual(exam)}
+                        className="bg-blue-500 text-white px-2 rounded"
+                      >Manual</button>
+                    </>
+                }
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {showPopover && assignmentResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg w-96 p-6">
-            <h2 className="text-xl font-bold mb-4">Review Assigned TAs</h2>
-            <ul className="mb-4">
-              {assignmentResult.assignedTas.map((ta, index) => (
-                <li key={index} className="mb-1">
-                  {ta}
-                </li>
+      {/* Automatic Assignment popup */}
+      {showAuto && autoResult && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
+          <div className="bg-white p-4 rounded w-80">
+            <h2 className="text-lg mb-2">Automatically Assigned</h2>
+            {(autoResult.overrideInfo.consecutive_overridden ||
+              autoResult.overrideInfo.ms_phd_overridden ||
+              autoResult.overrideInfo.department_overridden) && (
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 p-2 mb-2 text-sm">
+                <strong>Some restrictions overridden:</strong>
+                <ul className="list-disc ml-4">
+                  {autoResult.overrideInfo.consecutive_overridden && <li>Day-before/after</li>}
+                  {autoResult.overrideInfo.ms_phd_overridden && <li>MS/PhD rule</li>}
+                  {autoResult.overrideInfo.department_overridden && <li>Department</li>}
+                </ul>
+              </div>
+            )}
+            <div className="mb-2 max-h-40 overflow-y-auto">
+              {autoTAs.map(ta => (
+                <div key={ta.email} className="border-b py-1">
+                  {ta.first_name} {ta.last_name} - {ta.email}
+                </div>
               ))}
-            </ul>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={handleRejectAssignment}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-              >
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setShowAuto(false)} className="px-2 py-1 bg-red-500 text-white rounded">
                 Reject
               </button>
+              <button onClick={confirmAuto} className="px-2 py-1 bg-green-600 text-white rounded">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Assignment popup */}
+      {showManual && currentExam && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
+          <div className="bg-white p-4 rounded w-full max-w-2xl">
+            <h2 className="text-lg mb-2">
+              Manual - {currentExam.course_code} ({selected.length}/{currentExam.num_proctors})
+            </h2>
+
+            <h3 className="text-green-700">Assignable</h3>
+            <div className="border max-h-48 overflow-y-auto mb-2">
+              {manualTAs.filter(t => t.assignable).map(t => (
+                <div
+                  key={t.email}
+                  className={`flex justify-between px-2 py-1 border-b cursor-pointer ${
+                    selected.includes(t.email) ? "bg-blue-50" : ""
+                  }`}
+                  onClick={() => toggle(t.email)}
+                >
+                  <span>{t.first_name} {t.last_name} - {t.email}</span>
+                  <span className="text-sm">workload: {t.workload}</span>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-red-700">Not assignable</h3>
+            <div className="border max-h-40 overflow-y-auto mb-2 text-sm">
+              {manualTAs.filter(t => !t.assignable).map(t => (
+                <div key={t.email} className="px-2 py-1 border-b">
+                  {t.first_name} {t.last_name} – <em>{t.reason}</em>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setShowManual(false)} className="px-2 py-1 bg-gray-500 text-white rounded">
+                Cancel
+              </button>
               <button
-                onClick={handleAcceptAssignment}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+                disabled={selected.length !== currentExam.num_proctors}
+                onClick={confirmManual}
+                className={`px-2 py-1 rounded ${
+                  selected.length === currentExam.num_proctors
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                Accept
+                Confirm
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -16,7 +16,7 @@ export interface UserData {
   surname: string;
   email: string;
   isTA: boolean;
-  isAuth: boolean;
+  isAuth?: boolean;
 
   // TAs
   program?: string;
