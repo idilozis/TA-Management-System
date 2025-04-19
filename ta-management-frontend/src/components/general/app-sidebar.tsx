@@ -108,7 +108,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       ? [
           {
             name: "Documents",
-            path: "/reports",
+            path: "/documents",
             icon: FolderArchive,
           },
         ]
