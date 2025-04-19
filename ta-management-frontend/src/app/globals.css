@@ -159,13 +159,3 @@ body {
     font-family: var(--font-generic, var(--font-inter));
   }
 }
-
-@keyframes stripeSlide {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 200% 0%;
-  }
-}
-

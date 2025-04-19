@@ -6,17 +6,10 @@ import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, AlertTriangle, Calendar, CheckCircle2 } from "lucide-react"
+import { AlertCircle, AlertTriangle, FileText, CheckCircle2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -28,43 +21,7 @@ interface Exam {
   date: string
   start_time: string
   end_time: string
-  classroom_name: string
-  num_proctors: number
-  student_count: number
-  assigned_tas: string[]
-}
-
-interface TA {
-  id: number
-  email: string
-  first_name: string
-  last_name: string
-  workload: number
-  program: string
-  department: string
-  assignable: boolean
-  reason?: string
-  penalty?: number
-}
-
-interface AssignmentResult {
-  examId: number
-  assignedTas: string[]
-  overrideInfo: {
-    consecutive_overridden: boolean
-    ms_phd_overridden: boolean
-    department_overridden: boolean
-  }
-}
-
-interface Exam {
-  id: number
-  course_code: string
-  course_name: string
-  date: string
-  start_time: string
-  end_time: string
-  classroom_name: string
+  classrooms: string[]
   num_proctors: number
   student_count: number
   assigned_tas: string[]
@@ -98,6 +55,10 @@ export default function ProctorStaff() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState<"unassigned" | "assigned">("unassigned")
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   // automatic
   const [autoResult, setAutoResult] = useState<AssignmentResult | null>(null)
@@ -213,7 +174,7 @@ export default function ProctorStaff() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-6">
-        <Calendar className="h-8 w-8 text-blue-600" />
+        <FileText className="h-8 w-8 text-blue-600" />
         <h1 className="text-3xl font-bold">Proctoring</h1>
       </div>
 
@@ -242,7 +203,7 @@ export default function ProctorStaff() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-600">Unassigned Exams</CardTitle>
-              <CardDescription>Exams that need proctors to be assigned</CardDescription>
+              <CardDescription>Exams that need proctors to be assigned.</CardDescription>
             </CardHeader>
             <CardContent>
               {unassignedExams.length === 0 ? (
@@ -270,13 +231,13 @@ export default function ProctorStaff() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                              {exam.date}
+                            {formatDate(exam.date)}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {exam.start_time} - {exam.end_time}
                           </TableCell>
-                          <TableCell>{exam.classroom_name}</TableCell>
+                          <TableCell>{exam.classrooms.join(", ")}</TableCell>
                           <TableCell className="text-center">{exam.num_proctors}</TableCell>
                           <TableCell className="text-center">{exam.student_count}</TableCell>
                           <TableCell>
@@ -311,7 +272,7 @@ export default function ProctorStaff() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-600">Assigned Exams</CardTitle>
-              <CardDescription>Exams with proctors already assigned</CardDescription>
+              <CardDescription>Exams with proctors already assigned.</CardDescription>
             </CardHeader>
             <CardContent>
               {assignedExams.length === 0 ? (
@@ -339,13 +300,13 @@ export default function ProctorStaff() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                              {exam.date}
+                            {formatDate(exam.date)}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {exam.start_time} - {exam.end_time}
                           </TableCell>
-                          <TableCell>{exam.classroom_name}</TableCell>
+                          <TableCell>{exam.classrooms.join(", ")}</TableCell>
                           <TableCell className="text-center">{exam.num_proctors}</TableCell>
                           <TableCell className="text-center">{exam.student_count}</TableCell>
                           <TableCell>
@@ -510,4 +471,3 @@ export default function ProctorStaff() {
     </div>
   )
 }
-

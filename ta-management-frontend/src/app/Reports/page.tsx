@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { FileText, Download, BarChart, FileSpreadsheet, FileDown, FileArchive, FolderArchive } from "lucide-react"
+import { Download, BarChart, FileSpreadsheet, FileDown,  FolderArchive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
@@ -31,13 +31,13 @@ export default function ReportsPage() {
       setActiveDownload(target)
       setDownloadProgress(0)
 
-      // Simulate progress - slower increment
+      // Simulate progress (harcoded)
       const progressInterval = setInterval(() => {
         setDownloadProgress((prev) => {
-          const newProgress = prev + Math.random() * 5 //if you want to speed it up, increase this value
+          const newProgress = prev + Math.random() * 6
           return newProgress >= 99 ? 99 : newProgress // Cap at 99% until actual download completes
         })
-      }, 350) // Increased from 300ms to 500ms for e.g. for slower laoding bar, this is hardcoded
+      }, 350)
 
       const response = await apiClient.get(endpoint, { responseType: "blob" })
 
@@ -59,7 +59,7 @@ export default function ReportsPage() {
       setTimeout(() => {
         setActiveDownload(null)
         setDownloadProgress(0)
-      }, 1500) // Increased from 1000ms to 1500ms
+      }, 1500)
     } catch (err) {
       console.error("Download error:", err)
       setActiveDownload(null)
@@ -89,16 +89,25 @@ export default function ReportsPage() {
             <FolderArchive className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold">Reports</h1>
           </div>
+     
+          {/* "About" section */}
+          <div className="p-6 bg-blue-50 rounded-lg border border-blue-200">
+            <h2 className="text-xl font-semibold text-blue-800 mb-4">About Reports</h2>
+            <p className="text-gray-700 mb-2 mt-2">
+              Reports are generated automatically based on the current semester's data. They provide comprehensive
+              information about TA assignments, duties, and workload distribution, and they are updated in real-time.
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-10">
             <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100">
               <CardHeader className="bg-amber-400 text-white pb-8">
                 <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5" />
+                  <FileSpreadsheet className="h-7 w-7" />
                   Proctoring Report
                 </CardTitle>
                 <CardDescription className="text-white text-base">
-                  Complete proctoring assignments and hours
+                  Total proctoring assignments and hours.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 relative">
@@ -138,7 +147,7 @@ export default function ReportsPage() {
             <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border border-pink-200 bg-gradient-to-br from-pink-50 to-pink-100">
               <CardHeader className="bg-rose-400 text-white pb-8">
                 <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5" />
+                  <FileSpreadsheet className="h-7 w-7" />
                   TA Duty Report
                 </CardTitle>
                 <CardDescription className="text-white text-base">Comprehensive TA duty assignments</CardDescription>
@@ -176,7 +185,7 @@ export default function ReportsPage() {
             <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
               <CardHeader className="bg-violet-400 text-white pb-8">
                 <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5" />
+                  <FileSpreadsheet className="h-7 w-7" />
                   Workload Report
                 </CardTitle>
                 <CardDescription className="text-white text-base">
@@ -218,18 +227,6 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* Additional information section */}
-          <div className="mt-12 p-6 bg-blue-50 rounded-lg border border-blue-200">
-            <h2 className="text-xl font-semibold text-blue-800 mb-4">About Reports</h2>
-            <p className="text-gray-700 mb-4">
-              These reports are generated automatically based on the current semester's data. They provide comprehensive
-              information about TA assignments, duties, and workload distribution.
-            </p>
-            <p className="text-gray-700">
-              Reports are updated in real-time. If you need the most up-to-date information, please download the
-              latest version before making decisions.
-            </p>
-          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>

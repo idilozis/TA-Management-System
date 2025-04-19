@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import dynamic from "next/dynamic";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/components/general/user-data"
 import { AppSidebar } from "@/components/general/app-sidebar"
@@ -13,6 +14,18 @@ import StaffExamsModal from "@/app/exams/staff-exams/StaffExamsModal"
 import MailPopover from "@/app/home-page/mail-system/MailPopover"
 import NotificationModal from "@/app/home-page/notification-system/NotificationPopover"
 import { Button } from "@/components/ui/button"
+
+const TopWorkloadChart = dynamic(
+  () => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart),
+  { ssr: false }
+);
+const DeptComparisonChart = dynamic(
+  () =>
+    import("@/components/charts/DepartmentComparisonChart").then(
+      (m) => m.DepartmentComparisonChart
+    ),
+  { ssr: false }
+);
 
 export default function HomePage() {
   // Get URL parameters
@@ -134,13 +147,34 @@ export default function HomePage() {
                 <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
               </h2>
               <Button onClick={() => setShowExamModal(true)} className="bg-blue-600 hover:bg-blue-500 ">
-                <Plus className="mr-0.5 h-4 w-4" />Add Exam
+                <Plus className="mr-0.5 h-4 w-4" />Exam
               </Button>
              
             </div>
           )}
 
           {!user.isTA && !user.isAuth && <StaffExamsModal refreshTrigger={examRefreshTrigger} />}
+
+          {/* Charts for AUTHORIZED STAFF */}
+          {!user.isTA && user.isAuth && (
+            <section className="mt-12 grid gap-6 md:grid-cols-2">
+              {/* Card 1: Top 20 Workloads */}
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-4">
+                  Top 20 TA Workloads
+                </h3>
+                <TopWorkloadChart />
+              </div>
+
+              {/* Card 2: Department Comparison */}
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold mb-4">
+                  Department-wise Proctoring and Duties
+                </h3>
+                <DeptComparisonChart />
+              </div>
+            </section>
+          )}
         </SidebarInset>
       </div>
 

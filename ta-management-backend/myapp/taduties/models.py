@@ -7,7 +7,6 @@ DUTY_TYPES = [
     ("grading", "Grading"),
     ("recitation", "Recitation"),
     ("office_hours", "Office Hours"),
-    ("exam_proctoring", "Proctoring"),
     ("other", "Other"),
 ]
 

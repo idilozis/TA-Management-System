@@ -1,13 +1,17 @@
 # myapp/exams/views.py
+import json, random
+from datetime import datetime
+
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction
-from datetime import datetime
-import json
 
 from myapp.userauth.helpers import find_user_by_email
 from myapp.models import Course 
-from myapp.exams.models import Exam
+from myapp.exams.models import Exam, DeanExam
+from myapp.exams.classrooms import ClassroomEnum
+from myapp.exams.courses_nondept import NonDeptCourseEnum
 
 
 # -----------------------------
@@ -28,16 +32,32 @@ def create_exam(request):
     
     # 3. Parse POST body
     data = json.loads(request.body)
+    
+    # expect a classroom list
+    classrooms = data.get("classrooms", [])
+    if not classrooms or not isinstance(classrooms, list):
+        return JsonResponse({
+            "status":"error",
+            "message":"`classrooms` must be a non-empty list."
+        }, status=400)
+    # validate enum
+    valid = {v for v, _ in ClassroomEnum.choices()}
+    for room in classrooms:
+        if room not in valid:
+            return JsonResponse({
+                "status":"error",
+                "message":f"Invalid classroom: {room}"
+            }, status=400)
+
     course_id = data.get("course_id")
     date_str = data.get("date")
-    start_time_str = data.get("start_time")
-    end_time_str = data.get("end_time")
+    start_str = data.get("start_time")
+    end_str = data.get("end_time")
     num_proctors = data.get("num_proctors", 1)
-    classroom_name = data.get("classroom_name")
     student_count = data.get("student_count", 0)
 
-    if not (course_id and date_str and start_time_str and end_time_str and classroom_name):
-        return JsonResponse({"status": "error", "message": "Missing required fields."}, status=400)
+    if not all([course_id, date_str, start_str, end_str]):
+        return JsonResponse({"status":"error","message":"Missing required fields."}, status=400)
     
     # 4. Fetch the course
     try:
@@ -52,21 +72,20 @@ def create_exam(request):
     # 6. Convert date/time strings
     try:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-        start_obj = datetime.strptime(start_time_str, "%H:%M").time()
-        end_obj = datetime.strptime(end_time_str, "%H:%M").time()
+        start_obj = datetime.strptime(start_str, "%H:%M").time()
+        end_obj = datetime.strptime(end_str, "%H:%M").time()
     except ValueError:
         return JsonResponse({"status": "error", "message": "Invalid date/time format."}, status=400)
     
-    # 7. Check start time < end time and classroom availability
+    # 7. Check start time < end time
     if start_obj >= end_obj:
         return JsonResponse({"status": "error", "message": "Start time must be before end time."}, status=400)
     
-    is_available, message = is_classroom_available(classroom_name, date_obj, start_obj, end_obj)
-    if not is_available:
-        return JsonResponse({
-            "status": "error", 
-            "message": f"Cannot create exam: {message}"
-        }, status=400)
+    # 8. Check each classroom availability
+    for room in classrooms:
+        ok, msg = is_classroom_available(room, date_obj, start_obj, end_obj)
+        if not ok:
+            return JsonResponse({"status":"error","message":f"{room}: {msg}"}, status=400)
     
     # 8. Create the exam
     exam = Exam.objects.create(
@@ -76,8 +95,8 @@ def create_exam(request):
         start_time=start_obj,
         end_time=end_obj,
         num_proctors=num_proctors,
-        classroom_name=classroom_name,
-        student_count=student_count
+        student_count=student_count,
+        classrooms = classrooms,
     )
 
     return JsonResponse({
@@ -124,7 +143,6 @@ def list_staff_exams(request):
 
     # Get all exams where the user is the instructor
     exams = Exam.objects.filter(instructor=user).select_related('course')
-    
     exams_data = []
     for exam in exams:
         # Get confirmed TA assignments from the ProctoringAssignment relation.
@@ -136,7 +154,7 @@ def list_staff_exams(request):
             "date": exam.date.strftime("%Y-%m-%d"),
             "start_time": exam.start_time.strftime("%H:%M"),
             "end_time": exam.end_time.strftime("%H:%M"),
-            "classroom_name": exam.classroom_name,
+            "classrooms": exam.classrooms,
             "num_proctors": exam.num_proctors,
             "student_count": exam.student_count,
             "assigned_tas": assigned_tas,
@@ -170,7 +188,7 @@ def list_ta_exams(request):
             "date": exam.date.strftime("%Y-%m-%d"),
             "start_time": exam.start_time.strftime("%H:%M"),
             "end_time": exam.end_time.strftime("%H:%M"),
-            "classroom_name": exam.classroom_name,
+            "classrooms": exam.classrooms,
             "num_proctors": exam.num_proctors,
             "student_count": exam.student_count,
         })
@@ -227,16 +245,148 @@ def delete_exam(request):
 # -----------------------------
 # CHECK CLASSROOM AVAILABILITY
 # -----------------------------
-def is_classroom_available(classroom_name, date_obj, start_time, end_time, exclude_exam_id=None):
-    overlapping_exams = Exam.objects.filter(
-        classroom_name=classroom_name,
-        date=date_obj
-    ).exclude(id=exclude_exam_id)
-    
-    # Check for any time overlap with existing exams
-    for exam in overlapping_exams:
-        # Check if the new exam's time range overlaps with any existing exam
-        if (start_time < exam.end_time and end_time > exam.start_time):
-            return False, f"Classroom already booked for {exam.course.code} from {exam.start_time} to {exam.end_time}"
-    
-    return True, "Classroom is available"
+def is_classroom_available(room, date_obj, start_time, end_time, exclude_exam_id=None):
+    qs = Exam.objects.filter(date=date_obj, classrooms__contains=[room])
+    if exclude_exam_id:
+        qs = qs.exclude(id=exclude_exam_id)
+
+    for exam in qs:
+        if start_time < exam.end_time and end_time > exam.start_time:
+            return False, f"Booked by {exam.course.code} {exam.start_time}-{exam.end_time}"
+    return True, "Available"
+
+
+# -----------------------------
+# LIST CLASSROOMENUM VALUES
+# -----------------------------
+@require_GET
+def list_classrooms(request):
+    classrooms = [value for value, _ in ClassroomEnum.choices()]
+    return JsonResponse({"status": "success", "classrooms": classrooms})
+
+
+# -----------------------------
+# DEAN OFFICE EXAM METHODS:
+# -----------------------------
+def _parse_datetime(date):
+    date_obj = datetime.strptime(date["date"], "%Y-%m-%d").date()
+    start = datetime.strptime(date["start_time"], "%H:%M").time()
+    end = datetime.strptime(date["end_time"], "%H:%M").time()
+    return date_obj, start, end
+
+@require_GET
+def list_dean_courses(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
+    user, user_type = find_user_by_email(email)
+    if not user or not getattr(user, "isAuth",False):
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
+
+    courses = [v for v,_ in NonDeptCourseEnum.choices()]
+    return JsonResponse({"status":"success","courses":courses})
+
+@require_POST
+@transaction.atomic
+def create_dean_exam(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
+    user, user_type = find_user_by_email(email)
+    if not user or not getattr(user,"isAuth",False):
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
+
+    data = json.loads(request.body)
+    course_codes = data.get("course_codes",[])
+    rooms = data.get("classrooms", [])
+
+    if not isinstance(course_codes,list) or not course_codes:
+        return JsonResponse({"status":"error","message":"`course_codes` list required"}, status=400)
+    if not isinstance(rooms,list) or not rooms:
+        return JsonResponse({"status":"error","message":"`classrooms` list required"}, status=400)
+
+    valid_course = {v for v,_ in NonDeptCourseEnum.choices()}
+    for course in course_codes:
+        if course not in valid_course:
+            return JsonResponse({"status":"error","message":f"Invalid course code {course}"}, status=400)
+
+    valid_room = {v for v,_ in ClassroomEnum.choices()}
+    for room in rooms:
+        if room not in valid_room:
+            return JsonResponse({"status":"error","message":f"Invalid classroom {room}"}, status=400)
+
+    try:
+        d,s,e = _parse_datetime(data)
+    except ValueError:
+        return JsonResponse({"status":"error","message":"Invalid date/time"}, status=400)
+    if s>=e:
+        return JsonResponse({"status":"error","message":"Start must be before end"}, status=400)
+
+    # reuse availability
+    for room in rooms:
+        ok,msg = is_classroom_available(room,d,s,e)
+        if not ok:
+            return JsonResponse({"status":"error","message":msg}, status=400)
+
+    dean_exam = DeanExam.objects.create(
+        creator       = user,
+        course_codes  = course_codes,
+        date          = d,
+        start_time    = s,
+        end_time      = e,
+        num_proctors  = data.get("num_proctors",1),
+        student_count = data.get("student_count",0),
+        classrooms    = rooms,
+    )
+    return JsonResponse({"status":"success","exam_id":dean_exam.id}, status=201)
+
+@require_GET
+def list_dean_exams(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    if not user or not getattr(user, "isAuth", False):
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
+
+    qs = DeanExam.objects.order_by("-date", "-start_time")
+    exams = []
+    for ex in qs:
+        exams.append({
+            "id":            ex.id,
+            "course_codes":  ex.course_codes,
+            "date":          ex.date.strftime("%Y-%m-%d"),
+            "start_time":    ex.start_time.strftime("%H:%M"),
+            "end_time":      ex.end_time.strftime("%H:%M"),
+            "classrooms":    ex.classrooms,
+            "num_proctors":  ex.num_proctors,
+            "student_count": ex.student_count,
+        })
+
+    return JsonResponse({"status":"success","exams":exams})
+
+
+@require_POST
+def delete_dean_exam(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    # only AuthorizedUser (isAuth=True) can delete DeanExam
+    if not user or not getattr(user, "isAuth", False):
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
+
+    data = json.loads(request.body)
+    exam_id = data.get("exam_id")
+    if not exam_id:
+        return JsonResponse({"status":"error","message":"Exam ID is required."}, status=400)
+
+    # fetch and verify ownership
+    de = get_object_or_404(DeanExam, id=exam_id)
+    if de.creator != user:
+        return JsonResponse({"status":"error","message":"You can only delete your own exams."}, status=403)
+
+    de.delete()
+    return JsonResponse({"status":"success","message":"Exam deleted successfully."})

@@ -1,14 +1,17 @@
 # myapp/reports/views.py
-import requests
+import requests, random
 from django.http import HttpResponse
 from pylatex import Document, Section, Subsection, Tabular, Package
 from pylatex.utils import NoEscape, bold, escape_latex
+from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from datetime import datetime, date
 
 # Models
 from myapp.proctoring.models import ProctoringAssignment
 from myapp.taduties.models import TADuty
-from myapp.models import TAUser
+from myapp.models import StudentList, TAUser
+from myapp.exams.models import DeanExam, Exam
 
 
 def download_total_proctoring_sheet(request):
@@ -303,3 +306,100 @@ def download_total_workload_sheet(request):
     response = HttpResponse(pdf_data, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="ta_workload.pdf"'
     return response
+
+
+# STUDENT LIST
+_LATEX_PKGS = ["fontspec","booktabs","longtable","array","xcolor"]
+
+def _inline_pdf(doc: Document, filename: str) -> HttpResponse:
+    src = doc.dumps()
+    r = requests.get(
+        "https://latexonline.cc/compile",
+        params={"text": src, "command": "xelatex", "force": "true"},
+        timeout=60
+    )
+    if r.status_code != 200 or r.headers.get("Content-Type") != "application/pdf":
+        return HttpResponse(r.text, status=400, content_type="text/plain")
+    resp = HttpResponse(r.content, content_type="application/pdf")
+    resp["Content-Disposition"] = f'inline; filename="{filename}"'
+    return resp
+
+def _make_student_section(doc: Document, title: str, students):
+    doc.append(NoEscape(r"\maketitle"))
+    with doc.create(Section(title)):
+        with doc.create(Tabular("|c|l|l|l|")) as table:
+            table.add_hline()
+            table.add_row((bold("No."), bold("ID"), bold("Surname"), bold("Name")))
+            table.add_hline()
+            for i, student in enumerate(students, 1):
+                table.add_row((
+                    i,
+                    escape_latex(student.student_id),
+                    escape_latex(student.surname),
+                    escape_latex(student.name),
+                ))
+                table.add_hline()
+
+def _load_exam_or_dean(exam_id):
+    try:
+        ex = Exam.objects.select_related("course").get(pk=exam_id)
+        title_str = f"{ex.course.code} - {ex.course.name}"
+        rooms = ex.classrooms
+        start = ex.start_time.strftime("%H:%M")
+        end = ex.end_time.strftime("%H:%M")
+        students  = ex.course.students.order_by("surname", "name")
+    except Exam.DoesNotExist:
+        de = get_object_or_404(DeanExam, pk=exam_id)
+        title_str = ", ".join(de.course_codes)
+        rooms = de.classrooms
+        start = de.start_time.strftime("%H:%M")
+        end = de.end_time.strftime("%H:%M")
+
+        # Q that matches any student whose JSON list contains each code
+        q = Q()
+        for code in de.course_codes:
+            # This will find rows where nondept_courses JSON array contains that element
+            q |= Q(nondept_courses__contains=[code])
+
+        students = (
+            StudentList.objects
+            .filter(q)
+            .order_by("surname", "name")
+        )
+
+    return title_str, rooms, start, end, students
+
+def exam_students_alpha(request, exam_id):
+    title_str, rooms, start, end, students = _load_exam_or_dean(exam_id)
+
+    doc = Document(documentclass="article", document_options=["12pt"])
+    doc.packages.append(Package("geometry", options=["margin=1in"]))
+    for pkg in _LATEX_PKGS:
+        doc.packages.append(Package(pkg, options=["table"] if pkg=="xcolor" else None))
+
+    doc.preamble.append(NoEscape(r'\date{}'))
+    doc.preamble.append(NoEscape(
+      rf"\title{{{escape_latex(title_str)}\newline{start}--{end}}}"
+    ))
+
+    _make_student_section(doc, f"Rooms: {', '.join(rooms)}", students)
+    return _inline_pdf(doc, f"exam_{exam_id}_alpha.pdf")
+
+def exam_students_random(request, exam_id):
+    title_str, rooms, start, end, students = _load_exam_or_dean(exam_id)
+
+    doc = Document(documentclass="article", document_options=["12pt"])
+    doc.packages.append(Package("geometry", options=["margin=1in"]))
+    for pkg in _LATEX_PKGS:
+        doc.packages.append(Package(pkg, options=["table"] if pkg=="xcolor" else None))
+
+    students = list(students)
+    random.shuffle(students)
+
+    doc.preamble.append(NoEscape(r'\date{}'))
+    doc.preamble.append(NoEscape(
+      rf"\title{{{escape_latex(title_str)}\newline{start}--{end}}}"
+    ))
+
+    _make_student_section(doc, f"Rooms: {', '.join(rooms)}", students)
+    return _inline_pdf(doc, f"exam_{exam_id}_random.pdf")

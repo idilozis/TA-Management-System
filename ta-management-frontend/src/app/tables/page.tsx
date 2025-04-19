@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Table2 } from "lucide-react"
+import { Archive } from "lucide-react"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
@@ -111,7 +111,7 @@ export default function TablesPage() {
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-4">
               <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Table2 className="h-8 w-8 text-blue-600" /> Records
+                <Archive className="h-8 w-8 text-blue-600" /> Records
               </h1>
           </div>
 
@@ -151,7 +151,7 @@ export default function TablesPage() {
                 <TabsContent value="courses">
                   <Card className="border-black">
                     <CardHeader>
-                      <CardTitle className="text-blue-700">COURSES</CardTitle>
+                      <CardTitle className="text-blue-700">COURSES (2024-2025 SPRING)</CardTitle>
                     </CardHeader>
 
                     <CardContent>
@@ -193,7 +193,7 @@ export default function TablesPage() {
                 <TabsContent value="staff">
                   <Card className="border-black">
                     <CardHeader>
-                      <CardTitle className="text-blue-700">STAFF</CardTitle>
+                      <CardTitle className="text-blue-700">INSTRUCTORS</CardTitle>
                     </CardHeader>
 
                     <CardContent>
@@ -203,7 +203,7 @@ export default function TablesPage() {
                         toolbarClassName="justify-start"
                         hideRowCount
                         tableClassName="text-sm"
-                        searchPlaceholder="Search Staff..."
+                        searchPlaceholder="Search Instructors..."
                         handleOpenMail={handleOpenMail}
                       />
                     </CardContent>

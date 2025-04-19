@@ -1,7 +1,9 @@
 # myapp/exams/models.py
-from django.db import models 
-from myapp.models import StaffUser
-from myapp.models import Course
+from django.db import models
+from django.core.exceptions import ValidationError
+from myapp.models import StaffUser, AuthorizedUser, Course
+from myapp.exams.classrooms import ClassroomEnum
+from myapp.exams.courses_nondept import NonDeptCourseEnum
 
 class Exam(models.Model): 
     instructor = models.ForeignKey(
@@ -20,8 +22,64 @@ class Exam(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     num_proctors = models.PositiveIntegerField(default=1)
-    classroom_name = models.CharField(max_length=255)
     student_count = models.PositiveIntegerField(default=0)
 
+    classrooms = models.JSONField(
+        default=list,
+        help_text="List of room codes from ClassroomEnum"
+    )
+
+    def clean(self):
+        # Ensure all classrooms are valid enum values
+        valid = {v for v, _ in ClassroomEnum.choices()}
+        for room in self.classrooms:
+            if room not in valid:
+                raise ValidationError(f"Invalid classroom: {room}")
+
     def __str__(self):
-        return f"{self.course.code} exam on {self.date} in {self.classroom_name}"
+        rooms = ", ".join(self.classrooms)
+        return f"{self.course.code} exam on {self.date} in {rooms}"
+
+
+class DeanExam(models.Model):
+    creator = models.ForeignKey(
+        AuthorizedUser,
+        on_delete=models.CASCADE,
+        related_name="exams_created"
+    )
+
+    course_codes = models.JSONField(
+        default=list,
+        help_text="List of course codes from NonDeptCourseEnum"
+    )
+
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    num_proctors = models.PositiveIntegerField(default=1)
+    student_count = models.PositiveIntegerField(default=0)
+
+    classrooms = models.JSONField(
+        default=list,
+        help_text="List of room codes from ClassroomEnum"
+    )
+
+    def clean(self):
+        # 1) Validate course_codes
+        valid_courses = {v for v, _ in NonDeptCourseEnum.choices()}
+        if not isinstance(self.course_codes, list) or not self.course_codes:
+            raise ValidationError("`course_codes` must be a non-empty list.")
+        for code in self.course_codes:
+            if code not in valid_courses:
+                raise ValidationError(f"Invalid non-dept course code: {code}")
+
+        # 2) Validate classrooms
+        valid_rooms = {v for v, _ in ClassroomEnum.choices()}
+        for room in self.classrooms:
+            if room not in valid_rooms:
+                raise ValidationError(f"Invalid classroom code: {room}")
+
+    def __str__(self):
+        courses = ", ".join(self.course_codes)
+        rooms   = ", ".join(self.classrooms)
+        return f"{courses} exam on {self.date} in {rooms}"

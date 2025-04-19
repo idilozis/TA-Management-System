@@ -19,6 +19,7 @@ urlpatterns = [
     path('swap/', include('myapp.swap.urls')),              # Call "myapp -> swap" functions
     path('assignment/', include('myapp.taassignment.urls')),    # Call "myapp -> taassignment" functions
     path('reports/', include('myapp.reports.urls')),        # Call "myapp -> reports" functions
+    path('charts/', include('myapp.charts.urls')),          # Call "myapp -> charts" functions
 
     # Default root view
     path('', initial_backend_view), 

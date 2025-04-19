@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import apiClient from "@/lib/axiosClient"
 import { useUser } from "@/components/general/user-data"
 import { PageLoader } from "@/components/ui/loading-spinner"
-import { ClipboardList, Paperclip, Plus } from "lucide-react"
+import { CalendarOff, Paperclip, Plus } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -61,6 +61,10 @@ export default function TALeaveTA() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileName, setSelectedFileName] = useState("")
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   // Initialize form
   const form = useForm<LeaveFormValues>({
@@ -161,7 +165,7 @@ export default function TALeaveTA() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-6">
-        <ClipboardList className="h-8 w-8 text-blue-600" />
+        <CalendarOff className="h-8 w-8 text-blue-600" />
         <h1 className="text-3xl font-bold">Leave Requests</h1>
       </div>
 
@@ -187,10 +191,10 @@ export default function TALeaveTA() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-blue-600">Pending Leave Requests</CardTitle>
-                <CardDescription>Leave requests awaiting approval</CardDescription>
+                <CardDescription>Leave requests awaiting approval.</CardDescription>
               </div>
               <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
-                <Plus className="mr-2 h-4 w-4" /> Create Leave Request
+                <Plus className="mr-0.5 h-4 w-4" /> New Leave Request
               </Button>
             </CardHeader>
             <CardContent>
@@ -215,10 +219,10 @@ export default function TALeaveTA() {
                         <TableRow key={leave.id}>
                           <TableCell className="font-medium capitalize">{leave.leave_type}</TableCell>
                           <TableCell>
-                            {leave.start_date} {leave.start_time}
+                            {formatDate(leave.start_date)} ({leave.start_time})
                           </TableCell>
                           <TableCell>
-                            {leave.end_date} {leave.end_time}
+                            {formatDate(leave.end_date)} ({leave.end_time})
                           </TableCell>
                           <TableCell>{computeTotalDays(leave.start_date, leave.end_date)}</TableCell>
                           <TableCell>
@@ -255,10 +259,10 @@ export default function TALeaveTA() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-blue-600">Past Leave Requests</CardTitle>
-                <CardDescription>History of approved and rejected leave requests</CardDescription>
+                <CardDescription>History of approved and rejected leave requests.</CardDescription>
               </div>
               <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
-                <Plus className="mr-2 h-4 w-4" /> Create Leave Request
+                <Plus className="mr-0.5 h-4 w-4" /> New Leave Request
               </Button>
             </CardHeader>
             <CardContent>
@@ -283,10 +287,10 @@ export default function TALeaveTA() {
                         <TableRow key={leave.id}>
                           <TableCell className="font-medium capitalize">{leave.leave_type}</TableCell>
                           <TableCell>
-                            {leave.start_date} {leave.start_time}
+                            {formatDate(leave.start_date)} ({leave.start_time})
                           </TableCell>
                           <TableCell>
-                            {leave.end_date} {leave.end_time}
+                            {formatDate(leave.end_date)} ({leave.end_time})
                           </TableCell>
                           <TableCell>{computeTotalDays(leave.start_date, leave.end_date)}</TableCell>
                           <TableCell>
@@ -328,14 +332,14 @@ export default function TALeaveTA() {
 
       {/* Create Leave Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="w-full max-w-3xl mx-4" onClick={(e) => e.stopPropagation()}>
             <Card className="border-blue-600 border-2">
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-blue-600">Create Leave Request</CardTitle>
                 </div>
-                <CardDescription>Submit a new leave request for approval</CardDescription>
+                <CardDescription>Submit a new leave request for approval.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -347,7 +351,7 @@ export default function TALeaveTA() {
                         name="leave_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Leave Type</FormLabel>
+                            <FormLabel>Leave Type <span className="text-red-500">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -368,7 +372,7 @@ export default function TALeaveTA() {
 
                       {/* Document Upload */}
                       <div className="space-y-2">
-                        <FormLabel>Supporting Document (Optional)</FormLabel>
+                        <FormLabel>Document (Optional)</FormLabel>
                         <div className="flex items-center gap-2">
                           <Button
                             type="button"
@@ -397,7 +401,7 @@ export default function TALeaveTA() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Upload any medical report or supporting document (PDF or image)
+                          Upload any medical report or document (PDF or image).
                         </p>
                       </div>
                     </div>
@@ -409,9 +413,9 @@ export default function TALeaveTA() {
                         name="start_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Date</FormLabel>
+                            <FormLabel>Start Date <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-full" />
+                              <Input type="date" {...field} className="w-full" min = {new Date().toISOString().split("T")[0]}/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -424,9 +428,9 @@ export default function TALeaveTA() {
                         name="end_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Date</FormLabel>
+                            <FormLabel>End Date <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-full" />
+                              <Input type="date" {...field} className="w-full" min = {new Date().toISOString().split("T")[0]}/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -441,9 +445,9 @@ export default function TALeaveTA() {
                         name="start_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Time</FormLabel>
+                            <FormLabel>Start Time <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full" />
+                              <Input type="time" {...field} className="w-full"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -456,9 +460,9 @@ export default function TALeaveTA() {
                         name="end_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Time</FormLabel>
+                            <FormLabel>End Time <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full" />
+                              <Input type="time" {...field} className="w-full"/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -472,16 +476,16 @@ export default function TALeaveTA() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
+                          <FormLabel>Description <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Provide details about your leave request"
+                              placeholder="Provide details about your leave request."
                               {...field}
                               className="min-h-[100px]"
                             />
                           </FormControl>
                           <FormDescription>
-                            Explain the reason for your leave request and any other relevant details
+                            Explain the reason for your leave request and any other relevant details.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

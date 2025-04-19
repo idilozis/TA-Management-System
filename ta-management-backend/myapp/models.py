@@ -115,8 +115,32 @@ class AuthorizedUser(models.Model):
 
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
+    
 
+# This class represents the necessary modal for printing student distribution for an exam.
+class StudentList(models.Model):
+    student_id = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=255)
+    surname = models.CharField(max_length=255)
+    email = models.EmailField(primary_key=True)
+    courses = models.ManyToManyField(
+        Course,
+        related_name="students",
+        blank=True,
+    )
+    nondept_courses = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of non-departmental course codes from NonDeptCourseEnum"
+    )
 
+    class Meta:
+        db_table = 'students'
+
+    def __str__(self):
+        return f"{self.surname}, {self.name} ({self.student_id})"
+
+"""""
 # Import all models for migrations.
 from myapp.taassignment.models import TAAssignment
 from myapp.taassignment.models import TAAllocation
@@ -126,3 +150,5 @@ from myapp.schedule.models import TAWeeklySlot
 from myapp.proctoring.models import ProctoringAssignment
 from myapp.notificationsystem.models import Notification
 from myapp.exams.models import Exam
+from myapp.exams.models import DeanExam
+"""

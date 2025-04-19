@@ -188,7 +188,7 @@ export default function WeeklyScheduleModal() {
       <CardHeader className="pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center text-2xl font-bold">
-            <CalendarDays className="mr-2 h-6 w-6 text-blue-600" /> MY SCHEDULE
+            <CalendarDays className="mr-2 h-6 w-6 text-blue-600" /> WEEKLY SCHEDULE
           </CardTitle>
 
           <Button

@@ -5,7 +5,7 @@ import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Calendar } from "lucide-react"
+import { AlertCircle, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -16,7 +16,7 @@ interface Exam {
   date: string;
   start_time: string;
   end_time: string;
-  classroom_name: string;
+  classrooms: string[];
   num_proctors: number;
   student_count: number;
 }
@@ -26,6 +26,10 @@ export default function ProctoringTA() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming")
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   const fetchAssignedExams = async () => {
     setLoading(true)
@@ -75,7 +79,7 @@ export default function ProctoringTA() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-6">
-        <Calendar className="h-8 w-8 text-blue-600" />
+        <FileText className="h-8 w-8 text-blue-600" />
         <h1 className="text-3xl font-bold">Proctoring</h1>
       </div>
 
@@ -105,7 +109,7 @@ export default function ProctoringTA() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-blue-600">Upcoming Exams</CardTitle>
-                <CardDescription>Exams you are assigned to proctor in the future</CardDescription>
+                <CardDescription>Exams you are assigned to proctor in the future.</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -132,13 +136,13 @@ export default function ProctoringTA() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                              {exam.date}
+                              {formatDate(exam.date)}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {exam.start_time} - {exam.end_time}
                           </TableCell>
-                          <TableCell>{exam.classroom_name}</TableCell>
+                          <TableCell>{exam.classrooms.join(", ")}</TableCell>
                           <TableCell>{exam.student_count}</TableCell>
                         </TableRow>
                       ))}
@@ -155,7 +159,7 @@ export default function ProctoringTA() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-blue-600">Past Exams</CardTitle>
-                <CardDescription>Exams you have previously proctored</CardDescription>
+                <CardDescription>Exams you have previously proctored.</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -182,13 +186,13 @@ export default function ProctoringTA() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                              {exam.date}
+                              {formatDate(exam.date)}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {exam.start_time} - {exam.end_time}
                           </TableCell>
-                          <TableCell>{exam.classroom_name}</TableCell>
+                          <TableCell>{exam.classrooms.join(", ")}</TableCell>
                           <TableCell>{exam.student_count}</TableCell>
                         </TableRow>
                       ))}

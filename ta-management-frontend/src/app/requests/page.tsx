@@ -28,6 +28,10 @@ export default function RequestsPage() {
   const [pendingRequests, setPendingRequests] = useState<Duty[]>([]);
   const [pastRequests, setPastRequests] = useState<Duty[]>([]);
   const [message, setMessage] = useState("");
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   // If user is staff (not a TA), fetch pending/past requests
   useEffect(() => {
@@ -164,7 +168,7 @@ export default function RequestsPage() {
                       <td className="border border-gray-300 p-2">{duty.ta_name}</td>
                       <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
                       <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{duty.date}</td>
+                      <td className="border border-gray-300 p-2">{formatDate(duty.date)}</td>
                       <td className="border border-gray-300 p-2">{duty.start_time}</td>
                       <td className="border border-gray-300 p-2">{duty.end_time}</td>
                       <td className="border border-gray-300 p-2">
@@ -225,7 +229,7 @@ export default function RequestsPage() {
                       <td className="border border-gray-300 p-2">{duty.ta_name}</td>
                       <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
                       <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{duty.date}</td>
+                      <td className="border border-gray-300 p-2">{formatDate(duty.date)}</td>
                       <td className="border border-gray-300 p-2">{duty.start_time}</td>
                       <td className="border border-gray-300 p-2">{duty.end_time}</td>
                       <td className="border border-gray-300 p-2">

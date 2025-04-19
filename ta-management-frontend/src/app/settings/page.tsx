@@ -183,10 +183,6 @@ export default function SettingsPage() {
 
             {/* Admin-only settings */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-blue-600">System Settings</CardTitle>
-                <CardDescription>Current system configuration</CardDescription>
-              </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">

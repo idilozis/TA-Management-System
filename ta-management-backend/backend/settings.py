@@ -64,7 +64,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'tamanagementsystem@gmail.com'    # E-mail address
-EMAIL_HOST_PASSWORD = 'mwdv jfhx rzkh rbvr'         # App password (cs319123)
+EMAIL_HOST_PASSWORD = 'mwdv jfhx rzkh rbvr'         # App password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ######################################
 

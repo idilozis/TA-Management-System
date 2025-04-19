@@ -17,7 +17,6 @@ export default function ProctoringPage() {
   const showAssignmentsTab = user?.isTA || (user && !user.isTA && !user.isAuth); // TAs and Staff
   const showLeaveTab = user?.isTA || (user && user.isAuth); // TAs and Authorized users
 
-  // Set default active tab based on user type - MOVED TO TOP LEVEL
   useEffect(() => {
     if (user) {
       // If user can't see assignments tab but can see leave tab, default to leave

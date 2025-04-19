@@ -47,6 +47,10 @@ export default function TALeaveAuthorized() {
   const [message, setMessage] = useState("");
   const [pendingLeaves, setPendingLeaves] = useState<StaffLeave[]>([]);
   const [pastLeaves, setPastLeaves] = useState<StaffLeave[]>([]);
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   useEffect(() => {
     if (user && !user.isTA) {
@@ -140,10 +144,10 @@ export default function TALeaveAuthorized() {
                   <td className="border p-2">{lv.ta_email}</td>
                   <td className="border p-2">{lv.leave_type}</td>
                   <td className="border p-2">
-                    {lv.start_date} {lv.start_time}
+                    {formatDate(lv.start_date)} ({lv.start_time})
                   </td>
                   <td className="border p-2">
-                    {lv.end_date} {lv.end_time}
+                    {formatDate(lv.end_date)} ({lv.end_time})
                   </td>
                   <td className="border p-2">
                     {computeTotalDays(lv.start_date, lv.end_date)}
@@ -217,10 +221,10 @@ export default function TALeaveAuthorized() {
                   <td className="border p-2">{lv.ta_email}</td>
                   <td className="border p-2">{lv.leave_type}</td>
                   <td className="border p-2">
-                    {lv.start_date} {lv.start_time}
+                    {formatDate(lv.start_date)} ({lv.start_time})
                   </td>
                   <td className="border p-2">
-                    {lv.end_date} {lv.end_time}
+                    {formatDate(lv.end_date)} ({lv.end_time})
                   </td>
                   <td className="border p-2">
                     {computeTotalDays(lv.start_date, lv.end_date)}

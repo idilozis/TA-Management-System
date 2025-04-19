@@ -2,20 +2,13 @@
 
 import { useEffect, useState } from "react"
 import apiClient from "@/lib/axiosClient"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { FileText, Trash2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+         AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Trash2 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 interface Exam {
@@ -25,7 +18,7 @@ interface Exam {
   date: string
   start_time: string
   end_time: string
-  classroom_name: string
+  classrooms: string[]
   num_proctors: number
   student_count: number
 }
@@ -39,6 +32,10 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [examToDelete, setExamToDelete] = useState<number | null>(null)
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   const fetchExams = async () => {
     setLoading(true)
@@ -113,23 +110,60 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                       <TableCell className="font-medium whitespace-nowrap">
                         {exam.course_code} - {exam.course_name}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{exam.date}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDate(exam.date)}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         {exam.start_time} - {exam.end_time}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{exam.classroom_name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{exam.classrooms.join(", ")}</TableCell>
                       <TableCell className="whitespace-nowrap">{exam.num_proctors}</TableCell>
                       <TableCell className="whitespace-nowrap">{exam.student_count}</TableCell>
-                      <TableCell className="whitespace-nowrap">
+                      
+                      <TableCell className="whitespace-nowrap flex items-center gap-2">
+                        {/* Delete */}
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => setExamToDelete(exam.id)}
                           className="flex items-center gap-1"
                         >
-                          <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                           Delete
                         </Button>
+                        
+                        {/* Print dropdown */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500">Student List</Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-40 p-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="justify-start w-full"
+                              onClick={() =>
+                                window.open(
+                                  `${apiClient.defaults.baseURL}/reports/studentlist-alphabetic/${exam.id}/`,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              Alphabetical
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="justify-start w-full"
+                              onClick={() =>
+                                window.open(
+                                  `${apiClient.defaults.baseURL}/reports/studentlist-random/${exam.id}/`,
+                                  "_blank"
+                                )
+                              }
+                            >
+                              Random
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
                       </TableCell>
                     </TableRow>
                   ))}

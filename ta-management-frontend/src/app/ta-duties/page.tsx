@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
-import { ClipboardList, Plus } from "lucide-react"
+import { CheckCircle, Plus } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -61,6 +61,10 @@ export default function TADutiesPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("error")
   const [activeTab, setActiveTab] = useState("pending")
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split('-')
+    return `${day}.${month}.${year}`
+  }
 
   // Initialize form
   const form = useForm<DutyFormValues>({
@@ -178,8 +182,8 @@ export default function TADutiesPage() {
         <AppSidebar user={user} />
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-6">
-            <ClipboardList className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">My Duties</h1>
+            <CheckCircle className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold">Duties</h1>
           </div>
 
           {message && (
@@ -211,10 +215,10 @@ export default function TADutiesPage() {
                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                   <div>
                     <CardTitle className="text-blue-600">Pending Requests</CardTitle>
-                    <CardDescription>Duties awaiting approval from instructors</CardDescription>
+                    <CardDescription>Duties awaiting approval from instructors.</CardDescription>
                   </div>
                   <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 ">
-                    <Plus className="mr-0.5 h-4 w-4" />Create New Duty
+                    <Plus className="mr-0.5 h-4 w-4" /> New Duty
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -239,7 +243,7 @@ export default function TADutiesPage() {
                             <TableRow key={duty.id}>
                               <TableCell className="font-medium">{duty.course || "N/A"}</TableCell>
                               <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
-                              <TableCell>{duty.date}</TableCell>
+                              <TableCell>{formatDate(duty.date)}</TableCell>
                               <TableCell>
                                 {duty.start_time} - {duty.end_time}
                               </TableCell>
@@ -265,10 +269,10 @@ export default function TADutiesPage() {
                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                   <div>
                     <CardTitle className="text-blue-600">Past Requests</CardTitle>
-                    <CardDescription>History of approved and rejected duties</CardDescription>
+                    <CardDescription>History of approved and rejected duties.</CardDescription>
                   </div>
                   <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
-                    <Plus className="mr-2 h-4 w-4" /> Create New Duty
+                    <Plus className="mr-0.5 h-4 w-4" /> New Duty
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -293,7 +297,7 @@ export default function TADutiesPage() {
                             <TableRow key={duty.id}>
                               <TableCell className="font-medium">{duty.course || "N/A"}</TableCell>
                               <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
-                              <TableCell>{duty.date}</TableCell>
+                              <TableCell>{formatDate(duty.date)}</TableCell>
                               <TableCell>
                                 {duty.start_time} - {duty.end_time}
                               </TableCell>
@@ -340,7 +344,7 @@ export default function TADutiesPage() {
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-blue-600">Create New Task</CardTitle>
                 </div>
-                <CardDescription>Submit a new duty request for approval</CardDescription>
+                <CardDescription>Submit a new duty request for approval.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -352,7 +356,7 @@ export default function TADutiesPage() {
                         name="duty_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Task Type</FormLabel>
+                            <FormLabel>Task Type <span className="text-red-500">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -378,7 +382,7 @@ export default function TADutiesPage() {
                         name="course_code"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Course</FormLabel>
+                            <FormLabel>Course <span className="text-red-500">*</span></FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -406,9 +410,9 @@ export default function TADutiesPage() {
                         name="date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Date</FormLabel>
+                            <FormLabel>Date <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-36" />
+                              <Input type="date" {...field} className="w-36" max = {new Date().toISOString().split("T")[0]} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -421,7 +425,7 @@ export default function TADutiesPage() {
                         name="start_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Time</FormLabel>
+                            <FormLabel>Start Time <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
                               <Input type="time" {...field} className="w-30" />
                             </FormControl>
@@ -436,7 +440,7 @@ export default function TADutiesPage() {
                         name="end_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Time</FormLabel>
+                            <FormLabel>End Time <span className="text-red-500">*</span></FormLabel>
                             <FormControl>
                               <Input type="time" {...field} className="w-30" />
                             </FormControl>
@@ -456,7 +460,7 @@ export default function TADutiesPage() {
                           <FormControl>
                             <Textarea placeholder="Optional description of the task" {...field} />
                           </FormControl>
-                          <FormDescription>Provide any additional details about this duty</FormDescription>
+                          <FormDescription>Provide any additional details about this duty.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
