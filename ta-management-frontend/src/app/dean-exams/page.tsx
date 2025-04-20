@@ -32,6 +32,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Trash2 } from "lucide-react"
 import apiClient from "@/lib/axiosClient"
 import DeanExamModal from "./DeanExamModal"
+import DeanProctorModal from "./DeanProctorModal"
+import { Badge } from "@/components/ui/badge"
 
 interface DeanExam {
   id: number
@@ -42,6 +44,7 @@ interface DeanExam {
   classrooms: string[]
   num_proctors: number
   student_count: number
+  assigned_tas: string[]
 }
 
 export default function DeanExamsPage() {
@@ -51,6 +54,8 @@ export default function DeanExamsPage() {
   const [showModal, setShowModal] = useState(false)
   const [toDelete, setToDelete] = useState<number | null>(null)
   const [error, setError] = useState("")
+  const [showProctor, setShowProctor]     = useState(false)
+  const [currentProctorExam, setCurrentProctorExam] = useState<DeanExam | null>(null)
 
   useEffect(() => {
     apiClient
@@ -130,7 +135,7 @@ export default function DeanExamsPage() {
                             <TableCell>{ex.course_codes.join(", ")}</TableCell>
                             <TableCell>{fmtDate(ex.date)}</TableCell>
                             <TableCell>
-                              {ex.start_time} – {ex.end_time}
+                              {ex.start_time} - {ex.end_time}
                             </TableCell>
                             <TableCell>{ex.classrooms.join(", ")}</TableCell>
                             <TableCell>{ex.num_proctors}</TableCell>
@@ -150,7 +155,7 @@ export default function DeanExamsPage() {
                               {/* Print */}
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button size="sm">Student List</Button>
+                                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500">Student List</Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-1 w-40">
                                   <Button
@@ -181,6 +186,30 @@ export default function DeanExamsPage() {
                                   </Button>
                                 </PopoverContent>
                               </Popover>
+
+                              {/* Show Proctor button only if no one’s assigned yet */}
+                              {ex.assigned_tas.length === 0 ? (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setCurrentProctorExam(ex)
+                                  setShowProctor(true)
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                              >
+                                Proctor
+                              </Button>
+                              ) : (
+                                // otherwise, list them
+                                <div className="space-y-1">
+                                  {ex.assigned_tas.map((email) => (
+                                    <Badge key={email} variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                      {email}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+
                             </TableCell>
                           </TableRow>
                         ))}
@@ -223,6 +252,14 @@ export default function DeanExamsPage() {
                 setShowModal(false)
                 setRefresh((x) => x + 1)
               }}
+            />
+          )}
+          {/* Proctoring Modal */}
+          {showProctor && currentProctorExam && (
+            <DeanProctorModal
+              exam={currentProctorExam}
+              onClose={() => setShowProctor(false)}
+              onAssigned={() => setRefresh((x) => x + 1)}
             />
           )}
         </SidebarInset>

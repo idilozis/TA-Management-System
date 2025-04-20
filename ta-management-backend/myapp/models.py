@@ -140,7 +140,7 @@ class StudentList(models.Model):
     def __str__(self):
         return f"{self.surname}, {self.name} ({self.student_id})"
 
-"""""
+
 # Import all models for migrations.
 from myapp.taassignment.models import TAAssignment
 from myapp.taassignment.models import TAAllocation
@@ -151,4 +151,3 @@ from myapp.proctoring.models import ProctoringAssignment
 from myapp.notificationsystem.models import Notification
 from myapp.exams.models import Exam
 from myapp.exams.models import DeanExam
-"""

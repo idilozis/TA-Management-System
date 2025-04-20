@@ -1,7 +1,6 @@
 # myapp/exams/views.py
-import json, random
+import json
 from datetime import datetime
-
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST, require_GET
@@ -146,7 +145,7 @@ def list_staff_exams(request):
     exams_data = []
     for exam in exams:
         # Get confirmed TA assignments from the ProctoringAssignment relation.
-        assigned_tas = list(exam.proctoringassignment.values_list('ta__email', flat=True))
+        assigned_tas = list(exam.proctoring_assignments.values_list('ta__email', flat=True))
         exams_data.append({
             "id": exam.id,
             "course_code": exam.course.code,
@@ -174,26 +173,38 @@ def list_ta_exams(request):
 
     user, user_type = find_user_by_email(email)
     if not user or user_type != "TA":
-        return JsonResponse({"status": "error", "message": "You are not a TA."}, status=403)
+        return JsonResponse({"status": "error", "message": "You are not a TA"}, status=403)
 
-    # Use the reverse relationship 'proctored_exams' defined on TAUser.
-    assignments = user.proctored_exams.select_related('exam__course').all()
-    exams_data = []
-    for assignment in assignments:
-        exam = assignment.exam
-        exams_data.append({
-            "id": exam.id,
-            "course_code": exam.course.code,
-            "course_name": exam.course.name,
-            "date": exam.date.strftime("%Y-%m-%d"),
-            "start_time": exam.start_time.strftime("%H:%M"),
-            "end_time": exam.end_time.strftime("%H:%M"),
-            "classrooms": exam.classrooms,
-            "num_proctors": exam.num_proctors,
-            "student_count": exam.student_count,
+    assignments = (
+        user.proctored_assignments
+            .select_related("exam__course", "dean_exam")
+            .all()
+    )
+
+    exams = []
+    for pa in assignments:
+        if pa.exam:
+            source = pa.exam
+            code = source.course.code
+            name = source.course.name
+        else:
+            source = pa.dean_exam
+            code = ", ".join(source.course_codes)
+            name = ""
+
+        exams.append({
+            "id": source.id,
+            "course_code": code,
+            "course_name": name,
+            "date": source.date.strftime("%Y-%m-%d"),
+            "start_time": source.start_time.strftime("%H:%M"),
+            "end_time": source.end_time.strftime("%H:%M"),
+            "classrooms": source.classrooms,
+            "num_proctors": source.num_proctors,
+            "student_count": source.student_count,
         })
 
-    return JsonResponse({"status": "success", "exams": exams_data})
+    return JsonResponse({"status": "success", "exams": exams})
 
 
 # -----------------------------
@@ -228,7 +239,7 @@ def delete_exam(request):
         duration_hours = (datetime.combine(exam.date, exam.end_time) - datetime.combine(exam.date, exam.start_time)).seconds // 3600
         
         # Decrement the workload for each assigned TA.
-        assignments = exam.proctoringassignment.all()
+        assignments = exam.proctoring_assignments.all()
         for assignment in assignments:
             ta = assignment.ta
             ta.workload = max(0, ta.workload - duration_hours)
@@ -255,10 +266,6 @@ def is_classroom_available(room, date_obj, start_time, end_time, exclude_exam_id
             return False, f"Booked by {exam.course.code} {exam.start_time}-{exam.end_time}"
     return True, "Available"
 
-
-# -----------------------------
-# LIST CLASSROOMENUM VALUES
-# -----------------------------
 @require_GET
 def list_classrooms(request):
     classrooms = [value for value, _ in ClassroomEnum.choices()]
@@ -322,21 +329,20 @@ def create_dean_exam(request):
     if s>=e:
         return JsonResponse({"status":"error","message":"Start must be before end"}, status=400)
 
-    # reuse availability
     for room in rooms:
         ok,msg = is_classroom_available(room,d,s,e)
         if not ok:
             return JsonResponse({"status":"error","message":msg}, status=400)
 
     dean_exam = DeanExam.objects.create(
-        creator       = user,
-        course_codes  = course_codes,
-        date          = d,
-        start_time    = s,
-        end_time      = e,
-        num_proctors  = data.get("num_proctors",1),
+        creator = user,
+        course_codes = course_codes,
+        date = d,
+        start_time = s,
+        end_time = e,
+        num_proctors = data.get("num_proctors",1),
         student_count = data.get("student_count",0),
-        classrooms    = rooms,
+        classrooms = rooms,
     )
     return JsonResponse({"status":"success","exam_id":dean_exam.id}, status=201)
 
@@ -354,39 +360,54 @@ def list_dean_exams(request):
     exams = []
     for ex in qs:
         exams.append({
-            "id":            ex.id,
-            "course_codes":  ex.course_codes,
-            "date":          ex.date.strftime("%Y-%m-%d"),
-            "start_time":    ex.start_time.strftime("%H:%M"),
-            "end_time":      ex.end_time.strftime("%H:%M"),
-            "classrooms":    ex.classrooms,
-            "num_proctors":  ex.num_proctors,
+            "id": ex.id,
+            "course_codes": ex.course_codes,
+            "date": ex.date.strftime("%Y-%m-%d"),
+            "start_time": ex.start_time.strftime("%H:%M"),
+            "end_time": ex.end_time.strftime("%H:%M"),
+            "classrooms": ex.classrooms,
+            "num_proctors": ex.num_proctors,
             "student_count": ex.student_count,
+            "assigned_tas": list(ex.proctoring_assignments.values_list("ta__email", flat=True)),
         })
 
     return JsonResponse({"status":"success","exams":exams})
 
-
 @require_POST
+@transaction.atomic
 def delete_dean_exam(request):
     email = request.session.get("user_email")
     if not email:
         return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
 
     user, user_type = find_user_by_email(email)
-    # only AuthorizedUser (isAuth=True) can delete DeanExam
+    # Only Authorized (Dean‐office) users may delete dean exams
     if not user or not getattr(user, "isAuth", False):
         return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
 
+    # Parse payload
     data = json.loads(request.body)
     exam_id = data.get("exam_id")
     if not exam_id:
         return JsonResponse({"status":"error","message":"Exam ID is required."}, status=400)
 
-    # fetch and verify ownership
-    de = get_object_or_404(DeanExam, id=exam_id)
-    if de.creator != user:
-        return JsonResponse({"status":"error","message":"You can only delete your own exams."}, status=403)
+    # Fetch the DeanExam (404 if none)
+    dean_exam = get_object_or_404(DeanExam, id=exam_id)
 
-    de.delete()
-    return JsonResponse({"status":"success","message":"Exam deleted successfully."})
+    # Compute duration in whole hours
+    duration_hours = (
+        datetime.combine(dean_exam.date, dean_exam.end_time)
+        - datetime.combine(dean_exam.date, dean_exam.start_time)
+    ).seconds // 3600
+
+    # Decrement workload for each assigned TA
+    assignments = dean_exam.proctoring_assignments.all()
+    for assignment in assignments:
+        ta = assignment.ta
+        ta.workload = max(0, ta.workload - duration_hours)
+        ta.save()
+
+    # Delete the DeanExam (cascade removes ProctoringAssignment rows)
+    dean_exam.delete()
+
+    return JsonResponse({"status":"success","message":"Dean exam deleted successfully."})

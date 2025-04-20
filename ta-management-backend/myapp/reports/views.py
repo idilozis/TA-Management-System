@@ -33,74 +33,82 @@ def download_total_proctoring_sheet(request):
     doc.preamble.append(NoEscape(r'\date{\today}'))
     doc.append(NoEscape(r'\maketitle'))
 
-    # Query
-    assignments_query = ProctoringAssignment.objects.select_related('exam', 'ta')
+    # Query both staff‐exam and dean‐exam assignments
+    assignments_query = ProctoringAssignment.objects.select_related('exam', 'dean_exam', 'ta')
     total_assignments = assignments_query.count()
 
     ta_summary = {}
     for assignment in assignments_query:
         ta = assignment.ta
-        em = ta.email
-        if em not in ta_summary:
-            ta_summary[em] = {
+        email = ta.email
+        if email not in ta_summary:
+            ta_summary[email] = {
                 'name': escape_latex(f"{ta.name} {ta.surname}"),
                 'exams': [],
                 'count': 0
             }
-        ta_summary[em]['count'] += 1
+        ta_summary[email]['count'] += 1
 
-        exam = assignment.exam
-        exam_date = getattr(exam, 'date', None)
-        exam_start = getattr(exam, 'start_time', None)
-        exam_end = getattr(exam, 'end_time', None)
-        exam_loc = escape_latex(getattr(exam, 'location', '')) or 'N/A'
+        # Distinguish staff exams vs dean exams
+        if assignment.exam:
+            ex_obj = assignment.exam
+            course_code = escape_latex(ex_obj.course.code)
+            date_val = ex_obj.date
+            start_val = ex_obj.start_time
+            end_val = ex_obj.end_time
+            rooms = ex_obj.classrooms or []
+        else:
+            de_obj = assignment.dean_exam
+            course_code = escape_latex(", ".join(de_obj.course_codes))
+            date_val = de_obj.date
+            start_val = de_obj.start_time
+            end_val = de_obj.end_time
+            rooms = de_obj.classrooms or []
 
-        course_code = 'N/A'
-        if getattr(exam, 'course', None):
-            course_code = escape_latex(getattr(exam.course, 'code', '')) or 'N/A'
-
-        ta_summary[em]['exams'].append({
-            'course_code': course_code,
-            'date': exam_date,
-            'start_time': exam_start,
-            'end_time': exam_end,
-            'location': exam_loc
+        ta_summary[email]["exams"].append({
+            "course_code": course_code,
+            "date": date_val,
+            "start_time": start_val,
+            "end_time": end_val,
+            "classrooms": rooms,
         })
 
-    with doc.create(Section('Proctoring Summary')):
+    # Summary section
+    with doc.create(Section("Proctoring Summary")):
         doc.append(f"Total proctoring assignments: {total_assignments}\n\n")
         doc.append(f"Number of TAs involved: {len(ta_summary)}\n\n")
-
-        with doc.create(Tabular('|l|c|')) as table:
+        with doc.create(Tabular("|l|c|")) as table:
             table.add_hline()
-            table.add_row((bold('TA Name'), bold('# of Assignments')))
+            table.add_row((bold("TA Name"), bold("# of Assignments")))
             table.add_hline()
             for data in ta_summary.values():
-                table.add_row((data['name'], data['count']))
+                table.add_row((data["name"], data["count"]))
                 table.add_hline()
 
-    with doc.create(Section('Detailed Assignments')):
-        for em, data in ta_summary.items():
-            with doc.create(Subsection(data['name'])):
-                with doc.create(Tabular('|l|l|l|l|l|')) as table:
+    # Detailed assignments per TA
+    with doc.create(Section("Detailed Assignments")):
+        for _, data in ta_summary.items():
+            with doc.create(Subsection(data["name"])):
+                with doc.create(Tabular("|l|l|l|l|l|")) as table:
                     table.add_hline()
                     table.add_row((
-                        bold('Course'),
-                        bold('Date'),
-                        bold('Start'),
-                        bold('End'),
-                        bold('Location')
+                        bold("Course"),
+                        bold("Date"),
+                        bold("Start"),
+                        bold("End"),
+                        bold("Classrooms"),
                     ))
                     table.add_hline()
-
-                    for ex in data['exams']:
-                        date_str = ex['date'].strftime('%Y-%m-%d') if ex['date'] else 'N/A'
-                        start_str = ex['start_time'].strftime('%H:%M') if ex['start_time'] else 'N/A'
-                        end_str = ex['end_time'].strftime('%H:%M') if ex['end_time'] else 'N/A'
-                        loc_str = ex['location'] or 'N/A'
-                        table.add_row((ex['course_code'], date_str, start_str, end_str, loc_str))
+                    for ex in data["exams"]:
+                        date_str = ex["date"].strftime("%d.%m.%Y") if ex["date"] else "N/A"
+                        start_str = ex["start_time"].strftime("%H:%M") if ex["start_time"] else "N/A"
+                        end_str = ex["end_time"].strftime("%H:%M") if ex["end_time"] else "N/A"
+                        rooms = ex["classrooms"]
+                        loc_str = escape_latex(", ".join(rooms)) if rooms else "N/A"
+                        table.add_row((ex["course_code"], date_str, start_str, end_str, loc_str))
                         table.add_hline()
 
+    # Compile via LaTeX Online
     latex_source = doc.dumps()
     compile_url = "https://latexonline.cc/compile"
     params = {"text": latex_source, "command": "xelatex", "force": "true"}
@@ -117,8 +125,8 @@ def download_total_proctoring_sheet(request):
         return HttpResponse(f"LaTeX Online request error:\n{exc}", status=500)
 
     pdf_data = r.content
-    response = HttpResponse(pdf_data, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="total_proctoring.pdf"'
+    response = HttpResponse(pdf_data, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="total_proctoring.pdf"'
     return response
 
 
@@ -158,7 +166,7 @@ def download_total_ta_duty_sheet(request):
         ta_summary[em]['duty_counts'][duty_type] += 1
 
         course_code = escape_latex(duty.course.code if duty.course else "N/A")
-        date_str = duty.date.strftime('%Y-%m-%d') if duty.date else "N/A"
+        date_str = duty.date.strftime("%d.%m.%Y") if duty.date else "N/A"
         start_str = duty.start_time.strftime('%H:%M') if duty.start_time else "N/A"
         end_str = duty.end_time.strftime('%H:%M') if duty.end_time else "N/A"
         desc = escape_latex(duty.description[:40] + ('...' if len(duty.description) > 40 else ''))
