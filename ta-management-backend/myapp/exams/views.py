@@ -11,6 +11,8 @@ from myapp.models import Course
 from myapp.exams.models import Exam, DeanExam
 from myapp.exams.classrooms import ClassroomEnum
 from myapp.exams.courses_nondept import NonDeptCourseEnum
+from myapp.proctoring.models import ProctoringAssignment  
+from myapp.swap.models import SwapRequest 
 
 
 # -----------------------------
@@ -171,37 +173,42 @@ def list_ta_exams(request):
     if not email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
 
-    user, user_type = find_user_by_email(email)
-    if not user or user_type != "TA":
+    user, role = find_user_by_email(email)
+    if role != "TA":
         return JsonResponse({"status": "error", "message": "You are not a TA"}, status=403)
 
+    # Pull every proctoring row that belongs to this TA
     assignments = (
-        user.proctored_assignments
-            .select_related("exam__course", "dean_exam")
-            .all()
+        ProctoringAssignment.objects
+            .filter(ta=user)
+            .select_related("exam__course", "dean_exam")   # single SQL round‑trip
     )
 
     exams = []
     for pa in assignments:
         if pa.exam:
-            source = pa.exam
-            code = source.course.code
-            name = source.course.name
-        else:
-            source = pa.dean_exam
-            code = ", ".join(source.course_codes)
-            name = ""
+            src   = pa.exam
+            code  = src.course.code
+            name  = src.course.name
+        else:                               # Dean‑office exam
+            src   = pa.dean_exam
+            code  = ", ".join(src.course_codes)
+            name  = ""                       # dean exams don’t store a name
 
+        pending = SwapRequest.objects.filter(original_assignment=pa,status="pending").exists()
+        
         exams.append({
-            "id": source.id,
-            "course_code": code,
-            "course_name": name,
-            "date": source.date.strftime("%Y-%m-%d"),
-            "start_time": source.start_time.strftime("%H:%M"),
-            "end_time": source.end_time.strftime("%H:%M"),
-            "classrooms": source.classrooms,
-            "num_proctors": source.num_proctors,
-            "student_count": source.student_count,
+            "assignment_id": pa.id,          
+            "id"          : src.id,
+            "course_code" : code,
+            "course_name" : name,
+            "date"        : src.date.strftime("%Y-%m-%d"),
+            "start_time"  : src.start_time.strftime("%H:%M"),
+            "end_time"    : src.end_time.strftime("%H:%M"),
+            "classrooms"  : src.classrooms,
+            "num_proctors": src.num_proctors,
+            "student_count": src.student_count,
+            "has_pending_swap": pending,
         })
 
     return JsonResponse({"status": "success", "exams": exams})

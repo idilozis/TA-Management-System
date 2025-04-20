@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { HomeIcon, FileText, CheckCircle, UserCog, LogOut, SquareChartGantt,  CalendarOff, Archive, FolderArchive, BookOpenCheck } from "lucide-react";
+import { HomeIcon, FileText, CheckCircle, UserCog, LogOut, SquareChartGantt,  CalendarOff, Archive, FolderArchive, BookOpenCheck, Repeat } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu,
          SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import type { UserData } from "@/components/general/user-data";
@@ -86,6 +86,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
       path: "/proctoring",
       icon: FileText,
     },
+    ...(user && user.isTA
+      ? [
+          {
+            name: "Swaps",
+            path: "/swaps",       
+            icon: Repeat,
+          },
+        ]
+      : []),
     ...(user && !user.isTA && user.isAuth && user.role == "DEAN"
       ? [
           {

@@ -151,3 +151,4 @@ from myapp.proctoring.models import ProctoringAssignment
 from myapp.notificationsystem.models import Notification
 from myapp.exams.models import Exam
 from myapp.exams.models import DeanExam
+from myapp.swap.models import SwapRequest
