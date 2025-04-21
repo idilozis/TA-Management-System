@@ -3,8 +3,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import apiClient from "@/lib/axiosClient";
 
 interface Row {
+  role: "sender" | "receiver";
   swap_id: number;
   status: string;
   with_ta: string;
@@ -21,6 +24,15 @@ export default function SwapsTable({ data, empty }: { data: Row[]; empty: string
   if (data.length === 0)
     return <div className="text-center py-8 text-muted-foreground">{empty}</div>;
 
+  const respond = async (id: number, decision: "accept" | "reject") => {
+    try {
+      await apiClient.post(`/swap/respond/${id}/`, { decision });
+      window.location.reload();
+    } catch {
+      alert("Swap update failed");
+    }
+  };
+  
   return (
     <div className="rounded-md border">
       <Table>
@@ -51,7 +63,17 @@ export default function SwapsTable({ data, empty }: { data: Row[]; empty: string
               <TableCell>{r.classrooms.join(", ")}</TableCell>
               <TableCell>{r.student_count}</TableCell>
               <TableCell>{r.with_ta}</TableCell>
-              <TableCell className="capitalize">{r.status}</TableCell>
+              <TableCell className="capitalize">
+              {r.role === "receiver" && r.status === "pending" ? (
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => respond(r.swap_id, "accept")}>Accept</Button>
+                  <Button size="sm" variant="destructive"
+                          onClick={() => respond(r.swap_id, "reject")}>Reject</Button>
+                </div>
+              ) : (
+                r.status
+              )}
+            </TableCell>
             </TableRow>
           ))}
         </TableBody>
