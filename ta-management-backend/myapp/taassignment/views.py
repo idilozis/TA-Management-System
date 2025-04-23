@@ -71,8 +71,8 @@ def assign_tas(request):
     data = json.loads(request.body)
     course_code = data.get("course_code")
     assigned_tas_emails = data.get("assigned_tas")
-    if not course_code or not assigned_tas_emails:
-        return JsonResponse({"status": "error", "message": "Missing parameters"}, status=400)
+    if not course_code:
+        return JsonResponse({"status": "error", "message": "Missing parameter"}, status=400)
     
     try:
         course = Course.objects.get(code=course_code)
@@ -100,11 +100,11 @@ def assign_tas(request):
             return JsonResponse({"status": "error", "message": f"TA with email {email} not found."}, status=404)
     
     # Check load boundaries.
-    if total_load < assignment.min_load:
-        return JsonResponse({
-            "status": "error", 
-            "message": f"Total load ({total_load}) is below the minimum required ({assignment.min_load})."
-        }, status=400)
+    # if total_load < assignment.min_load and total_load != 0:
+    #     return JsonResponse({
+    #         "status": "error", 
+    #         "message": f"Total load ({total_load}) is below the minimum required ({assignment.min_load})."
+    #     }, status=400)
     if total_load > assignment.max_load:
         return JsonResponse({
             "status": "error", 
@@ -120,7 +120,7 @@ def assign_tas(request):
     if missing_must_haves and not force_override:
         return JsonResponse({
             "status": "warning",
-            "message": f"The following must-have TAs are missing: {', '.join(missing_must_haves)}. Submit again with force=true to override.",
+            "message": f"The following must-have TAs are missing: {', '.join(missing_must_haves)}.",
             "missing_must_have": missing_must_haves,
             "require_confirmation": True
         }, status=202)
@@ -158,8 +158,8 @@ def assign_graders(request):
     data = json.loads(request.body)
     course_code = data.get("course_code")
     assigned_graders_emails = data.get("assigned_graders")
-    if not course_code or not assigned_graders_emails:
-        return JsonResponse({"status": "error", "message": "Missing parameters"}, status=400)
+    if not course_code:
+        return JsonResponse({"status": "error", "message": "Missing parameter"}, status=400)
     
     try:
         course = Course.objects.get(code=course_code)
@@ -172,7 +172,7 @@ def assign_graders(request):
         return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
     
     required = assignment.num_graders
-    if len(assigned_graders_emails) != required:
+    if len(assigned_graders_emails) > required:
         return JsonResponse({
             "status": "error",
             "message": f"Exactly {required} grader(s) must be assigned."
