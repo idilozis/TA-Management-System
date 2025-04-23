@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AlertTriangle } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 // Data interfaces
 interface TA {
@@ -79,87 +80,106 @@ export default function TAAssignmentPage() {
   const [assignmentType, setAssignmentType] = useState<"tas" | "graders">("tas")
   const [submitting, setSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState("")
+  // Add the allTAs state and dialogSearchQuery state
+  const [allTAs, setAllTAs] = useState<TA[]>([])
+  const [dialogSearchQuery, setDialogSearchQuery] = useState("")
 
   // Add these new state variables near the other state declarations
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [confirmationMessage, setConfirmationMessage] = useState("")
   const [pendingOverrideAction, setPendingOverrideAction] = useState(false)
 
-
   // Fetch data on component mount
+  // Update the useEffect to fetch all TAs
   useEffect(() => {
     fetchData()
+    fetchAllTAs()
   }, [])
 
   const fetchData = async () => {
-      setLoading(true)
-      setError("")
-      let useFallbackData = false
+    setLoading(true)
+    setError("")
+    let useFallbackData = false
 
-      try {
-        // Fetch assignment preferences
-        const response = await apiClient.get("/assignment/list-preferences/")
+    try {
+      // Fetch assignment preferences
+      const response = await apiClient.get("/assignment/list-preferences/")
 
-        if (response.data && response.data.status === "success" && response.data.assignments) {
-          setPreferences(response.data.assignments)
+      if (response.data && response.data.status === "success" && response.data.assignments) {
+        setPreferences(response.data.assignments)
 
-          // Initialize allocations with empty arrays
-          const newAllocations: Record<string, TAAllocation> = {}
+        // Initialize allocations with empty arrays
+        const newAllocations: Record<string, TAAllocation> = {}
 
-          // For each course in the preferences, check if there are existing allocations
-          for (const pref of response.data.assignments) {
-            // Check if there are any TAs assigned to this course
-            const taAllocation = {
-              course: pref.course,
-              assigned_tas: [],
-              assigned_graders: [],
-              total_load: 0,
-            }
-
-            // Look for existing allocations in the response data
-            // This assumes the backend returns allocation data along with preferences
-            // If not, we'll need to make a separate API call to get allocations
-
-            newAllocations[pref.course.code] = taAllocation
+        // For each course in the preferences, check if there are existing allocations
+        for (const pref of response.data.assignments) {
+          // Check if there are any TAs assigned to this course
+          const taAllocation = {
+            course: pref.course,
+            assigned_tas: [],
+            assigned_graders: [],
+            total_load: 0,
           }
 
-          // Now try to fetch existing allocations for each course
-          try {
-            // This would be a separate endpoint to get current allocations
-            // If your backend doesn't have this endpoint, you'll need to add it
-            const allocationsResponse = await apiClient.get("/assignment/list-allocations/")
+          // Look for existing allocations in the response data
+          // This assumes the backend returns allocation data along with preferences
+          // If not, we'll need to make a separate API call to get allocations
 
-            if (
-              allocationsResponse.data &&
-              allocationsResponse.data.status === "success" &&
-              allocationsResponse.data.allocations
-            ) {
-              // Update the allocations with the data from the backend
-              for (const allocation of allocationsResponse.data.allocations) {
-                if (newAllocations[allocation.course.code]) {
-                  newAllocations[allocation.course.code] = {
-                    ...newAllocations[allocation.course.code],
-                    assigned_tas: allocation.assigned_tas || [],
-                    assigned_graders: allocation.assigned_graders || [],
-                    total_load: allocation.total_load || 0,
-                  }
+          newAllocations[pref.course.code] = taAllocation
+        }
+
+        // Now try to fetch existing allocations for each course
+        try {
+          // This would be a separate endpoint to get current allocations
+          // If your backend doesn't have this endpoint, you'll need to add it
+          const allocationsResponse = await apiClient.get("/assignment/list-allocations/")
+
+          if (
+            allocationsResponse.data &&
+            allocationsResponse.data.status === "success" &&
+            allocationsResponse.data.allocations
+          ) {
+            // Update the allocations with the data from the backend
+            for (const allocation of allocationsResponse.data.allocations) {
+              if (newAllocations[allocation.course.code]) {
+                newAllocations[allocation.course.code] = {
+                  ...newAllocations[allocation.course.code],
+                  assigned_tas: allocation.assigned_tas || [],
+                  assigned_graders: allocation.assigned_graders || [],
+                  total_load: allocation.total_load || 0,
                 }
               }
             }
-          } catch (allocErr) {
-            console.warn("Could not fetch allocations:", allocErr)
-            // Continue with empty allocations
           }
-
-          setAllocations(newAllocations)
-        } else {
-          useFallbackData = true
+        } catch (allocErr) {
+          console.warn("Could not fetch allocations:", allocErr)
+          // Continue with empty allocations
         }
-      } catch (apiError) {
-        console.error("API error:", apiError)
+
+        setAllocations(newAllocations)
+      } else {
         useFallbackData = true
       }
-    setLoading(false)
+    } catch (apiError) {
+      console.error("API error:", apiError)
+      useFallbackData = true
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Add the fetchAllTAs function
+  const fetchAllTAs = async () => {
+    try {
+      const res = await apiClient.get("/list/tas/")
+      if (res.data && res.data.status === "success") {
+        setAllTAs(res.data.tas || [])
+      } else {
+        console.error("Failed to fetch all TAs:", res.data?.message)
+      }
+    } catch (err) {
+      console.error("Error fetching all TAs:", err)
+    }
   }
 
   const refreshData = async () => {
@@ -168,10 +188,12 @@ export default function TAAssignmentPage() {
     setIsRefreshing(false)
   }
 
+  // Update the openAssignDialog function to reset the dialog search query
   const openAssignDialog = (course: Course, preference: AssignmentPreference, type: "tas" | "graders") => {
     setCurrentCourse(course)
     setCurrentPreference(preference)
     setAssignmentType(type)
+    setDialogSearchQuery("")
 
     // Initialize selected TAs/graders based on current allocations
     if (allocations[course.code]) {
@@ -189,7 +211,7 @@ export default function TAAssignmentPage() {
     setDialogError("")
   }
 
-  // Replace the handleAssign function with this updated version
+  // Update the handleAssign function to consider allTAs when calculating load
   const handleAssign = async (overrideMustHave = false) => {
     if (!currentCourse || !currentPreference) return
 
@@ -201,13 +223,17 @@ export default function TAAssignmentPage() {
       let totalLoad = 0
       if (assignmentType === "tas") {
         selectedTAs.forEach((email) => {
+          // First check in preference TAs
           const ta = [
             ...currentPreference.must_have_ta,
             ...currentPreference.preferred_tas,
             ...currentPreference.avoided_tas,
           ].find((t) => t.email === email)
 
-          if (ta && ta.is_full_time === false) {
+          // If not found in preferences, check in all TAs
+          const generalTA = !ta ? allTAs.find((t) => t.email === email) : null
+
+          if ((ta && ta.is_full_time === false) || (generalTA && generalTA.is_full_time === false)) {
             totalLoad += 1
           } else {
             totalLoad += 2
@@ -221,11 +247,11 @@ export default function TAAssignmentPage() {
           return
         }
 
-        if (totalLoad < currentPreference.min_load) {
-          setDialogError(`Total load (${totalLoad}) is below the minimum required (${currentPreference.min_load}).`)
-          setSubmitting(false)
-          return
-        }
+        // if (totalLoad < currentPreference.min_load) {
+        //   setDialogError(`Total load (${totalLoad}) is below the minimum required (${currentPreference.min_load}).`)
+        //   setSubmitting(false)
+        //   return
+        // }
       }
 
       const endpoint = assignmentType === "tas" ? "/assignment/assign-tas/" : "/assignment/assign-graders/"
@@ -268,13 +294,19 @@ export default function TAAssignmentPage() {
 
           if (assignmentType === "tas") {
             const assignedTAs = selectedTAs.map((email) => {
-              const allTAs = [
+              // First check in preference TAs
+              const prefTA = [
                 ...currentPreference.must_have_ta,
                 ...currentPreference.preferred_tas,
                 ...currentPreference.avoided_tas,
-              ]
+              ].find((t) => t.email === email)
+
+              // If not found in preferences, check in all TAs
+              const generalTA = !prefTA ? allTAs.find((t) => t.email === email) : null
+
               return (
-                allTAs.find((ta) => ta.email === email) || {
+                prefTA ||
+                generalTA || {
                   name: email.split("@")[0],
                   surname: "",
                   email,
@@ -286,13 +318,19 @@ export default function TAAssignmentPage() {
             updated[currentCourse.code].total_load = totalLoad
           } else {
             const assignedGraders = selectedGraders.map((email) => {
-              const allTAs = [
+              // First check in preference graders
+              const prefGrader = [
                 ...currentPreference.preferred_graders,
                 ...currentPreference.must_have_ta,
                 ...currentPreference.preferred_tas,
-              ]
+              ].find((t) => t.email === email)
+
+              // If not found in preferences, check in all TAs
+              const generalTA = !prefGrader ? allTAs.find((t) => t.email === email) : null
+
               return (
-                allTAs.find((ta) => ta.email === email) || {
+                prefGrader ||
+                generalTA || {
                   name: email.split("@")[0],
                   surname: "",
                   email,
@@ -367,6 +405,33 @@ export default function TAAssignmentPage() {
     )
   })
 
+  // Filter TAs in the dialog based on search query
+  // Add the getFilteredTAs function
+  const getFilteredTAs = () => {
+    if (!dialogSearchQuery) return allTAs
+
+    const query = dialogSearchQuery.toLowerCase()
+    return allTAs.filter(
+      (ta) =>
+        ta.name.toLowerCase().includes(query) ||
+        ta.surname.toLowerCase().includes(query) ||
+        ta.email.toLowerCase().includes(query),
+    )
+  }
+
+  // Check if a TA is already in one of the preference categories
+  // Add the isInPreferenceCategories function
+  const isInPreferenceCategories = (email: string) => {
+    if (!currentPreference) return false
+
+    return [
+      ...currentPreference.must_have_ta,
+      ...currentPreference.preferred_tas,
+      ...currentPreference.avoided_tas,
+      ...currentPreference.preferred_graders,
+    ].some((ta) => ta.email === email)
+  }
+
   // Loading state
   if (userLoading || loading) {
     return <PageLoader />
@@ -420,8 +485,18 @@ export default function TAAssignmentPage() {
 
           <Tabs defaultValue="assignments" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
             <TabsList className="mb-6">
-              <TabsTrigger value="assignments">Current Assignments</TabsTrigger>
-              <TabsTrigger value="preferences">Assignment Preferences</TabsTrigger>
+              <TabsTrigger
+                value="assignments"
+                className={activeTab === "assignments" ? "" : "text-blue-600"}
+              >
+                Current Assignments
+              </TabsTrigger>
+              <TabsTrigger
+                value="preferences"
+                className={activeTab === "preferences" ? "" : "text-blue-600"}
+              >
+                Assignment Preferences
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="assignments">
@@ -622,7 +697,7 @@ export default function TAAssignmentPage() {
 
             <TabsContent value="preferences">
               <Card>
-              <CardHeader>
+                <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-blue-600">Assignment Preferences</CardTitle>
                     <TooltipProvider>
@@ -761,8 +836,6 @@ export default function TAAssignmentPage() {
               </Card>
             </TabsContent>
           </Tabs>
-
-          {/* Legend */}
         </SidebarInset>
       </div>
 
@@ -863,6 +936,46 @@ export default function TAAssignmentPage() {
                       </div>
                     </div>
 
+                    {/* All TAs section */}
+                    <div className="space-y-2">
+                      <Label className="font-medium">All TAs</Label>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search TAs..."
+                          value={dialogSearchQuery}
+                          onChange={(e) => setDialogSearchQuery(e.target.value)}
+                          className="pl-8 mb-2"
+                        />
+                      </div>
+                      <ScrollArea className="h-[200px] border rounded-md p-2">
+                        <div className="space-y-2">
+                          {getFilteredTAs()
+                            .filter((ta) => !isInPreferenceCategories(ta.email))
+                            .map((ta) => (
+                              <div key={ta.email} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`all-ta-${ta.email}`}
+                                  checked={selectedTAs.includes(ta.email)}
+                                  onCheckedChange={() => handleToggleTA(ta.email)}
+                                />
+                                <Label htmlFor={`all-ta-${ta.email}`} className="flex items-center gap-2">
+                                  {ta.name} {ta.surname}
+                                  <Badge className="ml-1 bg-gray-100 text-gray-800">
+                                    {ta.is_full_time === false ? "PT (1)" : "FT (2)"}
+                                  </Badge>
+                                </Label>
+                              </div>
+                            ))}
+                          {getFilteredTAs().filter((ta) => !isInPreferenceCategories(ta.email)).length === 0 && (
+                            <div className="text-muted-foreground py-2 text-center">
+                              {dialogSearchQuery ? "No matching TAs found" : "No additional TAs available"}
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+
                     <div className="rounded-md bg-blue-50 p-3 text-blue-800 text-sm">
                       <div className="flex items-center gap-2 font-medium">
                         <Info className="h-4 w-4" />
@@ -875,12 +988,22 @@ export default function TAAssignmentPage() {
                         <div>
                           Estimated Total Load:{" "}
                           {selectedTAs.reduce((total, email) => {
+                            // First check in preference TAs
                             const ta = [
                               ...currentPreference.must_have_ta,
                               ...currentPreference.preferred_tas,
                               ...currentPreference.avoided_tas,
                             ].find((t) => t.email === email)
-                            return total + (ta && ta.is_full_time === false ? 1 : 2)
+
+                            // If not found in preferences, check in all TAs
+                            const generalTA = !ta ? allTAs.find((t) => t.email === email) : null
+
+                            return (
+                              total +
+                              ((ta && ta.is_full_time === false) || (generalTA && generalTA.is_full_time === false)
+                                ? 1
+                                : 2)
+                            )
                           }, 0)}
                         </div>
                       </div>
@@ -912,24 +1035,79 @@ export default function TAAssignmentPage() {
                       </div>
                     </div>
 
+                    {/* All TAs section for graders (including Other TAs) */}
                     <div className="space-y-2">
-                      <Label className="font-medium">Other TAs</Label>
-                      <div className="space-y-2">
-                        {[...currentPreference.must_have_ta, ...currentPreference.preferred_tas]
-                          .filter((ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email))
-                          .map((ta) => (
-                            <div key={ta.email} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`other-${ta.email}`}
-                                checked={selectedGraders.includes(ta.email)}
-                                onCheckedChange={() => handleToggleGrader(ta.email)}
-                              />
-                              <Label htmlFor={`other-${ta.email}`}>
-                                {ta.name} {ta.surname}
-                              </Label>
-                            </div>
-                          ))}
+                      <Label className="font-medium">All TAs</Label>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search TAs..."
+                          value={dialogSearchQuery}
+                          onChange={(e) => setDialogSearchQuery(e.target.value)}
+                          className="pl-8 mb-2"
+                        />
                       </div>
+                      <ScrollArea className="h-[200px] border rounded-md p-2">
+                        <div className="space-y-2">
+                          {/* First show the "Other TAs" (must-have and preferred TAs) */}
+                          {[...currentPreference.must_have_ta, ...currentPreference.preferred_tas]
+                            .filter(
+                              (ta) =>
+                                !currentPreference.preferred_graders.some((g) => g.email === ta.email) &&
+                                (!dialogSearchQuery ||
+                                  ta.name.toLowerCase().includes(dialogSearchQuery.toLowerCase()) ||
+                                  ta.surname.toLowerCase().includes(dialogSearchQuery.toLowerCase()) ||
+                                  ta.email.toLowerCase().includes(dialogSearchQuery.toLowerCase())),
+                            )
+                            .map((ta) => (
+                              <div key={ta.email} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`other-${ta.email}`}
+                                  checked={selectedGraders.includes(ta.email)}
+                                  onCheckedChange={() => handleToggleGrader(ta.email)}
+                                />
+                                <Label htmlFor={`other-${ta.email}`} className="flex items-center gap-2">
+                                  {ta.name} {ta.surname}
+                                  <Badge className="ml-2 bg-blue-100 text-blue-800">Course TA</Badge>
+                                </Label>
+                              </div>
+                            ))}
+
+                          {/* Then show all other TAs not in any preference category */}
+                          {getFilteredTAs()
+                            .filter(
+                              (ta) =>
+                                !currentPreference.preferred_graders.some((g) => g.email === ta.email) &&
+                                ![...currentPreference.must_have_ta, ...currentPreference.preferred_tas].some(
+                                  (t) => t.email === ta.email,
+                                ),
+                            )
+                            .map((ta) => (
+                              <div key={ta.email} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`all-grader-${ta.email}`}
+                                  checked={selectedGraders.includes(ta.email)}
+                                  onCheckedChange={() => handleToggleGrader(ta.email)}
+                                />
+                                <Label htmlFor={`all-grader-${ta.email}`}>
+                                  {ta.name} {ta.surname}
+                                </Label>
+                              </div>
+                            ))}
+
+                          {/* Show message if no TAs are found */}
+                          {getFilteredTAs().filter(
+                            (ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email),
+                          ).length === 0 &&
+                            [...currentPreference.must_have_ta, ...currentPreference.preferred_tas].filter(
+                              (ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email),
+                            ).length === 0 && (
+                              <div className="text-muted-foreground py-2 text-center">
+                                {dialogSearchQuery ? "No matching TAs found" : "No additional TAs available"}
+                              </div>
+                            )}
+                        </div>
+                      </ScrollArea>
                     </div>
 
                     <div className="rounded-md bg-purple-50 p-3 text-purple-800 text-sm">

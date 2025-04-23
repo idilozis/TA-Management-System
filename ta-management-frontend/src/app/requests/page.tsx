@@ -1,255 +1,332 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/general/app-sidebar";
-import { useUser } from "@/components/general/user-data";
-import apiClient from "@/lib/axiosClient";
-import { Inbox } from "lucide-react";
-import { PageLoader } from "@/components/ui/loading-spinner";
+import { useState, useEffect } from "react"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/general/app-sidebar"
+import { useUser } from "@/components/general/user-data"
+import apiClient from "@/lib/axiosClient"
+import { Inbox, CheckCircle, XCircle, Clock } from "lucide-react"
+import { PageLoader } from "@/components/ui/loading-spinner"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Data interface for a duty
 interface Duty {
-  id: number;
-  ta_email: string;
-  ta_name: string;
-  course: string | null; // course code
-  duty_type: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  duration_hours: number;
-  status: string; // "Pending", "Approved", or "Rejected"
-  description: string;
+  id: number
+  ta_email: string
+  ta_name: string
+  course: string | null // course code
+  duty_type: string
+  date: string
+  start_time: string
+  end_time: string
+  duration_hours: number
+  status: string // "Pending", "Approved", or "Rejected"
+  description: string
 }
 
 export default function RequestsPage() {
-  const { user, loading } = useUser();
-  const [pendingRequests, setPendingRequests] = useState<Duty[]>([]);
-  const [pastRequests, setPastRequests] = useState<Duty[]>([]);
-  const [message, setMessage] = useState("");
+  const { user, loading } = useUser()
+  const [pendingRequests, setPendingRequests] = useState<Duty[]>([])
+  const [pastRequests, setPastRequests] = useState<Duty[]>([])
+  const [message, setMessage] = useState("")
+  const [messageType, setMessageType] = useState<"success" | "error">("error")
+  const [activeTab, setActiveTab] = useState("pending")
+
   const formatDate = (iso: string) => {
-    const [year, month, day] = iso.split('-')
+    const [year, month, day] = iso.split("-")
     return `${day}.${month}.${year}`
+  }
+
+  // Helper: format duty type for display
+  function formatDutyType(dutyType: string): string {
+    return dutyType
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
   }
 
   // If user is staff (not a TA), fetch pending/past requests
   useEffect(() => {
     if (user && !user.isTA) {
-      fetchPendingRequests();
-      fetchPastRequests();
+      fetchPendingRequests()
+      fetchPastRequests()
     }
-  }, [user]);
+  }, [user])
 
   // Fetch pending requests
   const fetchPendingRequests = async () => {
     try {
-      const res = await apiClient.get("/taduties/pending-requests/");
+      const res = await apiClient.get("/taduties/pending-requests/")
       if (res.data.status === "success") {
-        setPendingRequests(res.data.duties);
+        setPendingRequests(res.data.duties)
       } else {
-        setMessage(res.data.message || "Error fetching pending requests.");
+        setMessage(res.data.message || "Error fetching pending requests.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error fetching pending requests.");
+      setMessage("Error fetching pending requests.")
+      setMessageType("error")
     }
-  };
+  }
 
   // Fetch past requests (approved or rejected)
   const fetchPastRequests = async () => {
     try {
-      const res = await apiClient.get("/taduties/past-requests/");
+      const res = await apiClient.get("/taduties/past-requests/")
       if (res.data.status === "success") {
-        setPastRequests(res.data.duties);
+        setPastRequests(res.data.duties)
       } else {
-        setMessage(res.data.message || "Error fetching past requests.");
+        setMessage(res.data.message || "Error fetching past requests.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error fetching past requests.");
+      setMessage("Error fetching past requests.")
+      setMessageType("error")
     }
-  };
+  }
 
   // Approve/Reject handler
   const updateDutyStatus = async (dutyId: number, newStatus: string) => {
     try {
       const res = await apiClient.post(`/taduties/${dutyId}/update-status/`, {
         status: newStatus,
-      });
+      })
       if (res.data.status === "success") {
-        setMessage(`Duty ${newStatus}.`);
+        setMessage(`Duty ${newStatus} successfully.`)
+        setMessageType("success")
         // Refresh both lists
-        fetchPendingRequests();
-        fetchPastRequests();
+        fetchPendingRequests()
+        fetchPastRequests()
       } else {
-        setMessage(res.data.message || "Error updating duty status.");
+        setMessage(res.data.message || "Error updating duty status.")
+        setMessageType("error")
       }
     } catch {
-      setMessage("Error updating duty status.");
-    }
-  };
-
-  // Status color-coding (lighter approach)
-  function getStatusColor(status: string) {
-    const lower = status.toLowerCase();
-    switch (lower) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      setMessage("Error updating duty status.")
+      setMessageType("error")
     }
   }
 
   // Format decimal hours into "Hh Mm" (e.g., 2.98 → "2h 59m")
   function formatDuration(durationInHours: number): string {
-    const totalMinutes = Math.round(durationInHours * 60);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}h ${minutes}m`;
+    const totalMinutes = Math.round(durationInHours * 60)
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return `${hours}h ${minutes}m`
   }
 
   // Loading and error messages
-  if (loading)
-    return <PageLoader />;
+  if (loading) return <PageLoader />
 
-  if (!user)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
-        No user found.
-      </div>
-    );
+  if (!user) return <div className="min-h-screen flex items-center justify-center bg-background">No user found.</div>
   if (user.isTA)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         Only staff can access this page.
       </div>
-    );
+    )
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen w-full bg-gray-100 text-gray-900">
+      <div className="flex min-h-screen w-full bg-background">
         <AppSidebar user={user} />
-        <SidebarInset className="bg-white p-8">
-          <h1 className="mb-6 text-3xl font-bold flex items-center gap-2">
-            <Inbox className="h-8 w-8 text-blue-600" /> Requests
-          </h1>
-
-          {message && <div className="mb-4 text-red-600">{message}</div>}
-
-          {/* Pending Requests Card */}
-          <div className="mb-8 bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Pending Requests</h2>
-            {pendingRequests.length === 0 ? (
-              <p className="text-gray-700">No pending requests.</p>
-            ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-200 text-gray-800">
-                    <th className="border border-gray-300 p-2">TA Email</th>
-                    <th className="border border-gray-300 p-2">TA Name</th>
-                    <th className="border border-gray-300 p-2">Course Code</th>
-                    <th className="border border-gray-300 p-2">Duty Type</th>
-                    <th className="border border-gray-300 p-2">Date</th>
-                    <th className="border border-gray-300 p-2">Start</th>
-                    <th className="border border-gray-300 p-2">End</th>
-                    <th className="border border-gray-300 p-2">Duration</th>
-                    <th className="border border-gray-300 p-2">Status</th>
-                    <th className="border border-gray-300 p-2">Description</th>
-                    <th className="border border-gray-300 p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingRequests.map((duty) => (
-                    <tr key={duty.id} className="hover:bg-gray-100">
-                      <td className="border border-gray-300 p-2">{duty.ta_email}</td>
-                      <td className="border border-gray-300 p-2">{duty.ta_name}</td>
-                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
-                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{formatDate(duty.date)}</td>
-                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
-                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
-                      <td className="border border-gray-300 p-2">
-                        {formatDuration(duty.duration_hours)}
-                      </td>
-                      <td className="border border-gray-300 p-2">
-                        <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
-                          {duty.status}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 p-2">{duty.description}</td>
-                      <td className="border border-gray-300 p-2">
-                        <button
-                          onClick={() => updateDutyStatus(duty.id, "approved")}
-                          className="mr-2 px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => updateDutyStatus(duty.id, "rejected")}
-                          className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-500"
-                        >
-                          Reject
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+        <SidebarInset className="p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Inbox className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold">TA Duty Requests</h1>
           </div>
 
-          {/* Past Requests Card */}
-          <div className="bg-gray-50 p-6 rounded shadow">
-            <h2 className="text-2xl font-semibold mb-4">Past Requests</h2>
-            {pastRequests.length === 0 ? (
-              <p className="text-gray-700">No past requests.</p>
-            ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-200 text-gray-800">
-                    <th className="border border-gray-300 p-2">TA Email</th>
-                    <th className="border border-gray-300 p-2">TA Name</th>
-                    <th className="border border-gray-300 p-2">Course Code</th>
-                    <th className="border border-gray-300 p-2">Duty Type</th>
-                    <th className="border border-gray-300 p-2">Date</th>
-                    <th className="border border-gray-300 p-2">Start</th>
-                    <th className="border border-gray-300 p-2">End</th>
-                    <th className="border border-gray-300 p-2">Duration</th>
-                    <th className="border border-gray-300 p-2">Status</th>
-                    <th className="border border-gray-300 p-2">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pastRequests.map((duty) => (
-                    <tr key={duty.id} className="hover:bg-gray-100">
-                      <td className="border border-gray-300 p-2">{duty.ta_email}</td>
-                      <td className="border border-gray-300 p-2">{duty.ta_name}</td>
-                      <td className="border border-gray-300 p-2">{duty.course || "N/A"}</td>
-                      <td className="border border-gray-300 p-2">{duty.duty_type}</td>
-                      <td className="border border-gray-300 p-2">{formatDate(duty.date)}</td>
-                      <td className="border border-gray-300 p-2">{duty.start_time}</td>
-                      <td className="border border-gray-300 p-2">{duty.end_time}</td>
-                      <td className="border border-gray-300 p-2">
-                        {formatDuration(duty.duration_hours)}
-                      </td>
-                      <td className="border border-gray-300 p-2">
-                        <span className={`px-2 py-1 rounded ${getStatusColor(duty.status)}`}>
-                          {duty.status}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 p-2">{duty.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          {message && (
+            <Alert variant={messageType === "success" ? "default" : "destructive"} className="mb-6">
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+
+          <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="pending" className="text-blue-600 font-medium">
+                Pending Requests
+              </TabsTrigger>
+              <TabsTrigger value="past" className="text-blue-600 font-medium">
+                Past Requests
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-blue-600">Pending Requests</CardTitle>
+                  <CardDescription>Review and manage pending duty requests from TAs</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pendingRequests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No pending requests.</div>
+                  ) : (
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>TA</TableHead>
+                            <TableHead>Course</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Duration</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pendingRequests.map((duty) => (
+                            <TableRow key={duty.id}>
+                              <TableCell>
+                                <div className="font-medium">{duty.ta_name}</div>
+                                <div className="text-xs text-muted-foreground">{duty.ta_email}</div>
+                              </TableCell>
+                              <TableCell>{duty.course || "N/A"}</TableCell>
+                              <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
+                              <TableCell>{formatDate(duty.date)}</TableCell>
+                              <TableCell>
+                                {duty.start_time} - {duty.end_time}
+                              </TableCell>
+                              <TableCell>{formatDuration(duty.duration_hours)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                                  <Clock className="mr-1 h-3 w-3" />
+                                  {duty.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-[200px]">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger className="text-left truncate max-w-[200px] block">
+                                      {duty.description || "-"}
+                                    </TooltipTrigger>
+                                    {duty.description && (
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p>{duty.description}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-500"
+                                    onClick={() => updateDutyStatus(duty.id, "approved")}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => updateDutyStatus(duty.id, "rejected")}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="past">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-blue-600">Past Requests</CardTitle>
+                  <CardDescription>History of approved and rejected duty requests</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pastRequests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No past requests.</div>
+                  ) : (
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>TA</TableHead>
+                            <TableHead>Course</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Duration</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pastRequests.map((duty) => (
+                            <TableRow key={duty.id}>
+                              <TableCell>
+                                <div className="font-medium">{duty.ta_name}</div>
+                                <div className="text-xs text-muted-foreground">{duty.ta_email}</div>
+                              </TableCell>
+                              <TableCell>{duty.course || "N/A"}</TableCell>
+                              <TableCell>{formatDutyType(duty.duty_type)}</TableCell>
+                              <TableCell>{formatDate(duty.date)}</TableCell>
+                              <TableCell>
+                                {duty.start_time} - {duty.end_time}
+                              </TableCell>
+                              <TableCell>{formatDuration(duty.duration_hours)}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    duty.status.toLowerCase() === "approved"
+                                      ? "bg-green-100 text-green-800 border-green-200"
+                                      : "bg-red-100 text-red-800 border-red-200"
+                                  }
+                                >
+                                  {duty.status.toLowerCase() === "approved" ? (
+                                    <CheckCircle className="mr-1 h-3 w-3" />
+                                  ) : (
+                                    <XCircle className="mr-1 h-3 w-3" />
+                                  )}
+                                  {duty.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-[200px]">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger className="text-left truncate max-w-[200px] block">
+                                      {duty.description || "-"}
+                                    </TooltipTrigger>
+                                    {duty.description && (
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p>{duty.description}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
-
+  )
 }

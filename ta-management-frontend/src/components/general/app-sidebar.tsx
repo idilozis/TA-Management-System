@@ -119,7 +119,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     ...(user && !user.isTA
       ? [
           {
-            name: "Documents",
+            name: "Reports",
             path: "/documents",
             icon: FolderArchive,
           },
