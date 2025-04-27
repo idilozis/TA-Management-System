@@ -3,7 +3,7 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.db.models import F
 
-from myapp.models import TAUser
+from myapp.models import TAUser, AuthorizedUser
 from myapp.proctoring.models import ProctoringAssignment                
 from myapp.notificationsystem.views import create_notification         
 
@@ -16,7 +16,6 @@ SWAP_STATUS = [
 ]
 
 class SwapRequest(models.Model):
-    """A single TA‑to‑TA swap offer for one ProctoringAssignment."""
     original_assignment = models.ForeignKey(
         ProctoringAssignment,
         on_delete=models.CASCADE,
@@ -25,9 +24,18 @@ class SwapRequest(models.Model):
 
     requested_by = models.ForeignKey(          
         TAUser,
-        on_delete=models.CASCADE,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
         related_name="swap_requests_sent",
     )
+    
+    requested_by_staff = models.ForeignKey(          
+        AuthorizedUser,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="staff_swaps_made",
+    )
+    
     requested_to = models.ForeignKey(           
         TAUser,
         on_delete=models.CASCADE,
@@ -40,7 +48,6 @@ class SwapRequest(models.Model):
 
     class Meta:
         db_table = "swap_requests"
-        unique_together = ("original_assignment", "status")
 
     def __str__(self):
         target = self.original_assignment.exam or self.original_assignment.dean_exam
