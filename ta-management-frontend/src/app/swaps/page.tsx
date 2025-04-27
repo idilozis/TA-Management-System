@@ -16,6 +16,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import SwapsTable from "./SwapTable";
+import SwapTimeline from "@/components/swap/SwapTimeline";
 
 interface SwapRow {
   swap_id: number;
@@ -80,6 +81,19 @@ export default function SwapsPage() {
             <TabsList className="mb-6">
               <TabsTrigger value="pending">Pending Swaps</TabsTrigger>
               <TabsTrigger value="requests">Swap Requests</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+              <TabsContent value="history">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-blue-600">Swap History</CardTitle>
+                    <CardDescription>All your past swaps.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SwapTimeline/>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
             </TabsList>
 
             <TabsContent value="pending">
