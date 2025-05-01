@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Archive } from "lucide-react"
+import { Archive, Plus } from "lucide-react"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
@@ -21,6 +21,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import MailPopover from "@/app/home-page/mail-system/MailPopover"
 import { PageLoader, LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Button } from "@/components/ui/button"
+import CreateTAModal from "./CreateTAModal"
+import CreateStaffModal from "./CreateStaffModal"
+import CreateCourseModal from "./CreateCourseModal"
 
 type Tab = "courses" | "tas" | "staff"
 
@@ -40,40 +44,47 @@ export default function TablesPage() {
   const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null)
   const [mailEmail, setMailEmail] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoadingData(true)
-      setError("")
-      try {
-        if (activeTab === "courses") {
-          const res = await apiClient.get("/list/courses/")
-          if (res.data.status === "success") {
-            setCourses(res.data.courses)
-          } else {
-            setError(res.data.message || "Error fetching courses.")
-          }
-        } else if (activeTab === "tas") {
-          const res = await apiClient.get("/list/tas/")
-          if (res.data.status === "success") {
-            setTAs(res.data.tas)
-          } else {
-            setError(res.data.message || "Error fetching TAs.")
-          }
-        } else if (activeTab === "staff") {
-          const res = await apiClient.get("/list/staff/")
-          if (res.data.status === "success") {
-            setStaff(res.data.staff)
-          } else {
-            setError(res.data.message || "Error fetching staff.")
-          }
+  // Add state for modals
+  const [createTAOpen, setCreateTAOpen] = useState(false)
+  const [createStaffOpen, setCreateStaffOpen] = useState(false)
+  const [createCourseOpen, setCreateCourseOpen] = useState(false)
+
+  // Move fetchData outside useEffect and make it a function of the component
+  const fetchData = async () => {
+    setLoadingData(true)
+    setError("")
+    try {
+      if (activeTab === "courses") {
+        const res = await apiClient.get("/list/courses/")
+        if (res.data.status === "success") {
+          setCourses(res.data.courses)
+        } else {
+          setError(res.data.message || "Error fetching courses.")
         }
-      } catch (err: any) {
-        setError("Error fetching data. Please try again.")
-        console.error(err)
-      } finally {
-        setLoadingData(false)
+      } else if (activeTab === "tas") {
+        const res = await apiClient.get("/list/tas/")
+        if (res.data.status === "success") {
+          setTAs(res.data.tas)
+        } else {
+          setError(res.data.message || "Error fetching TAs.")
+        }
+      } else if (activeTab === "staff") {
+        const res = await apiClient.get("/list/staff/")
+        if (res.data.status === "success") {
+          setStaff(res.data.staff)
+        } else {
+          setError(res.data.message || "Error fetching staff.")
+        }
       }
+    } catch (err: any) {
+      setError("Error fetching data. Please try again.")
+      console.error(err)
+    } finally {
+      setLoadingData(false)
     }
+  }
+
+  useEffect(() => {
     fetchData()
   }, [activeTab])
 
@@ -150,8 +161,12 @@ export default function TablesPage() {
                 {/* COURSES TAB */}
                 <TabsContent value="courses">
                   <Card className="border-black">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">COURSES (2024-2025 SPRING)</CardTitle>
+                      <Button onClick={() => setCreateCourseOpen(true)} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Course
+                      </Button>
                     </CardHeader>
 
                     <CardContent>
@@ -166,13 +181,25 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
+                  <CreateCourseModal 
+                    open={createCourseOpen} 
+                    onOpenChange={setCreateCourseOpen}
+                    onSuccess={() => {
+                      setCreateCourseOpen(false)
+                      fetchData()
+                    }}
+                  />
                 </TabsContent>
 
                 {/* TAs TAB */}
                 <TabsContent value="tas">
                   <Card className="border-black">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">TEACHING ASSISTANTS</CardTitle>
+                      <Button onClick={() => setCreateTAOpen(true)} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create TA
+                      </Button>
                     </CardHeader>
 
                     <CardContent>
@@ -187,13 +214,25 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
+                  <CreateTAModal 
+                    open={createTAOpen} 
+                    onOpenChange={setCreateTAOpen}
+                    onSuccess={() => {
+                      setCreateTAOpen(false)
+                      fetchData()
+                    }}
+                  />
                 </TabsContent>
 
                 {/* STAFF TAB */}
                 <TabsContent value="staff">
                   <Card className="border-black">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">INSTRUCTORS</CardTitle>
+                      <Button onClick={() => setCreateStaffOpen(true)} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Instructor
+                      </Button>
                     </CardHeader>
 
                     <CardContent>
@@ -208,6 +247,14 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
+                  <CreateStaffModal 
+                    open={createStaffOpen} 
+                    onOpenChange={setCreateStaffOpen}
+                    onSuccess={() => {
+                      setCreateStaffOpen(false)
+                      fetchData()
+                    }}
+                  />
                 </TabsContent>
               </>
             )}

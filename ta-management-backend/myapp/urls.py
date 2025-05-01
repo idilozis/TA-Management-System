@@ -10,4 +10,7 @@ urlpatterns = [
     path("tas/", list_all_tas, name="list_all_tas"),
     path("staff/", list_all_staff, name="list_all_staff"),
     path("courses/", list_all_courses, name="list_all_courses"),
+    path("create/ta/", create_ta, name="create_ta"),
+    path("create/staff/", create_staff, name="create_staff"),
+    path("create/course/", create_course, name="create_course"),
 ]

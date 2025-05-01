@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
 from django.core.mail import EmailMessage
+import json
 
 from myapp.models import Course, TAUser, StaffUser
 
@@ -134,3 +135,164 @@ def list_all_courses(request):
             "instructors": instructor_list,  # e.g. ["Alice Smith", "Bob Jones"]
         })
     return JsonResponse({"status": "success", "courses": data})
+
+
+# -----------------------------
+# CREATE NEW TA
+# -----------------------------
+@csrf_exempt
+@require_POST
+def create_ta(request):
+    session_email = request.session.get("user_email")
+    if not session_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        required_fields = ['name', 'surname', 'student_id', 'tc_no', 'email', 'program']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Missing required field: {field}"
+                }, status=400)
+
+        # Create new TA
+        ta = TAUser(
+            name=data['name'],
+            surname=data['surname'],
+            student_id=data['student_id'],
+            tc_no=data['tc_no'],
+            email=data['email'],
+            program=data['program'],
+            iban=data.get('iban'),
+            phone=data.get('phone'),
+            advisor=data.get('advisor'),
+            ta_type=data.get('ta_type')
+        )
+        
+        if 'password' in data:
+            ta.set_password(data['password'])
+            
+        ta.save()
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "TA created successfully",
+            "ta": {
+                "email": ta.email,
+                "name": ta.name,
+                "surname": ta.surname
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
+
+
+# -----------------------------
+# CREATE NEW STAFF
+# -----------------------------
+@csrf_exempt
+@require_POST
+def create_staff(request):
+    session_email = request.session.get("user_email")
+    if not session_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        required_fields = ['name', 'surname', 'email']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Missing required field: {field}"
+                }, status=400)
+
+        # Create new Staff
+        staff = StaffUser(
+            name=data['name'],
+            surname=data['surname'],
+            email=data['email'],
+            department=data.get('department')
+        )
+        
+        if 'password' in data:
+            staff.set_password(data['password'])
+            
+        staff.save()
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Staff created successfully",
+            "staff": {
+                "email": staff.email,
+                "name": staff.name,
+                "surname": staff.surname
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
+
+
+# -----------------------------
+# CREATE NEW COURSE
+# -----------------------------
+@csrf_exempt
+@require_POST
+def create_course(request):
+    session_email = request.session.get("user_email")
+    if not session_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        required_fields = ['code', 'name']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Missing required field: {field}"
+                }, status=400)
+
+        # Create new Course
+        course = Course(
+            code=data['code'],
+            name=data['name']
+        )
+        course.save()
+        
+        # Add instructors if provided
+        if 'instructor_emails' in data:
+            for email in data['instructor_emails']:
+                try:
+                    instructor = StaffUser.objects.get(email=email)
+                    course.instructors.add(instructor)
+                except StaffUser.DoesNotExist:
+                    return JsonResponse({
+                        "status": "error",
+                        "message": f"Instructor with email {email} not found"
+                    }, status=404)
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Course created successfully",
+            "course": {
+                "code": course.code,
+                "name": course.name
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
