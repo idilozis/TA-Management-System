@@ -102,6 +102,11 @@ export default function TablesPage() {
     setMailEmail(null)
   }
 
+  // First, add a helper function at the top of the component
+  const canCreateRecords = (user: any) => {
+    return user?.isAuth && user?.role === "ADMIN"
+  }
+
   if (loading) {
     return <PageLoader />
   }
@@ -163,10 +168,12 @@ export default function TablesPage() {
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">COURSES (2024-2025 SPRING)</CardTitle>
-                      <Button onClick={() => setCreateCourseOpen(true)} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Course
-                      </Button>
+                      {canCreateRecords(user) && (
+                        <Button onClick={() => setCreateCourseOpen(true)} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Course
+                        </Button>
+                      )}
                     </CardHeader>
 
                     <CardContent>
@@ -188,6 +195,7 @@ export default function TablesPage() {
                       setCreateCourseOpen(false)
                       fetchData()
                     }}
+                    user={user}
                   />
                 </TabsContent>
 
@@ -196,10 +204,12 @@ export default function TablesPage() {
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">TEACHING ASSISTANTS</CardTitle>
-                      <Button onClick={() => setCreateTAOpen(true)} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create TA
-                      </Button>
+                      {canCreateRecords(user) && (
+                        <Button onClick={() => setCreateTAOpen(true)} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create TA
+                        </Button>
+                      )}
                     </CardHeader>
 
                     <CardContent>
@@ -221,6 +231,7 @@ export default function TablesPage() {
                       setCreateTAOpen(false)
                       fetchData()
                     }}
+                    user={user}
                   />
                 </TabsContent>
 
@@ -229,10 +240,12 @@ export default function TablesPage() {
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">INSTRUCTORS</CardTitle>
-                      <Button onClick={() => setCreateStaffOpen(true)} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Instructor
-                      </Button>
+                      {canCreateRecords(user) && (
+                        <Button onClick={() => setCreateStaffOpen(true)} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Instructor
+                        </Button>
+                      )}
                     </CardHeader>
 
                     <CardContent>
@@ -254,6 +267,7 @@ export default function TablesPage() {
                       setCreateStaffOpen(false)
                       fetchData()
                     }}
+                    user={user}
                   />
                 </TabsContent>
               </>

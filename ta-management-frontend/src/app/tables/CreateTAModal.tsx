@@ -12,9 +12,10 @@ interface CreateTAModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  user: any
 }
 
-export default function CreateTAModal({ open, onOpenChange, onSuccess }: CreateTAModalProps) {
+export default function CreateTAModal({ open, onOpenChange, onSuccess, user }: CreateTAModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
@@ -32,6 +33,13 @@ export default function CreateTAModal({ open, onOpenChange, onSuccess }: CreateT
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check authorization
+    if (!user?.isAuth || user?.role !== "ADMIN") {
+      setError("You are not authorized to perform this action")
+      return
+    }
+    
     setLoading(true)
     setError("")
 

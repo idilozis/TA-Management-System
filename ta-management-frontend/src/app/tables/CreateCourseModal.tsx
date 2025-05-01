@@ -12,6 +12,7 @@ interface CreateCourseModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  user: any
 }
 
 interface Instructor {
@@ -19,7 +20,7 @@ interface Instructor {
   label: string
 }
 
-export default function CreateCourseModal({ open, onOpenChange, onSuccess }: CreateCourseModalProps) {
+export default function CreateCourseModal({ open, onOpenChange, onSuccess, user }: CreateCourseModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [instructors, setInstructors] = useState<Instructor[]>([])
@@ -49,11 +50,18 @@ export default function CreateCourseModal({ open, onOpenChange, onSuccess }: Cre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check authorization
+    if (!user?.isAuth || user?.role !== "ADMIN") {
+      setError("You are not authorized to perform this action")
+      return
+    }
+    
     setLoading(true)
     setError("")
 
     try {
-      const res = await apiClient.post("list/create/course/", formData)
+      const res = await apiClient.post("/list/create/course/", formData)
       if (res.data.status === "success") {
         onSuccess()
       } else {

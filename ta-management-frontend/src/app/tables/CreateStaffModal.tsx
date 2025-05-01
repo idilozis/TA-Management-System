@@ -11,9 +11,10 @@ interface CreateStaffModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  user: any
 }
 
-export default function CreateStaffModal({ open, onOpenChange, onSuccess }: CreateStaffModalProps) {
+export default function CreateStaffModal({ open, onOpenChange, onSuccess, user }: CreateStaffModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
@@ -25,11 +26,17 @@ export default function CreateStaffModal({ open, onOpenChange, onSuccess }: Crea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!user?.isAuth || user?.role !== "ADMIN") {
+      setError("You are not authorized to perform this action")
+      return
+    }
+
     setLoading(true)
     setError("")
 
     try {
-      const res = await apiClient.post("list/create/staff/", formData)
+      const res = await apiClient.post("/list/create/staff/", formData)
       if (res.data.status === "success") {
         onSuccess()
       } else {
