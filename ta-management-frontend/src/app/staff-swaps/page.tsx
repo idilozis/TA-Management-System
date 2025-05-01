@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from "react";
 import apiClient from "@/lib/axiosClient";
-
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/general/app-sidebar";
 import { useUser } from "@/components/general/user-data";
-
 import { PageLoader } from "@/components/ui/loading-spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Repeat } from "lucide-react";
@@ -17,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import SwapModalStaff from "./SwapModalStaff";
-import SwapTimeline from "@/components/swap/SwapTimeline";  
+import SwapTimeline from "@/app/staff-swaps/SwapTimeline";  
 
 interface Assignment {
   assignment_id: number;
@@ -201,7 +199,7 @@ function AssignmentsTable({ loading, assignments, openModal }: TableProps) {
                         {formatDate(row.date)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{row.start_time} – {row.end_time}</TableCell>
+                    <TableCell>{row.start_time} - {row.end_time}</TableCell>
                     <TableCell>{row.classrooms.join(", ")}</TableCell>
                     <TableCell>{row.student_count}</TableCell>
                     <TableCell>{row.ta_name}</TableCell>

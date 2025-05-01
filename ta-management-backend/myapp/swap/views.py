@@ -65,7 +65,7 @@ def create_swap(request):
 
     create_notification(
         recipient_email=target_ta.email,
-        message=f"{requester.name} wants to swap a proctoring duty with you."
+        message=f"{requester.name} wants to swap a proctoring with you."
     )
 
     return JsonResponse({"status": "success", "swap_id": swap.id})
@@ -142,6 +142,10 @@ def serialize(sr, my_role):
         "created_at": sr.created_at.isoformat(),
         "initiator" : initiator_str,
     }
+    
+    # TA UI to show who they swapped with (for staff swaps)
+    if sr.previous_ta:
+        row["previous_ta"] = sr.previous_ta.email
 
     if sr.original_assignment.exam:         # normal exam
         row |= {
@@ -173,60 +177,95 @@ def list_my_swaps(request):
     if role != "TA":
         return JsonResponse({"status": "error", "message": "Only TAs have swaps"}, status=403)
 
-    sent     = user.swap_requests_sent.    all().select_related("original_assignment","requested_to")
+    sent     = user.swap_requests_sent.all().select_related("original_assignment","requested_to")
     received = user.swap_requests_received.all().select_related("original_assignment","requested_by")
+
+    def serialize(sr, my_role):
+        ta_initiator    = sr.requested_by
+        staff_initiator = getattr(sr, "requested_by_staff", None)
+        target_exam     = sr.original_assignment.exam or sr.original_assignment.dean_exam
+
+        # who kicked it off
+        if ta_initiator:
+            initiator_str = f"{ta_initiator.name} {ta_initiator.surname} (TA)"
+        elif staff_initiator:
+            initiator_str = f"{staff_initiator.name} {staff_initiator.surname} (Secretary)"
+        else:
+            initiator_str = "Unknown"
+
+        # base row
+        row = {
+            "swap_id":   sr.id,
+            "role":      my_role,
+            "status":    sr.status,
+            "initiator": initiator_str,
+            "time":      sr.created_at.isoformat(),
+            # course payload already exists:
+            "course_code": target_exam.course.code if sr.original_assignment.exam else ", ".join(target_exam.course_codes),
+            "course_name": target_exam.course.name if sr.original_assignment.exam else "",
+            "date":        target_exam.date.isoformat(),
+            "start_time":  target_exam.start_time.strftime("%H:%M"),
+            "end_time":    target_exam.end_time.strftime("%H:%M"),
+            "classrooms":  target_exam.classrooms,
+            "student_count": target_exam.student_count,
+        }
+
+        # who you’re swapping with
+        if my_role == "sender":
+            # you sent it → sr.requested_to
+            row["with_ta"]      = sr.requested_to.email
+            row["with_ta_name"] = f"{sr.requested_to.name} {sr.requested_to.surname}"
+        else:  # receiver
+            row["with_ta"]      = sr.requested_by.email if sr.requested_by else ""
+            row["with_ta_name"] = f"{sr.requested_by.name} {sr.requested_by.surname}" if sr.requested_by else ""
+
+        return row
 
     data = [serialize(s, "sender")   for s in sent] + \
            [serialize(r, "receiver") for r in received]
 
     return JsonResponse({"status": "success", "swaps": data})
 
+@require_GET
 def swap_candidates(request, assignment_id):
-    """Return two lists: assignable / unassignable with reasons."""
+    """Return two lists: assignable / unassignable with reasons for TA‐initiated swaps."""
     email = request.session.get("user_email")
     if not email:
-        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
     user, role = find_user_by_email(email)
     if role != "TA":
-        return JsonResponse({"status": "error", "message": "Only TAs can fetch candidates"}, status=403)
+        return JsonResponse({"status":"error","message":"Only TAs can fetch candidates"}, status=403)
 
-    try:
-        assignment = ProctoringAssignment.objects.select_related(
-            "exam", "dean_exam", "ta"
-        ).get(pk=assignment_id)
-    except ProctoringAssignment.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Assignment not found"}, status=404)
+    pa = get_object_or_404(ProctoringAssignment.objects.select_related("exam","dean_exam","ta"),
+                           pk=assignment_id)
+    if pa.ta != user:
+        return JsonResponse({"status":"error","message":"Permission denied"}, status=403)
 
-    # Only the TA owning the assignment may fetch
-    if assignment.ta != user:
-        return JsonResponse({"status": "error", "message": "Permission denied"}, status=403)
+    # Is this a dean exam assignment?
+    is_dean = pa.exam is None and pa.dean_exam is not None
 
-    target_exam = assignment.exam or assignment.dean_exam
-    date  = target_exam.date
-    slot  = f"{target_exam.start_time.strftime('%H:%M')}-{target_exam.end_time.strftime('%H:%M')}"
-    code_norm = (target_exam.course.code if assignment.exam else target_exam.course_codes[0]).replace(" ", "").lower()
-    instr_dept = advisor_department(user.advisor)  
+    # Common data
+    exam      = pa.exam or pa.dean_exam
+    date      = exam.date
+    slot      = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
+    instr_dept= None if is_dean else advisor_department(user.advisor)
 
     leave_set = set(
         TALeaveRequests.objects.filter(
             status="approved", start_date__lte=date, end_date__gte=date
         ).values_list("ta_user__email", flat=True)
     )
-
-    same_day = set(
+    same_day  = set(
         ProctoringAssignment.objects.filter(
             Q(exam__date=date) | Q(dean_exam__date=date)
         ).values_list("ta__email", flat=True)
     )
-
     adj_days = set(
         ProctoringAssignment.objects.filter(
-            Q(exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
-            | Q(dean_exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
+            Q(exam__date__in=[date - timedelta(1), date + timedelta(1)]) |
+            Q(dean_exam__date__in=[date - timedelta(1), date + timedelta(1)])
         ).values_list("ta__email", flat=True)
     )
-
     conflicts = set(
         TAWeeklySlot.objects.filter(
             day=date.strftime("%a").upper(), time_slot=slot
@@ -234,30 +273,27 @@ def swap_candidates(request, assignment_id):
     )
 
     assignable, unassignable = [], []
-    all_tas = TAUser.objects.filter(isTA=True)
-
-    for ta in all_tas:
+    for ta in TAUser.objects.filter(isTA=True):
         if ta == user:
-            continue  # can't swap with yourself
+            continue
         reasons = []
-
         if ta.email in leave_set:
             reasons.append("On leave")
         if ta.email in same_day:
-            reasons.append("Same‑day proctoring")
+            reasons.append("Same-day proctoring")
         if ta.email in adj_days:
-            reasons.append("Day‑before/after proctor")
+            reasons.append("Day-before/after proctor")
         if ta.email in conflicts:
             reasons.append("Lecture conflict")
-
-        if advisor_department(ta.advisor) != instr_dept:
+        # Only check department for normal exams
+        if not is_dean and advisor_department(ta.advisor) != instr_dept:
             reasons.append("Different department")
 
         rec = {
-            "email"     : ta.email,
-            "name"      : f"{ta.name} {ta.surname}",
-            "workload"  : ta.workload,
-            "program"   : ta.program,
+            "email":    ta.email,
+            "name":     f"{ta.name} {ta.surname}",
+            "workload": ta.workload,
+            "program":  ta.program,
         }
 
         if reasons:
@@ -266,7 +302,7 @@ def swap_candidates(request, assignment_id):
             assignable.append(rec)
 
     assignable.sort(key=lambda x: x["workload"])
-    return JsonResponse({"status": "success", "assignable": assignable, "unassignable": unassignable})
+    return JsonResponse({"status":"success","assignable":assignable,"unassignable":unassignable})
 
 @require_GET
 def list_all_assignments(request):
@@ -328,38 +364,38 @@ def list_all_assignments(request):
 
 @require_GET
 def candidate_tas_staff(request, assignment_id):
+    """Return two lists: assignable / excluded with reasons for staff‐initiated swaps."""
     email = request.session.get("user_email")
     user, _ = find_user_by_email(email)
     if not getattr(user, "isAuth", False):
-        return JsonResponse({"status": "error"}, status=403)
+        return JsonResponse({"status":"error"}, status=403)
 
-    pa = get_object_or_404(ProctoringAssignment, pk=assignment_id)
-    exam = pa.exam or pa.dean_exam
+    pa = get_object_or_404(ProctoringAssignment.objects.select_related("exam","dean_exam","ta"),
+                           pk=assignment_id)
+    # Is this a dean exam assignment?
+    is_dean = pa.exam is None and pa.dean_exam is not None
 
-    date = exam.date
-    slot = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
-    code_norm = (exam.course.code if pa.exam else exam.course_codes[0]).replace(" ", "").lower()
-    instr_dept = advisor_department(pa.ta.advisor)
+    exam      = pa.exam or pa.dean_exam
+    date      = exam.date
+    slot      = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
+    instr_dept= None if is_dean else advisor_department(pa.ta.advisor)
 
     leave_set = set(
         TALeaveRequests.objects.filter(
             status="approved", start_date__lte=date, end_date__gte=date
         ).values_list("ta_user__email", flat=True)
     )
-
-    same_day = set(
+    same_day  = set(
         ProctoringAssignment.objects.filter(
             Q(exam__date=date) | Q(dean_exam__date=date)
         ).values_list("ta__email", flat=True)
     )
-
     adj_days = set(
         ProctoringAssignment.objects.filter(
-            Q(exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)]) |
-            Q(dean_exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
+            Q(exam__date__in=[date - timedelta(1), date + timedelta(1)]) |
+            Q(dean_exam__date__in=[date - timedelta(1), date + timedelta(1)])
         ).values_list("ta__email", flat=True)
     )
-
     conflicts = set(
         TAWeeklySlot.objects.filter(
             day=date.strftime("%a").upper(), time_slot=slot
@@ -372,36 +408,36 @@ def candidate_tas_staff(request, assignment_id):
         if ta.email in leave_set:
             reasons.append("On leave")
         if ta.email in same_day:
-            reasons.append("Same‑day proctor")
+            reasons.append("Same-day proctor")
         if ta.email in adj_days:
-            reasons.append("Day‑before/after")
+            reasons.append("Day-before/after")
         if ta.email in conflicts:
             reasons.append("Lecture conflict")
-        if advisor_department(ta.advisor) != instr_dept:
+        if not is_dean and advisor_department(ta.advisor) != instr_dept:
             reasons.append("Different department")
 
         rec = {
-            "email": ta.email,
-            "name": f"{ta.name} {ta.surname}",
+            "email":    ta.email,
+            "name":     f"{ta.name} {ta.surname}",
             "workload": ta.workload,
-            "program": ta.program,
+            "program":  ta.program,
         }
+
         (excluded if reasons else assignable).append(
             {**rec, "reason": "; ".join(reasons)} if reasons else rec
         )
 
     assignable.sort(key=lambda x: x["workload"])
-    return JsonResponse({"status": "success", "assignable": assignable, "unassignable": excluded})
+    return JsonResponse({"status":"success","assignable":assignable,"unassignable":excluded})
 
 @csrf_exempt
 @require_POST
 @transaction.atomic
 def staff_swap(request, assignment_id):
-
-    email = request.session.get("user_email")
-    user, _ = find_user_by_email(email)
+    user_email = request.session.get("user_email")
+    user, _    = find_user_by_email(user_email)
     if not getattr(user, "isAuth", False):
-        return JsonResponse({"status": "error"}, status=403)
+        return JsonResponse({"status": "error", "message": "Not authorized"}, status=403)
 
     pa = get_object_or_404(ProctoringAssignment, pk=assignment_id)
     data = json.loads(request.body or "{}")
@@ -413,30 +449,35 @@ def staff_swap(request, assignment_id):
     if new_ta == pa.ta:
         return JsonResponse({"status": "error", "message": "Same TA"}, status=400)
 
+    # Compute duration in hours
     exam = pa.exam or pa.dean_exam
-    hours = (
-        datetime.combine(exam.date, exam.end_time) -
-        datetime.combine(exam.date, exam.start_time)
-    ).seconds // 3600
+    start = datetime.combine(exam.date, exam.start_time)
+    end   = datetime.combine(exam.date, exam.end_time)
+    hours = (end - start).total_seconds() / 3600.0
 
     old_ta = pa.ta
-    old_ta.workload = max(0, old_ta.workload - hours)
-    old_ta.save()
 
-    new_ta.workload += hours
-    new_ta.save()
+    # 1) Decrement old TA's workload
+    TAUser.objects.filter(pk=old_ta.pk).update(workload=F("workload") - hours)
 
+    # 2) Increment new TA's workload
+    TAUser.objects.filter(pk=new_ta.pk).update(workload=F("workload") + hours)
+
+    # 3) Reassign on the ProctoringAssignment
     pa.ta = new_ta
-    pa.save()
+    pa.save(update_fields=["ta"])
 
+    # 4) Create a SwapRequest record
     SwapRequest.objects.create(
         original_assignment=pa,
-        requested_by_staff=user,           
+        requested_by_staff=user,
         requested_to=new_ta,
+        previous_ta=old_ta,
         status="accepted",
         responded_at=timezone.now(),
     )
 
+    # 5) Notifications
     create_notification(
         recipient_email=old_ta.email,
         message=f"You were replaced for {exam}."
@@ -453,49 +494,74 @@ def list_all_swaps(request):
     email = request.session.get("user_email")
     user, _ = find_user_by_email(email)
     if not getattr(user, "isAuth", False):
-        return JsonResponse(
-            {"status": "error", "message": "Not authorized"}, status=403
-        )
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
 
     swaps = (
         SwapRequest.objects
         .select_related(
             "original_assignment__exam__course",
             "original_assignment__dean_exam",
-            "requested_by",
-            "requested_by_staff",
-            "requested_to",
+            "requested_by",         
+            "requested_by_staff",   
+            "previous_ta",          
+            "requested_to",         
         )
         .order_by("-created_at")
     )
-    def _serialize_admin(sr):
-        if sr.requested_by:
-            initiator = sr.requested_by.email          
-        elif sr.requested_by_staff:
-            initiator = sr.requested_by_staff.email   
-        else:
-            initiator = "unknown"
 
+    def _serialize_admin(sr):
+        # 1) Figure out the “initiator” (who kicked this off)
+        if sr.requested_by_staff:
+            initiator = sr.requested_by_staff
+        else:
+            initiator = sr.requested_by
+
+        initiator_name = (
+            f"{initiator.name} {initiator.surname}"
+            if initiator else
+            "Unknown"
+        )
+
+        # 2) Figure out the “old TA” (previous to swap)
+        if sr.previous_ta:
+            old_ta = sr.previous_ta
+        else:
+            old_ta = sr.requested_by
+
+        old_name = (
+            f"{old_ta.name} {old_ta.surname}"
+            if old_ta else
+            "Unknown TA"
+        )
+
+        # 3) New TA
+        new_ta = sr.requested_to
+        new_name = f"{new_ta.name} {new_ta.surname}"
+
+        # 4) Build the assignment label
         exam = sr.original_assignment.exam or sr.original_assignment.dean_exam
-        assignment_label = (
-            f"{exam.course.code if sr.original_assignment.exam else ','.join(exam.course_codes)} "
+        code = exam.course.code if sr.original_assignment.exam else ", ".join(exam.course_codes)
+        label = (
+            f"{code} "
             f"{exam.date.strftime('%d.%m.%Y')} "
             f"{exam.start_time.strftime('%H:%M')}–{exam.end_time.strftime('%H:%M')}"
         )
 
         return {
-            "id"        : sr.id,
-            "initiator" : initiator,
-            "target"    : sr.requested_to.email,
-            "status"    : sr.status,
-            "time"      : sr.created_at.isoformat(),
-
-            "assignment": assignment_label,
-            "previous_ta": sr.original_assignment.ta.email,
+            "id":           sr.id,
+            # header
+            "initiator":   old_name,
+            "target":      new_name,
+            "status":      sr.status,
+            "time":        sr.created_at.isoformat(),
+            # body
+            "staff_name":  initiator_name,
+            "previous_ta": old_name,
+            "assignment":  label,
         }
 
-    data = [_serialize_admin(sr) for sr in swaps]        
-    return JsonResponse({"status": "success", "swaps": data})
+    data = [_serialize_admin(sr) for sr in swaps]
+    return JsonResponse({"status":"success","swaps":data})
 
 @require_GET
 def swap_assignment_history(request, assignment_id):
@@ -514,6 +580,7 @@ def swap_assignment_history(request, assignment_id):
             "target": f"{s.requested_to.name}",
             "status": s.status,
             "time": s.created_at.isoformat(),
+            "previous_ta": s.previous_ta.name,
         }
 
     return JsonResponse({

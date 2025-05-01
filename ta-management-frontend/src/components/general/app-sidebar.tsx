@@ -95,9 +95,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-      ...(user && user.isAuth && user.role==="SECRETARY"
-        ? [{ name:"Proctoring Assignments", path:"/staff-swaps", icon:Repeat }]
-        : []),      
+    ...(user && user.isAuth && user.role==="SECRETARY"
+      ? [{ name:"Swaps", path:"/staff-swaps", icon:Repeat }]
+      : []),      
     ...(user && !user.isTA && user.isAuth && user.role == "DEAN"
       ? [
           {
