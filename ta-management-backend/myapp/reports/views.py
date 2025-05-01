@@ -1,413 +1,359 @@
 # myapp/reports/views.py
-import requests, random
+import os
+import random
+from io import BytesIO
+from datetime import datetime
+
+from django.conf import settings
 from django.http import HttpResponse
-from pylatex import Document, Section, Subsection, Tabular, Package
-from pylatex.utils import NoEscape, bold, escape_latex
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from datetime import datetime, date
+
+# ReportLab imports
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+# DejaVuSans for Turkish support
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+dejavu_path = os.path.join(settings.BASE_DIR, "fonts", "DejaVuSans.ttf")
+pdfmetrics.registerFont(TTFont("DejaVuSans", dejavu_path))
+
+# build and tweak styles
+styles = getSampleStyleSheet()
+for st in styles.byName.values():
+    st.fontName = "DejaVuSans"
+styles["Normal"].fontSize   = 9
+styles["Normal"].leading    = 11
+styles["Title"].fontSize    = 14
+styles["Title"].leading     = 16
+styles["Heading1"].fontSize = 12
+styles["Heading1"].leading  = 14
+styles["Heading2"].fontSize = 10
+styles["Heading2"].leading  = 12
+styles.add(ParagraphStyle(
+    name="CenterSubtitle",
+    parent=styles["Normal"],
+    alignment=1,
+    spaceBefore=4,
+    fontSize=9,
+    leading=11
+))
 
 # Models
 from myapp.proctoring.models import ProctoringAssignment
-from myapp.taduties.models import TADuty
-from myapp.models import StudentList, TAUser
-from myapp.exams.models import DeanExam, Exam
+from myapp.taduties.models    import TADuty
+from myapp.models              import StudentList, TAUser
+from myapp.exams.models        import DeanExam, Exam
 
 
 def download_total_proctoring_sheet(request):
-    """
-    Creates a PDF summarizing proctoring assignments for each TA,
-    compiled via LaTeX.Online (XeLaTeX).
-    """
-    doc = Document(documentclass="article")
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    elems = []
 
-    # Packages
-    doc.packages.append(Package("fontspec"))  # For xelatex (UTF-8)
-    doc.packages.append(Package("booktabs"))
-    doc.packages.append(Package("longtable"))
-    doc.packages.append(Package("array"))
-    doc.packages.append(Package("xcolor", options=["table"]))
+    elems.append(Paragraph("Total Proctoring Report", styles["Title"]))
+    elems.append(Paragraph(f"Date: {datetime.now():%d.%m.%Y}", styles["Normal"]))
+    elems.append(Spacer(1, 0.2 * inch))
 
-    # Title
-    doc.preamble.append(NoEscape(r'\title{Total Proctoring Report}'))
-    doc.preamble.append(NoEscape(r'\date{\today}'))
-    doc.append(NoEscape(r'\maketitle'))
+    qs = ProctoringAssignment.objects.select_related("exam", "dean_exam", "ta")
+    total = qs.count()
 
-    # Query both staff‐exam and dean‐exam assignments
-    assignments_query = ProctoringAssignment.objects.select_related('exam', 'dean_exam', 'ta')
-    total_assignments = assignments_query.count()
-
-    ta_summary = {}
-    for assignment in assignments_query:
-        ta = assignment.ta
-        email = ta.email
-        if email not in ta_summary:
-            ta_summary[email] = {
-                'name': escape_latex(f"{ta.name} {ta.surname}"),
-                'exams': [],
-                'count': 0
-            }
-        ta_summary[email]['count'] += 1
-
-        # Distinguish staff exams vs dean exams
-        if assignment.exam:
-            ex_obj = assignment.exam
-            course_code = escape_latex(ex_obj.course.code)
-            date_val = ex_obj.date
-            start_val = ex_obj.start_time
-            end_val = ex_obj.end_time
-            rooms = ex_obj.classrooms or []
-        else:
-            de_obj = assignment.dean_exam
-            course_code = escape_latex(", ".join(de_obj.course_codes))
-            date_val = de_obj.date
-            start_val = de_obj.start_time
-            end_val = de_obj.end_time
-            rooms = de_obj.classrooms or []
-
-        ta_summary[email]["exams"].append({
-            "course_code": course_code,
-            "date": date_val,
-            "start_time": start_val,
-            "end_time": end_val,
-            "classrooms": rooms,
+    # collect assignments per TA
+    summary = {}
+    for a in qs:
+        key = a.ta.email
+        summary.setdefault(key, {
+            "name": f"{a.ta.name} {a.ta.surname}",
+            "count": 0,
+            "exams": []
         })
-
-    # Summary section
-    with doc.create(Section("Proctoring Summary")):
-        doc.append(f"Total proctoring assignments: {total_assignments}\n\n")
-        doc.append(f"Number of TAs involved: {len(ta_summary)}\n\n")
-        with doc.create(Tabular("|l|c|")) as table:
-            table.add_hline()
-            table.add_row((bold("TA Name"), bold("# of Assignments")))
-            table.add_hline()
-            for data in ta_summary.values():
-                table.add_row((data["name"], data["count"]))
-                table.add_hline()
-
-    # Detailed assignments per TA
-    with doc.create(Section("Detailed Assignments")):
-        for _, data in ta_summary.items():
-            with doc.create(Subsection(data["name"])):
-                with doc.create(Tabular("|l|l|l|l|l|")) as table:
-                    table.add_hline()
-                    table.add_row((
-                        bold("Course"),
-                        bold("Date"),
-                        bold("Start"),
-                        bold("End"),
-                        bold("Classrooms"),
-                    ))
-                    table.add_hline()
-                    for ex in data["exams"]:
-                        date_str = ex["date"].strftime("%d.%m.%Y") if ex["date"] else "N/A"
-                        start_str = ex["start_time"].strftime("%H:%M") if ex["start_time"] else "N/A"
-                        end_str = ex["end_time"].strftime("%H:%M") if ex["end_time"] else "N/A"
-                        rooms = ex["classrooms"]
-                        loc_str = escape_latex(", ".join(rooms)) if rooms else "N/A"
-                        table.add_row((ex["course_code"], date_str, start_str, end_str, loc_str))
-                        table.add_hline()
-
-    # Compile via LaTeX Online
-    latex_source = doc.dumps()
-    compile_url = "https://latexonline.cc/compile"
-    params = {"text": latex_source, "command": "xelatex", "force": "true"}
-
-    try:
-        r = requests.get(compile_url, params=params, timeout=60)
-        if r.status_code != 200 or r.headers.get("Content-Type") != "application/pdf":
-            return HttpResponse(
-                f"LaTeX compilation error:\n{r.text}",
-                status=400,
-                content_type="text/plain"
+        summary[key]["count"] += 1
+        if a.exam:
+            ex = a.exam
+            code, d, s, e, rooms = (
+                ex.course.code,
+                ex.date, ex.start_time, ex.end_time,
+                ", ".join(ex.classrooms or [])
             )
-    except Exception as exc:
-        return HttpResponse(f"LaTeX Online request error:\n{exc}", status=500)
+        else:
+            de = a.dean_exam
+            code, d, s, e, rooms = (
+                ", ".join(de.course_codes),
+                de.date, de.start_time, de.end_time,
+                ", ".join(de.classrooms or [])
+            )
+        summary[key]["exams"].append((code, d, s, e, rooms))
 
-    pdf_data = r.content
-    response = HttpResponse(pdf_data, content_type="application/pdf")
-    response["Content-Disposition"] = 'attachment; filename="total_proctoring.pdf"'
-    return response
+    # sort descending by assignment count
+    ordered = sorted(summary.values(),
+                     key=lambda v: v["count"],
+                     reverse=True)
+
+    # summary section
+    elems.append(Paragraph("Proctoring Summary", styles["Heading1"]))
+    elems.append(Paragraph(f"Total proctoring assignments: {total}", styles["Normal"]))
+    elems.append(Paragraph(f"Number of TAs involved: {len(summary)}", styles["Normal"]))
+    elems.append(Spacer(1, 0.15 * inch))
+
+    data = [["TA Name", "# Assignments"]]
+    for v in ordered:
+        data.append([v["name"], v["count"]])
+
+    tbl = Table(data, colWidths=[4 * inch, 1.5 * inch])
+    tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 9),
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+        ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN",         (1, 1), (1, -1), "CENTER"),
+        ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+    ]))
+    elems.append(tbl)
+    elems.append(Spacer(1, 0.25 * inch))
+
+    # detailed assignments
+    elems.append(Paragraph("Detailed Assignments", styles["Heading1"]))
+    for v in ordered:
+        elems.append(Paragraph(v["name"], styles["Heading2"]))
+        det = [["Course", "Date", "Start", "End", "Rooms"]]
+        for code, d, s, e, rooms in v["exams"]:
+            det.append([
+                code,
+                d.strftime("%d.%m.%Y"),
+                s.strftime("%H:%M"),
+                e.strftime("%H:%M"),
+                rooms or "N/A"
+            ])
+        dt = Table(det, colWidths=[1.2*inch, 1*inch, 0.8*inch, 0.8*inch, 2.2*inch])
+        dt.setStyle(TableStyle([
+            ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 9),
+            ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+            ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+            ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ]))
+        elems.append(dt)
+        elems.append(Spacer(1, 0.15 * inch))
+
+    doc.build(elems)
+    buf.seek(0)
+    return HttpResponse(buf, content_type="application/pdf",
+                        headers={'Content-Disposition': 'attachment; filename="Total Proctoring.pdf"'})
 
 
 def download_total_ta_duty_sheet(request):
-    """
-    Creates a PDF summarizing TA duties from TADuty.
-    """
-    doc = Document(documentclass="article")
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    elems = []
 
-    doc.packages.append(Package("fontspec"))
-    doc.packages.append(Package("booktabs"))
-    doc.packages.append(Package("longtable"))
-    doc.packages.append(Package("array"))
-    doc.packages.append(Package("xcolor", options=["table"]))
+    elems.append(Paragraph("Total TA Duties Report", styles["Title"]))
+    elems.append(Paragraph(f"Date: {datetime.now():%d.%m.%Y}", styles["Normal"]))
+    elems.append(Spacer(1, 0.2 * inch))
 
-    doc.preamble.append(NoEscape(r'\title{Total TA Duties Report}'))
-    doc.preamble.append(NoEscape(r'\date{\today}'))
-    doc.append(NoEscape(r'\maketitle'))
+    duties = TADuty.objects.filter(status="approved").select_related("ta_user", "course")
+    total = duties.count()
 
-    duties_query = TADuty.objects.filter(status="approved").select_related('ta_user', 'course')
-    total_duties = duties_query.count()
-
-    ta_summary = {}
-    for duty in duties_query:
-        em = duty.ta_user.email
-        ta_name = escape_latex(f"{duty.ta_user.name} {duty.ta_user.surname}")
-        if em not in ta_summary:
-            ta_summary[em] = {
-                'name': ta_name,
-                'duties': [],
-                'duty_counts': {}
-            }
-
-        duty_type = duty.get_duty_type_display()  # e.g. "Grading"
-        if duty_type not in ta_summary[em]['duty_counts']:
-            ta_summary[em]['duty_counts'][duty_type] = 0
-        ta_summary[em]['duty_counts'][duty_type] += 1
-
-        course_code = escape_latex(duty.course.code if duty.course else "N/A")
-        date_str = duty.date.strftime("%d.%m.%Y") if duty.date else "N/A"
-        start_str = duty.start_time.strftime('%H:%M') if duty.start_time else "N/A"
-        end_str = duty.end_time.strftime('%H:%M') if duty.end_time else "N/A"
-        desc = escape_latex(duty.description[:40] + ('...' if len(duty.description) > 40 else ''))
-
-        ta_summary[em]['duties'].append({
-            'course': course_code,
-            'type': escape_latex(duty_type),
-            'date': date_str,
-            'start': start_str,
-            'end': end_str,
-            'description': desc
+    # collect duties per TA
+    summary = {}
+    for d in duties:
+        key = d.ta_user.email
+        summary.setdefault(key, {
+            "name": f"{d.ta_user.name} {d.ta_user.surname}",
+            "counts": {},
+            "duties": []
         })
+        typ = d.get_duty_type_display()
+        summary[key]["counts"][typ] = summary[key]["counts"].get(typ, 0) + 1
+        summary[key]["duties"].append((
+            d.course.code if d.course else "N/A",
+            typ,
+            d.date,
+            d.start_time,
+            d.end_time
+        ))
 
-    with doc.create(Section('TA Duty Summary')):
-        doc.append(f"Total approved duties: {total_duties}\n\n")
-        doc.append(f"Number of TAs involved: {len(ta_summary)}\n\n")
+    # sort by total duty count descending
+    ordered = sorted(summary.values(),
+                     key=lambda v: sum(v["counts"].values()),
+                     reverse=True)
 
-        with doc.create(Tabular('|l|l|')) as table:
-            table.add_hline()
-            table.add_row((bold('TA Name'), bold('Duty Types (Count)')))
-            table.add_hline()
-            for data in ta_summary.values():
-                duty_counts_str = ", ".join(
-                    f"{t}: {cnt}" for t, cnt in data['duty_counts'].items()
-                )
-                table.add_row((data['name'], duty_counts_str))
-                table.add_hline()
+    elems.append(Paragraph("TA Duty Summary", styles["Heading1"]))
+    elems.append(Paragraph(f"Total approved duties: {total}", styles["Normal"]))
+    elems.append(Paragraph(f"Number of TAs involved: {len(summary)}", styles["Normal"]))
+    elems.append(Spacer(1, 0.15 * inch))
 
-    with doc.create(Section('Detailed Duty Assignments')):
-        for em, data in ta_summary.items():
-            with doc.create(Subsection(data['name'])):
-                with doc.create(Tabular('|l|l|l|l|l|')) as table:
-                    table.add_hline()
-                    table.add_row((
-                        bold('Course'),
-                        bold('Duty Type'),
-                        bold('Date'),
-                        bold('Start'),
-                        bold('End'),
-                    ))
-                    table.add_hline()
-                    for d in data['duties']:
-                        table.add_row((
-                            d['course'],
-                            d['type'],
-                            d['date'],
-                            d['start'],
-                            d['end'],
-                        ))
-                        table.add_hline()
+    data = [["TA Name", "Duty Types (Count)"]]
+    for v in ordered:
+        cnts = ", ".join(f"{k}: {c}" for k, c in v["counts"].items())
+        data.append([v["name"], cnts])
 
-    latex_source = doc.dumps()
-    compile_url = "https://latexonline.cc/compile"
-    params = {"text": latex_source, "command": "xelatex", "force": "true"}
-    try:
-        r = requests.get(compile_url, params=params, timeout=60)
-        if r.status_code != 200 or r.headers.get("Content-Type") != "application/pdf":
-            return HttpResponse(
-                f"LaTeX compilation error:\n{r.text}",
-                status=400,
-                content_type="text/plain"
-            )
-    except Exception as exc:
-        return HttpResponse(f"LaTeX Online request error:\n{exc}", status=500)
+    tbl = Table(data, colWidths=[2.5*inch, 3.5*inch])
+    tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 9),
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+        ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+        ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+    ]))
+    elems.append(tbl)
+    elems.append(Spacer(1, 0.25 * inch))
 
-    pdf_data = r.content
-    response = HttpResponse(pdf_data, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="total_ta_duties.pdf"'
-    return response
+    elems.append(Paragraph("Detailed Duty Assignments", styles["Heading1"]))
+    for v in ordered:
+        elems.append(Paragraph(v["name"], styles["Heading2"]))
+        det = [["Course", "Duty Type", "Date", "Start", "End"]]
+        for course, typ, dt, st, et in v["duties"]:
+            det.append([
+                course,
+                typ,
+                dt.strftime("%d.%m.%Y") if dt else "N/A",
+                st.strftime("%H:%M")   if st else "N/A",
+                et.strftime("%H:%M")   if et else "N/A",
+            ])
+        dtbl = Table(det, colWidths=[1.3*inch, 1.3*inch, 1*inch, 1*inch, 1*inch])
+        dtbl.setStyle(TableStyle([
+            ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 9),
+            ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+            ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+            ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ]))
+        elems.append(dtbl)
+        elems.append(Spacer(1, 0.15 * inch))
+
+    doc.build(elems)
+    buf.seek(0)
+    return HttpResponse(buf, content_type="application/pdf",
+                        headers={'Content-Disposition': 'attachment; filename="Total TA Duties.pdf"'})
 
 
 def download_total_workload_sheet(request):
-    """
-    Creates a PDF summarizing overall TA workload from TAUser.
-    Columns: TA Name, Email, Program, Advisor, Total Workload.
-    Also shows total TAs and sum of all TAs' workload.
-    """
-    from pylatex import Document, Section, Tabular, Package
-    from pylatex.utils import NoEscape, bold, escape_latex
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    elems = []
 
-    doc = Document(documentclass="article")
-    doc.packages.append(Package("fontspec"))
-    doc.packages.append(Package("booktabs"))
-    doc.packages.append(Package("longtable"))
-    doc.packages.append(Package("array"))
-    doc.packages.append(Package("xcolor", options=["table"]))
+    elems.append(Paragraph("TA Total Workload Report", styles["Title"]))
+    elems.append(Paragraph(f"Date: {datetime.now():%d.%m.%Y}", styles["Normal"]))
+    elems.append(Spacer(1, 0.2 * inch))
 
-    doc.preamble.append(NoEscape(r'\title{TA Total Workload Report}'))
-    doc.preamble.append(NoEscape(r'\date{\today}'))
-    doc.append(NoEscape(r'\maketitle'))
-
-    tas = TAUser.objects.filter(isTA=True).order_by('surname', 'name')
+    # sort by workload descending
+    tas = TAUser.objects.filter(isTA=True).order_by("-workload")
     total_tas = tas.count()
+    sumw = sum(t.workload for t in tas)
 
-    # Summation of all workloads
-    sum_of_workloads = sum(ta.workload for ta in tas)
+    elems.append(Paragraph("TA Workload Summary", styles["Heading1"]))
+    elems.append(Paragraph(f"Total TAs: {total_tas}", styles["Normal"]))
+    elems.append(Paragraph(f"Sum of Workloads: {sumw}", styles["Normal"]))
+    elems.append(Spacer(1, 0.15 * inch))
 
-    with doc.create(Section('TA Workload Summary')):
-        doc.append(f"Total TAs: {total_tas}\n")
-        doc.append(f"Total Workload: {sum_of_workloads}\n\n")
+    data = [["TA Name", "Email", "Program", "Advisor", "Workload"]]
+    for t in tas:
+        data.append([
+            f"{t.name} {t.surname}",
+            t.email,
+            t.get_program_display() or "N/A",
+            t.advisor or "N/A",
+            str(t.workload)
+        ])
+    tbl = Table(data, colWidths=[1.5*inch, 2*inch, 1*inch, 1.5*inch, 1*inch])
+    tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 9),
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+        ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN",         (4, 1), (4, -1), "CENTER"),
+        ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+    ]))
+    elems.append(tbl)
 
-        # Columns: TA Name, Email, Program, Advisor, Total Workload
-        with doc.create(Tabular('|l|l|l|l|c|')) as table:
-            table.add_hline()
-            table.add_row((
-                bold('TA Name'),
-                bold('Email'),
-                bold('Program'),
-                bold('Advisor'),
-                bold('Total Workload')
-            ))
-            table.add_hline()
-
-            for ta in tas:
-                ta_name = escape_latex(f"{ta.name} {ta.surname}")
-                email_str = escape_latex(ta.email)
-                program_str = ta.get_program_display() or 'N/A'
-                advisor_str = escape_latex(ta.advisor) if ta.advisor else 'N/A'
-                workload_str = str(ta.workload)
-
-                table.add_row((
-                    NoEscape(ta_name),
-                    email_str,
-                    program_str,
-                    advisor_str,
-                    workload_str
-                ))
-                table.add_hline()
-
-    latex_source = doc.dumps()
-    compile_url = "https://latexonline.cc/compile"
-    params = {"text": latex_source, "command": "xelatex", "force": "true"}
-    try:
-        r = requests.get(compile_url, params=params, timeout=60)
-        if r.status_code != 200 or r.headers.get("Content-Type") != "application/pdf":
-            return HttpResponse(
-                f"LaTeX compilation error:\n{r.text}",
-                status=400,
-                content_type="text/plain"
-            )
-    except Exception as exc:
-        return HttpResponse(f"LaTeX Online request error:\n{exc}", status=500)
-
-    pdf_data = r.content
-    response = HttpResponse(pdf_data, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="ta_workload.pdf"'
-    return response
+    doc.build(elems)
+    buf.seek(0)
+    return HttpResponse(buf, content_type="application/pdf",
+                        headers={'Content-Disposition': 'attachment; filename="TA Workload.pdf"'})
 
 
-# STUDENT LIST
-_LATEX_PKGS = ["fontspec","booktabs","longtable","array","xcolor"]
+# BELOW LOGIC BELONGS TO EXAM STUDENTS REPORTS:
+def _create_student_section(elems, title, students):
+    elems.append(Paragraph(title, styles["Heading1"]))
+    elems.append(Spacer(1, 0.1 * inch))
 
-def _inline_pdf(doc: Document, filename: str) -> HttpResponse:
-    src = doc.dumps()
-    r = requests.get(
-        "https://latexonline.cc/compile",
-        params={"text": src, "command": "xelatex", "force": "true"},
-        timeout=60
-    )
-    if r.status_code != 200 or r.headers.get("Content-Type") != "application/pdf":
-        return HttpResponse(r.text, status=400, content_type="text/plain")
-    resp = HttpResponse(r.content, content_type="application/pdf")
-    resp["Content-Disposition"] = f'inline; filename="{filename}"'
-    return resp
+    data = [["No.", "ID", "Surname", "Name"]]
+    for i, s in enumerate(students, 1):
+        data.append([str(i), s.student_id, s.surname, s.name])
+    tbl = Table(data, colWidths=[0.5*inch, 1.5*inch, 2*inch, 2*inch])
+    tbl.setStyle(TableStyle([
+        ("FONTNAME",      (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 9),
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.lightgrey),
+        ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN",         (0, 1), (0, -1), "CENTER"),
+        ("GRID",          (0, 0), (-1, -1), 0.5, colors.black),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+    ]))
+    elems.append(tbl)
 
-def _make_student_section(doc: Document, title: str, students):
-    doc.append(NoEscape(r"\maketitle"))
-    with doc.create(Section(title)):
-        with doc.create(Tabular("|c|l|l|l|")) as table:
-            table.add_hline()
-            table.add_row((bold("No."), bold("ID"), bold("Surname"), bold("Name")))
-            table.add_hline()
-            for i, student in enumerate(students, 1):
-                table.add_row((
-                    i,
-                    escape_latex(student.student_id),
-                    escape_latex(student.surname),
-                    escape_latex(student.name),
-                ))
-                table.add_hline()
 
 def _load_exam_or_dean(exam_id):
     try:
         ex = Exam.objects.select_related("course").get(pk=exam_id)
-        title_str = f"{ex.course.code} - {ex.course.name}"
-        rooms = ex.classrooms
+        title = f"{ex.course.code} - {ex.course.name}"
+        rooms = ex.classrooms or []
         start = ex.start_time.strftime("%H:%M")
-        end = ex.end_time.strftime("%H:%M")
-        students  = ex.course.students.order_by("surname", "name")
+        end   = ex.end_time.strftime("%H:%M")
+        students = ex.course.students.order_by("surname", "name")
     except Exam.DoesNotExist:
         de = get_object_or_404(DeanExam, pk=exam_id)
-        title_str = ", ".join(de.course_codes)
-        rooms = de.classrooms
+        title = ", ".join(de.course_codes)
+        rooms = de.classrooms or []
         start = de.start_time.strftime("%H:%M")
-        end = de.end_time.strftime("%H:%M")
-
-        # Q that matches any student whose JSON list contains each code
+        end   = de.end_time.strftime("%H:%M")
         q = Q()
-        for code in de.course_codes:
-            # This will find rows where nondept_courses JSON array contains that element
-            q |= Q(nondept_courses__contains=[code])
+        for c in de.course_codes:
+            q |= Q(nondept_courses__contains=[c])
+        students = StudentList.objects.filter(q).order_by("surname", "name")
 
-        students = (
-            StudentList.objects
-            .filter(q)
-            .order_by("surname", "name")
-        )
-
-    return title_str, rooms, start, end, students
+    return title, rooms, start, end, students
 
 def exam_students_alpha(request, exam_id):
-    title_str, rooms, start, end, students = _load_exam_or_dean(exam_id)
+    title, rooms, start, end, students = _load_exam_or_dean(exam_id)
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    elems = []
 
-    doc = Document(documentclass="article", document_options=["12pt"])
-    doc.packages.append(Package("geometry", options=["margin=1in"]))
-    for pkg in _LATEX_PKGS:
-        doc.packages.append(Package(pkg, options=["table"] if pkg=="xcolor" else None))
+    elems.append(Paragraph(title, styles["Title"]))
+    elems.append(Paragraph(f"{start}–{end}", styles["CenterSubtitle"]))
+    elems.append(Spacer(1, 0.2 * inch))
+    _create_student_section(elems, f"Rooms: {', '.join(rooms)}", students)
 
-    doc.preamble.append(NoEscape(r'\date{}'))
-    doc.preamble.append(NoEscape(
-      rf"\title{{{escape_latex(title_str)}\newline{start}--{end}}}"
-    ))
-
-    _make_student_section(doc, f"Rooms: {', '.join(rooms)}", students)
-    return _inline_pdf(doc, f"exam_{exam_id}_alpha.pdf")
+    doc.build(elems)
+    buf.seek(0)
+    return HttpResponse(buf, content_type="application/pdf",
+                        headers={'Content-Disposition': f'inline; filename="exam_{exam_id}_alpha.pdf"'})
 
 def exam_students_random(request, exam_id):
-    title_str, rooms, start, end, students = _load_exam_or_dean(exam_id)
-
-    doc = Document(documentclass="article", document_options=["12pt"])
-    doc.packages.append(Package("geometry", options=["margin=1in"]))
-    for pkg in _LATEX_PKGS:
-        doc.packages.append(Package(pkg, options=["table"] if pkg=="xcolor" else None))
-
+    title, rooms, start, end, students = _load_exam_or_dean(exam_id)
     students = list(students)
     random.shuffle(students)
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
+    elems = []
 
-    doc.preamble.append(NoEscape(r'\date{}'))
-    doc.preamble.append(NoEscape(
-      rf"\title{{{escape_latex(title_str)}\newline{start}--{end}}}"
-    ))
+    elems.append(Paragraph(title, styles["Title"]))
+    elems.append(Paragraph(f"{start}–{end}", styles["CenterSubtitle"]))
+    elems.append(Spacer(1, 0.2 * inch))
+    _create_student_section(elems, f"Rooms: {', '.join(rooms)}", students)
 
-    _make_student_section(doc, f"Rooms: {', '.join(rooms)}", students)
-    return _inline_pdf(doc, f"exam_{exam_id}_random.pdf")
+    doc.build(elems)
+    buf.seek(0)
+    return HttpResponse(buf, content_type="application/pdf",
+                        headers={'Content-Disposition': f'inline; filename="exam_{exam_id}_random.pdf"'})

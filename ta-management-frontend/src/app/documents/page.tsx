@@ -37,7 +37,7 @@ export default function ReportsPage() {
           const newProgress = prev + Math.random() * 6
           return newProgress >= 99 ? 99 : newProgress // Cap at 99% until actual download completes
         })
-      }, 350)
+      }, 150)
 
       const response = await apiClient.get(endpoint, { responseType: "blob" })
 
