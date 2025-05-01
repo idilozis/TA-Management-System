@@ -245,10 +245,12 @@ def swap_candidates(request, assignment_id):
     is_dean = pa.exam is None and pa.dean_exam is not None
 
     # Common data
-    exam      = pa.exam or pa.dean_exam
-    date      = exam.date
-    slot      = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
-    instr_dept= None if is_dean else advisor_department(user.advisor)
+    exam       = pa.exam or pa.dean_exam
+    date       = exam.date
+    start_time = exam.start_time
+    end_time   = exam.end_time
+    slot       = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
+    instr_dept = None if is_dean else advisor_department(user.advisor)
 
     leave_set = set(
         TALeaveRequests.objects.filter(
@@ -271,6 +273,19 @@ def swap_candidates(request, assignment_id):
             day=date.strftime("%a").upper(), time_slot=slot
         ).values_list("ta__email", flat=True)
     )
+    pending_emails = set(
+        SwapRequest.objects.filter(
+            status="pending"
+        ).filter(
+            Q(original_assignment__exam__date=date,
+            original_assignment__exam__start_time=start_time,
+            original_assignment__exam__end_time=end_time)
+            |
+            Q(original_assignment__dean_exam__date=date,
+            original_assignment__dean_exam__start_time=start_time,
+            original_assignment__dean_exam__end_time=end_time)
+        ).values_list("requested_to__email", flat=True)
+    )
 
     assignable, unassignable = [], []
     for ta in TAUser.objects.filter(isTA=True):
@@ -285,6 +300,8 @@ def swap_candidates(request, assignment_id):
             reasons.append("Day-before/after proctor")
         if ta.email in conflicts:
             reasons.append("Lecture conflict")
+        if ta.email in pending_emails:
+            reasons.append("Already has a pending swap request for this exam")
         # Only check department for normal exams
         if not is_dean and advisor_department(ta.advisor) != instr_dept:
             reasons.append("Different department")
