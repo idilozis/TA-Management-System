@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import dynamic from "next/dynamic";
+import dynamic from "next/dynamic"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/components/general/user-data"
 import { AppSidebar } from "@/components/general/app-sidebar"
@@ -15,49 +15,44 @@ import MailPopover from "@/app/home-page/mail-system/MailPopover"
 import NotificationModal from "@/app/home-page/notification-system/NotificationPopover"
 import { Button } from "@/components/ui/button"
 
-const TopWorkloadChart = dynamic(
-  () => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart),
-  { ssr: false }
-);
+const TopWorkloadChart = dynamic(() => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart), {
+  ssr: false,
+})
 const DeptComparisonChart = dynamic(
-  () =>
-    import("@/components/charts/DepartmentComparisonChart").then(
-      (m) => m.DepartmentComparisonChart
-    ),
-  { ssr: false }
-);
+  () => import("@/components/charts/DepartmentComparisonChart").then((m) => m.DepartmentComparisonChart),
+  { ssr: false },
+)
 
 export default function HomePage() {
   // Get URL parameters
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
   // Shared user hook
-  const { user, loading } = useUser()
+  const { user, loading } = useUser();
 
   // Local state for exam modal
-  const [showExamModal, setShowExamModal] = useState(false)
-  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0)
+  const [showExamModal, setShowExamModal] = useState(false);
+  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0);
 
   // Mail parameters state
-  const [mailOpen, setMailOpen] = useState(false)
-  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null)
-  const [mailEmail, setMailEmail] = useState<string | null>(null)
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null);
+  const [mailEmail, setMailEmail] = useState<string | null>(null);
 
   // Check for mail parameters on page load
   useEffect(() => {
-    const mailParam = searchParams.get("mail")
-    const roleParam = searchParams.get("role") as "TA" | "Staff" | null
-    const emailParam = searchParams.get("email")
+    const mailParam = searchParams.get("mail");
+    const roleParam = searchParams.get("role") as "TA" | "Staff" | null;
+    const emailParam = searchParams.get("email");
 
     if (mailParam === "true" && roleParam && emailParam) {
-      setMailOpen(true)
-      setMailRole(roleParam)
-      setMailEmail(emailParam)
+      setMailOpen(true);
+      setMailRole(roleParam);
+      setMailEmail(emailParam);
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   // Loading screens
-  if (loading)
-    return <PageLoader />
+  if (loading) return <PageLoader />
   if (!user)
     return <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">No user found.</div>
 
@@ -90,17 +85,17 @@ export default function HomePage() {
         <SidebarInset className="bg-white p-8 relative">
           <div className="mb-4 flex justify-between items-center">
             <SidebarTrigger className="text-gray-900" />
-              <div className="flex items-center space-x-4">
-                {/* Mail System*/}
-                <MailPopover
-                  forceOpen={mailOpen}
-                  initialRole={mailRole}
-                  initialEmail={mailEmail}
-                  onClose={handleMailClose}
-                />
-                {/* Notification System*/}
-                <NotificationModal />
-              </div>
+            <div className="flex items-center space-x-4">
+              {/* Mail System*/}
+              <MailPopover
+                forceOpen={mailOpen}
+                initialRole={mailRole}
+                initialEmail={mailEmail}
+                onClose={handleMailClose}
+              />
+              {/* Notification System*/}
+              <NotificationModal />
+            </div>
           </div>
 
           {/* Greetings Section */}
@@ -147,9 +142,9 @@ export default function HomePage() {
                 <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
               </h2>
               <Button onClick={() => setShowExamModal(true)} className="bg-blue-600 hover:bg-blue-500 ">
-                <Plus className="mr-0.5 h-4 w-4" />Exam
+                <Plus className="mr-0.5 h-4 w-4" />
+                Exam
               </Button>
-             
             </div>
           )}
 
@@ -159,18 +154,12 @@ export default function HomePage() {
           {!user.isTA && user.isAuth && (
             <section className="mt-12 grid gap-6 md:grid-cols-2">
               {/* Card 1: Top 20 Workloads */}
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-4">
-                  Top 20 TA Workloads
-                </h3>
+              <div>
                 <TopWorkloadChart />
               </div>
 
               {/* Card 2: Department Comparison */}
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-4">
-                  Department-wise Proctoring and Duties
-                </h3>
+              <div>
                 <DeptComparisonChart />
               </div>
             </section>
@@ -182,5 +171,4 @@ export default function HomePage() {
       {showExamModal && !user.isTA && !user.isAuth && <AddExamModal onClose={handleExamModalClose} />}
     </SidebarProvider>
   )
-
 }
