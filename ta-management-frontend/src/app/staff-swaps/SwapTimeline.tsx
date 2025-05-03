@@ -1,151 +1,148 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import apiClient from "@/lib/axiosClient";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
-import { Check, Clock, X, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useUser } from "@/components/general/user-data";
+import { useEffect, useState } from "react"
+import apiClient from "@/lib/axiosClient"
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
+import { Badge } from "@/components/ui/badge"
+import { Check, Clock, X, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useUser } from "@/components/general/user-data"
 
 type HistoryRow = {
-  id: number;
-  initiator: string;   // old TA name
-  target: string;      // new TA name
-  status: "pending" | "accepted" | "rejected";
-  time: string;
-  course_code?: string; // e.g. "CS315"
+  id: number
+  initiator: string // old TA name
+  target: string // new TA name
+  status: "pending" | "accepted" | "rejected"
+  time: string
+  course_code?: string // e.g. "CS315"
 
-  assignment?: string; // full: "CS315 26.04.2025 20:51–21:52"
-  previous?: string;   // old TA name
-  staffName?: string;  // who initiated
-};
+  assignment?: string // full: "CS315 26.04.2025 20:51–21:52"
+  previous?: string // old TA name
+  staffName?: string // who initiated
+}
 
 interface Props {
-  assignmentId?: number;
-  onError?: (msg: string) => void;
+  assignmentId?: number
+  onError?: (msg: string) => void
 }
 
 export default function SwapTimeline({ assignmentId, onError }: Props) {
-  const [rows, setRows]       = useState<HistoryRow[]>([]);
-  const [error, setError]     = useState("");
-  const [loading, setLoading] = useState(true);
-  const { user, loading: userLoading } = useUser();
+  const [rows, setRows] = useState<HistoryRow[]>([])
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
+  const { user, loading: userLoading } = useUser()
 
   useEffect(() => {
-    if (userLoading) return;
+    if (userLoading) return
     if (!user) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
+      setError("Not authenticated")
+      setLoading(false)
+      return
     }
 
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
       try {
-        const url = assignmentId
-          ? `/swap/history/${assignmentId}/`
-          : user.isAuth
-            ? "/swap/admin-history/"
-            : "/swap/my/";
-        const res = await apiClient.get(url);
+        const url = assignmentId ? `/swap/history/${assignmentId}/` : user.isAuth ? "/swap/admin-history/" : "/swap/my/"
+        const res = await apiClient.get(url)
 
         if (res.data.status !== "success") {
-          throw new Error(res.data.message || "Unexpected response");
+          throw new Error(res.data.message || "Unexpected response")
         }
 
         const history: HistoryRow[] = assignmentId
           ? res.data.history
           : (res.data.swaps ?? []).map((s: any) => {
               // extract course_code from the front of s.assignment
-              const full = s.assignment || "";
-              const code = full.split(" ")[0] || "";
+              const full = s.assignment || ""
+              const code = full.split(" ")[0] || ""
 
               return {
-                id:          s.id,
-                initiator:   s.initiator,
-                target:      s.target,
-                status:      s.status,
-                time:        s.time,
+                id: s.id,
+                initiator: s.initiator,
+                target: s.target,
+                status: s.status,
+                time: s.time,
                 course_code: code,
-                assignment:  s.assignment,
-                previous:    s.previous_ta,
-                staffName:   s.staff_name,
-              };
-            });
+                assignment: s.assignment,
+                previous: s.previous_ta,
+                staffName: s.staff_name,
+              }
+            })
 
         if (!cancelled) {
-          setRows(history);
-          setError("");
+          setRows(history)
+          setError("")
         }
       } catch (e: any) {
-        const msg = e.message || "Network error";
+        const msg = e.message || "Network error"
         if (!cancelled) {
-          setError(msg);
-          onError?.(msg);
+          setError(msg)
+          onError?.(msg)
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoading(false)
       }
-    })();
+    })()
 
-    return () => { cancelled = true; };
-  }, [assignmentId, user, userLoading, onError]);
+    return () => {
+      cancelled = true
+    }
+  }, [assignmentId, user, userLoading, onError])
 
-  const iconFor = (st: HistoryRow["status"]) =>
-    st === "accepted" ? (
-      <Check className="h-4 w-4 text-green-600" />
-    ) : st === "rejected" ? (
-      <X className="h-4 w-4 text-red-600" />
-    ) : (
-      <Clock className="h-4 w-4 text-yellow-600" />
-    );
+  // Function to get the appropriate status badge class
+  const getStatusBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "accepted":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "rejected":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
 
-  if (loading) return <div className="py-6 text-center">Loading…</div>;
-  if (error)  return (
-    <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" />
-      <AlertDescription>{error}</AlertDescription>
-    </Alert>
-  );
-  if (!rows.length) return <div className="py-4 text-muted-foreground">No history.</div>;
+  if (loading) return <div className="py-6 text-center">Loading…</div>
+  if (error)
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  if (!rows.length) return <div className="py-4 text-muted-foreground">No history.</div>
 
   return (
     <Accordion type="single" collapsible className="space-y-2">
       {rows.map((row) => (
         <AccordionItem key={row.id} value={`row-${row.id}`}>
-          <AccordionTrigger className="flex items-center gap-2">
-            {iconFor(row.status)}
+          <AccordionTrigger className="flex items-center gap-2 [&>svg]:hidden">
+            <div className="flex items-center gap-2 flex-1">
+              {/* Status icon - fixed to not rotate with accordion */}
+              {row.status === "accepted" ? (
+                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+              ) : row.status === "rejected" ? (
+                <X className="h-4 w-4 text-red-600 flex-shrink-0" />
+              ) : (
+                <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+              )}
 
-            {/* timestamp */}
-            <span className="mr-2 text-sm">
-              {new Date(row.time).toLocaleString()}
-            </span>
+              {/* timestamp */}
+              <span className="mr-2 text-sm">{new Date(row.time).toLocaleString()}</span>
 
-            {/* course code */}
-            {row.course_code && (
-              <span className="mr-2 text-sm font-medium">
-                {row.course_code}
+              {/* course code */}
+              {row.course_code && <span className="mr-2 text-sm font-medium">{row.course_code}</span>}
+
+              {/* header: old TA → new TA */}
+              <span className="flex-1 truncate">
+                {row.initiator} → {row.target}
               </span>
-            )}
+            </div>
 
-            {/* header: old TA → new TA */}
-            <span className="flex-1 truncate">
-              {row.initiator} → {row.target}
-            </span>
-
-            <Badge
-              variant={
-                row.status === "accepted"  ? "default" :
-                row.status === "rejected"  ? "destructive" : "outline"
-              }
-            >
+            <Badge variant="outline" className={getStatusBadgeClass(row.status)}>
               {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
             </Badge>
           </AccordionTrigger>
@@ -157,13 +154,12 @@ export default function SwapTimeline({ assignmentId, onError }: Props) {
                   <span className="font-medium">Assignment </span>
                   {row.assignment}
                 </div>
-                Swap initiated by <b>{row.staffName}</b> to replace{" "}
-                <b>{row.previous}</b> with <b>{row.target}</b>.
+                Swap initiated by <b>{row.staffName}</b> to replace <b>{row.previous}</b> with <b>{row.target}</b>.
               </>
             )}
           </AccordionContent>
         </AccordionItem>
       ))}
     </Accordion>
-  );
+  )
 }
