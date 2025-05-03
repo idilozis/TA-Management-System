@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { useUser } from "@/components/general/user-data"
@@ -15,66 +14,71 @@ import MailPopover from "@/app/home-page/mail-system/MailPopover"
 import NotificationModal from "@/app/home-page/notification-system/NotificationPopover"
 import { Button } from "@/components/ui/button"
 
-const TopWorkloadChart = dynamic(() => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart), {
-  ssr: false,
-})
+const TopWorkloadChart = dynamic(
+  () => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart),
+  { ssr: false }
+)
 const DeptComparisonChart = dynamic(
-  () => import("@/components/charts/DepartmentComparisonChart").then((m) => m.DepartmentComparisonChart),
-  { ssr: false },
+  () =>
+    import("@/components/charts/DepartmentComparisonChart").then(
+      (m) => m.DepartmentComparisonChart
+    ),
+  { ssr: false }
 )
 
 export default function HomePage() {
-  // Get URL parameters
-  const searchParams = useSearchParams();
   // Shared user hook
-  const { user, loading } = useUser();
+  const { user, loading } = useUser()
 
-  // Local state for exam modal
-  const [showExamModal, setShowExamModal] = useState(false);
-  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0);
+  // State for mail popover
+  const [mailOpen, setMailOpen] = useState(false)
+  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null)
+  const [mailEmail, setMailEmail] = useState<string | null>(null)
 
-  // Mail parameters state
-  const [mailOpen, setMailOpen] = useState(false);
-  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null);
-  const [mailEmail, setMailEmail] = useState<string | null>(null);
+  // State for exam modal
+  const [showExamModal, setShowExamModal] = useState(false)
+  const [examRefreshTrigger, setExamRefreshTrigger] = useState(0)
 
-  // Check for mail parameters on page load
+  // Read URL params on mount
   useEffect(() => {
-    const mailParam = searchParams.get("mail");
-    const roleParam = searchParams.get("role") as "TA" | "Staff" | null;
-    const emailParam = searchParams.get("email");
+    const params = new URLSearchParams(window.location.search)
+    const mailParam = params.get("mail")
+    const roleParam = (params.get("role") as "TA" | "Staff") || null
+    const emailParam = params.get("email")
 
     if (mailParam === "true" && roleParam && emailParam) {
-      setMailOpen(true);
-      setMailRole(roleParam);
-      setMailEmail(emailParam);
+      setMailOpen(true)
+      setMailRole(roleParam)
+      setMailEmail(emailParam)
     }
-  }, [searchParams]);
+  }, [])
 
-  // Loading screens
+  // Loading states
   if (loading) return <PageLoader />
   if (!user)
-    return <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">No user found.</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900">
+        No user found.
+      </div>
+    )
 
-  const handleExamModalClose = () => {
-    setShowExamModal(false)
-    setExamRefreshTrigger((prev) => prev + 1)
-  }
-
-  // Handle mail popover close and clean URL
+  // Handlers
   const handleMailClose = () => {
     setMailOpen(false)
     setMailRole(null)
     setMailEmail(null)
 
-    // Clean URL parameters
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href)
-      url.searchParams.delete("mail")
-      url.searchParams.delete("role")
-      url.searchParams.delete("email")
-      window.history.replaceState({}, "", url.toString())
-    }
+    // Clean URL
+    const url = new URL(window.location.href)
+    url.searchParams.delete("mail")
+    url.searchParams.delete("role")
+    url.searchParams.delete("email")
+    window.history.replaceState({}, "", url.toString())
+  }
+
+  const handleExamModalClose = () => {
+    setShowExamModal(false)
+    setExamRefreshTrigger((prev) => prev + 1)
   }
 
   return (
@@ -86,19 +90,17 @@ export default function HomePage() {
           <div className="mb-4 flex justify-between items-center">
             <SidebarTrigger className="text-gray-900" />
             <div className="flex items-center space-x-4">
-              {/* Mail System*/}
               <MailPopover
                 forceOpen={mailOpen}
                 initialRole={mailRole}
                 initialEmail={mailEmail}
                 onClose={handleMailClose}
               />
-              {/* Notification System*/}
               <NotificationModal />
             </div>
           </div>
 
-          {/* Greetings Section */}
+          {/* Greetings */}
           <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-6">
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -106,18 +108,22 @@ export default function HomePage() {
                   Hello, {user.name} {user.surname}!
                 </h2>
                 <p className="text-blue-700">
-                  This is the home page of the TA Management System. Let's take a look at your tasks for today.
+                  This is the home page of the TA Management System. Let's take a look
+                  at your tasks for today.
                 </p>
               </div>
-              {/* Welcome icon */}
-              <img src="/welcome.png" alt="Welcome Illustration" className="w-38 h-auto md:mr-8" />
+              <img
+                src="/welcome.png"
+                alt="Welcome Illustration"
+                className="w-38 h-auto md:mr-8"
+              />
             </div>
           </div>
 
-          {/* If TA, show Weekly Schedule */}
+          {/* TA Schedule */}
           {user.isTA && <WeeklyScheduleModal />}
 
-          {/* If Staff, show Courses & Add Exam section */}
+          {/* Staff: Given Courses */}
           {!user.isTA && !user.isAuth && user.courses && (
             <div className="mt-4">
               <h2 className="text-xl font-semibold mb-3">Given Courses:</h2>
@@ -135,30 +141,31 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Add Exam section */}
+          {/* Staff: Exams */}
           {!user.isTA && !user.isAuth && (
-            <div className="mb-3 mt-8 flex items-center justify-between">
-              <h2 className="flex items-center text-xl font-semibold">
-                <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
-              </h2>
-              <Button onClick={() => setShowExamModal(true)} className="bg-blue-600 hover:bg-blue-500 ">
-                <Plus className="mr-0.5 h-4 w-4" />
-                Exam
-              </Button>
-            </div>
+            <>
+              <div className="mb-3 mt-8 flex items-center justify-between">
+                <h2 className="flex items-center text-xl font-semibold">
+                  <FileText className="mr-2 h-6 w-6 text-blue-600" /> MY EXAMS
+                </h2>
+                <Button
+                  onClick={() => setShowExamModal(true)}
+                  className="bg-blue-600 hover:bg-blue-500"
+                >
+                  <Plus className="mr-0.5 h-4 w-4" />
+                  Exam
+                </Button>
+              </div>
+              <StaffExamsModal refreshTrigger={examRefreshTrigger} />
+            </>
           )}
 
-          {!user.isTA && !user.isAuth && <StaffExamsModal refreshTrigger={examRefreshTrigger} />}
-
-          {/* Charts for AUTHORIZED STAFF */}
+          {/* Authorized Staff: Charts */}
           {!user.isTA && user.isAuth && (
             <section className="mt-12 grid gap-6 md:grid-cols-2">
-              {/* Card 1: Top 20 Workloads */}
               <div>
                 <TopWorkloadChart />
               </div>
-
-              {/* Card 2: Department Comparison */}
               <div>
                 <DeptComparisonChart />
               </div>
@@ -167,8 +174,10 @@ export default function HomePage() {
         </SidebarInset>
       </div>
 
-      {/* Show exam modal if user is Staff & wants to add exam */}
-      {showExamModal && !user.isTA && !user.isAuth && <AddExamModal onClose={handleExamModalClose} />}
+      {/* Add Exam Modal */}
+      {showExamModal && !user.isTA && !user.isAuth && (
+        <AddExamModal onClose={handleExamModalClose} />
+      )}
     </SidebarProvider>
   )
 }
