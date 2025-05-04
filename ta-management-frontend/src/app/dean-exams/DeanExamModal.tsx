@@ -26,16 +26,21 @@ import {
 } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge"
 
+interface CourseOption {
+  code: string
+  name: string
+}
+
 interface DeanExamModalProps {
   onClose: () => void
 }
 
 export default function DeanExamModal({ onClose }: DeanExamModalProps) {
-  // server data
-  const [courseOptions, setCourseOptions] = useState<string[]>([])
+  // Server data
+  const [courseOptions, setCourseOptions] = useState<CourseOption[]>([])
   const [classroomOptions, setClassroomOptions] = useState<string[]>([])
 
-  // form state
+  // Form state
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
   const [courseQuery, setCourseQuery] = useState<string>("")
   const [classrooms, setClassrooms] = useState<string[]>([])
@@ -71,14 +76,17 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
       .catch(() => setError("Failed to load classrooms."))
   }, [])
 
-  const toggleCourse = (code: string) => {
-    setSelectedCourses((prev) =>
-      prev.includes(code) ? [] : [code]
+  // Single-select for courses:
+  const selectCourse = (code: string) => {
+    setSelectedCourses(prev =>
+      prev[0] === code ? [] : [code]
     )
   }
+
+  // Multi-select for classrooms:
   const toggleClassroom = (room: string) => {
-    setClassrooms((prev) =>
-      prev.includes(room) ? prev.filter((r) => r !== room) : [...prev, room]
+    setClassrooms(prev =>
+      prev.includes(room) ? prev.filter(r => r !== room) : [...prev, room]
     )
   }
 
@@ -160,7 +168,7 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
           <Card className="border-green-600 border-2">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-center">
-                <CardTitle>Schedule Non‑Dept Exam</CardTitle>
+                <CardTitle>Schedule Dean Exam</CardTitle>
                 <Button variant="ghost" size="icon" onClick={onClose}>
                   <XIcon className="h-4 w-4 text-red-600" />
                 </Button>
@@ -181,10 +189,10 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
               )}
 
               <form onSubmit={handleCreate} className="space-y-4">
-                {/* Courses */}
+                {/* Courses (single-select) */}
                 <div className="space-y-2">
                   <Label>
-                    Courses <span className="text-red-500">*</span>
+                    Course <span className="text-red-500">*</span>
                   </Label>
                   <Command className="border rounded">
                     <CommandInput
@@ -196,42 +204,60 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
                       <CommandEmpty>No courses found.</CommandEmpty>
                       <CommandGroup>
                         {courseOptions
-                          .filter((c) =>
-                            c.toLowerCase().includes(courseQuery.toLowerCase())
+                          .filter(
+                            (c) =>
+                              c.code
+                                .toLowerCase()
+                                .includes(courseQuery.toLowerCase()) ||
+                              c.name
+                                .toLowerCase()
+                                .includes(courseQuery.toLowerCase())
                           )
-                          .map((code) => (
-                            <CommandItem key={code} onSelect={() => toggleCourse(code)}>
+                          .map((c) => (
+                            <CommandItem
+                              key={c.code}
+                              onSelect={() => selectCourse(c.code)}
+                            >
                               <Check
                                 className={`mr-2 ${
-                                  selectedCourses.includes(code)
+                                  selectedCourses[0] === c.code
                                     ? "opacity-100"
                                     : "opacity-0"
                                 }`}
                               />
-                              {code}
+                              <span>
+                                {c.code} –{" "}
+                                <em className="text-gray-500">{c.name}</em>
+                              </span>
                             </CommandItem>
                           ))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedCourses.map((c) => (
-                      <Badge
-                        key={c}
-                        variant="secondary"
-                        className="flex items-center space-x-1"
-                      >
-                        <span>{c}</span>
-                        <XIcon
-                          className="w-3 h-3 cursor-pointer"
-                          onClick={() => toggleCourse(c)}
-                        />
-                      </Badge>
-                    ))}
+                    {selectedCourses.map((code) => {
+                      const opt = courseOptions.find((c) => c.code === code)
+                      return (
+                        <Badge
+                          key={code}
+                          variant="secondary"
+                          className="flex items-center space-x-1"
+                        >
+                          <span>
+                            {code}
+                            {opt ? ` – ${opt.name}` : ""}
+                          </span>
+                          <XIcon
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() => selectCourse(code)}
+                          />
+                        </Badge>
+                      )
+                    })}
                   </div>
-
-                {/* Classrooms */}
                 </div>
+
+                {/* Classrooms (multi-select) */}
                 <div className="space-y-2">
                   <Label>
                     Classrooms <span className="text-red-500">*</span>
@@ -330,9 +356,7 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
                       type="number"
                       min={1}
                       value={numProctors}
-                      onChange={(e) =>
-                        setNumProctors(+e.target.value || 1)
-                      }
+                      onChange={(e) => setNumProctors(+e.target.value || 1)}
                     />
                   </div>
                   <div className="space-y-2">

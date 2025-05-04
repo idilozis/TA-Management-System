@@ -98,7 +98,7 @@ export default function DeanExamsPage() {
         <SidebarInset className="p-8">
             <div className="flex items-center gap-2 mb-9">
                 <BookOpenCheck className="h-8 w-8 text-blue-600" />
-                <h1 className="text-3xl font-bold">Reports</h1>
+                <h1 className="text-3xl font-bold">Exams</h1>
             </div>
             <div className="flex justify-between items-center mb-6">
                 <Button onClick={() => setShowModal(true)} className="bg-blue-700 hover:bg-blue-600">+ Exam</Button>

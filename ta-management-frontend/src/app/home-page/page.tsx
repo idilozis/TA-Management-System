@@ -15,14 +15,18 @@ import NotificationModal from "@/app/home-page/notification-system/NotificationP
 import { Button } from "@/components/ui/button"
 
 const TopWorkloadChart = dynamic(
-  () => import("@/components/charts/TopWorkloadChart").then((m) => m.TopWorkloadChart),
+  () => import("@/components/dashboard/TopWorkloadChart").then((m) => m.TopWorkloadChart),
   { ssr: false }
 )
 const DeptComparisonChart = dynamic(
   () =>
-    import("@/components/charts/DepartmentComparisonChart").then(
+    import("@/components/dashboard/DepartmentComparisonChart").then(
       (m) => m.DepartmentComparisonChart
     ),
+  { ssr: false }
+)
+const CalendarModal = dynamic(
+  () => import("@/components/dashboard/CalendarModal"),
   { ssr: false }
 )
 
@@ -119,6 +123,8 @@ export default function HomePage() {
               />
             </div>
           </div>
+          {/* TA Calendar */}
+          {user.isTA && <CalendarModal />}
 
           {/* TA Schedule */}
           {user.isTA && <WeeklyScheduleModal />}

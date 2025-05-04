@@ -59,6 +59,10 @@ export default function DeanProctorModal({
   const [autoTAs, setAutoTAs] = useState<TA[]>([])
   const [manualTAs, setManualTAs] = useState<TA[]>([])
   const [selected, setSelected] = useState<string[]>([])
+  const formatDate = (iso: string) => {
+    const [year, month, day] = iso.split("-");
+    return `${day}.${month}.${year}`;
+  };
 
   // run automatic assignment
   async function handleAuto() {
@@ -143,7 +147,8 @@ export default function DeanProctorModal({
         <DialogHeader>
           <DialogTitle>Assign Proctors</DialogTitle>
           <DialogDescription>
-            {exam.course_codes.join(", ")} on {exam.date} ({exam.start_time}–{exam.end_time})
+            {exam.course_codes.join(", ")} on {formatDate(exam.date)} (
+            {exam.start_time}–{exam.end_time})
           </DialogDescription>
         </DialogHeader>
 

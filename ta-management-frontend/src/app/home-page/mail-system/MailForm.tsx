@@ -92,11 +92,11 @@ export default function MailForm({
         <>
           <div>
             <Label className="text-sm font-medium mb-1">
-              Search {role === "TA" ? "TAs" : "Staff"}
+              Search {role === "TA" ? "TAs" : "Instructor"}
             </Label>
             <Input
               placeholder={`Search among ${
-                role === "TA" ? "TAs" : "Staff"
+                role === "TA" ? "TAs" : "Instructors"
               }...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

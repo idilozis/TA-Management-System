@@ -1,31 +1,33 @@
 # myapp/proctoring/views.py
 import json
 from datetime import datetime, timedelta
-
 from django.db.models import Q, F, Value
-from django.db.models.functions import Replace, Lower
+from django.db.models.functions import Lower, Replace
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
 from myapp.userauth.helpers import find_user_by_email
-from myapp.proctoring.utils import get_staff_exam_or_404, get_dean_exam_or_404
-from myapp.models import TAUser, StaffUser
+from myapp.models import TAUser, StaffUser, Course
+from myapp.exams.models import Exam
 from myapp.proctoring.models import ProctoringAssignment
+from myapp.proctoring.utils import get_staff_exam_or_404, get_dean_exam_or_404
 from myapp.proctoring.restrictions import ProctoringAssignmentSolver
 from myapp.proctoring.deansolver import DeanProctoringSolver
 from myapp.taleave.models import TALeaveRequests
 from myapp.schedule.models import TAWeeklySlot
 
+# Precompute real-course codes
+REAL_COURSE_CODES = set(Course.objects.values_list("code", flat=True))
+
 
 def advisor_department(advisor_name):
-    """
-    Look up a StaffUser by advisor_name "FirstName Surname" and return their department.
-    """
     if not advisor_name:
         return None
     parts = advisor_name.split()
-    firstname, surname = parts[0], parts[-1]
-    staff = StaffUser.objects.filter(name__iexact=firstname, surname__iexact=surname).first()
+    staff = StaffUser.objects.filter(
+        name__iexact=parts[0],
+        surname__iexact=parts[-1]
+    ).first()
     return staff.department if staff else None
 
 
@@ -37,14 +39,14 @@ def automatic_proctor_assignment(request, exam_id):
 
     exam = get_staff_exam_or_404(exam_id)
     solver = ProctoringAssignmentSolver(exam)
-    assigned_tas, info = solver.assign_with_overrides()
+    assigned, info = solver.assign_with_overrides()
 
     return JsonResponse({
         "success": True,
-        "assigned_tas": [ta.email for ta in assigned_tas],
+        "assigned_tas": [ta.email for ta in assigned],
         "override_info": {
             "consecutive_overridden": info["consec"],
-            "ms_phd_overridden": info["ms"],
+            "ms_phd_overridden":     info["ms"],
             "department_overridden": info["dept"],
         }
     })
@@ -57,17 +59,30 @@ def automatic_dean_assignment(request, exam_id):
         return JsonResponse({"success": False}, status=403)
 
     dean_exam = get_dean_exam_or_404(exam_id)
-    solver = DeanProctoringSolver(dean_exam)
-    assigned_tas, info = solver.assign_with_overrides()
+    codes     = dean_exam.course_codes
 
+    if len(codes) == 1 and codes[0] in REAL_COURSE_CODES:
+        # Single real‐Course code: staff solver stub (respects dept)
+        course = Course.objects.get(code=codes[0])
+        class StubExam: pass
+        stub = StubExam()
+        stub.course       = course
+        stub.date         = dean_exam.date
+        stub.start_time   = dean_exam.start_time
+        stub.end_time     = dean_exam.end_time
+        stub.num_proctors = dean_exam.num_proctors
+
+        solver = ProctoringAssignmentSolver(stub)
+
+    else:
+        # Pure‐enum exam: dean solver (all-TA candidate list)
+        solver = DeanProctoringSolver(dean_exam)
+
+    assigned, info = solver.assign_with_overrides()
     return JsonResponse({
-        "success": True,
-        "assigned_tas": [ta.email for ta in assigned_tas],
-        "override_info": {
-            "consecutive_overridden": info["consec"],
-            "ms_phd_overridden": info["ms"],
-            "department_overridden": info["dept"],
-        }
+        "success":      True,
+        "assigned_tas": [ta.email for ta in assigned],
+        "override_info": info,
     })
 
 
@@ -78,9 +93,7 @@ def confirm_assignment(request, exam_id):
         return JsonResponse({"success": False}, status=403)
 
     exam = get_staff_exam_or_404(exam_id)
-    data = json.loads(request.body)
-    tas = data.get("assigned_tas", [])
-
+    tas  = json.loads(request.body).get("assigned_tas", [])
     if len(tas) != exam.num_proctors:
         return JsonResponse({"success": False, "message": "Wrong number of TAs"}, status=400)
 
@@ -93,10 +106,8 @@ def confirm_assignment(request, exam_id):
     for email in tas:
         ta = TAUser.objects.get(email=email)
         pa = ProctoringAssignment(exam=exam, ta=ta)
-        pa.full_clean()
-        pa.save()
-        ta.workload += hours
-        ta.save()
+        pa.full_clean(); pa.save()
+        ta.workload += hours; ta.save()
 
     return JsonResponse({"success": True})
 
@@ -108,9 +119,7 @@ def confirm_dean_assignment(request, exam_id):
         return JsonResponse({"success": False}, status=403)
 
     dean_exam = get_dean_exam_or_404(exam_id)
-    data = json.loads(request.body)
-    tas = data.get("assigned_tas", [])
-
+    tas       = json.loads(request.body).get("assigned_tas", [])
     if len(tas) != dean_exam.num_proctors:
         return JsonResponse({"success": False, "message": "Wrong number of TAs"}, status=400)
 
@@ -123,10 +132,8 @@ def confirm_dean_assignment(request, exam_id):
     for email in tas:
         ta = TAUser.objects.get(email=email)
         pa = ProctoringAssignment(dean_exam=dean_exam, ta=ta)
-        pa.full_clean()
-        pa.save()
-        ta.workload += hours
-        ta.save()
+        pa.full_clean(); pa.save()
+        ta.workload += hours; ta.save()
 
     return JsonResponse({"success": True})
 
@@ -139,7 +146,7 @@ def candidate_tas(request, exam_id):
 
     exam = get_staff_exam_or_404(exam_id)
     date = exam.date
-    slot = f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
+    slot = f"{exam.start_time:%H:%M}-{exam.end_time:%H:%M}"
     norm_code = exam.course.code.replace(" ", "").lower()
     instr_dept = exam.instructor.department
 
@@ -148,18 +155,15 @@ def candidate_tas(request, exam_id):
             status="approved", start_date__lte=date, end_date__gte=date
         ).values_list("ta_user__email", flat=True)
     )
-
     same_day = set(
         ProctoringAssignment.objects.filter(exam__date=date)
         .values_list("ta__email", flat=True)
     )
-
     adj_days = set(
         ProctoringAssignment.objects.filter(
             exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)]
         ).values_list("ta__email", flat=True)
     )
-
     enrolled = set(
         TAWeeklySlot.objects.annotate(
             norm=Lower(Replace(F("course"), Value(" "), Value("")))
@@ -167,7 +171,6 @@ def candidate_tas(request, exam_id):
         .filter(norm=norm_code)
         .values_list("ta__email", flat=True)
     )
-
     conflicts = set(
         TAWeeklySlot.objects.filter(
             day=date.strftime("%a").upper(), time_slot=slot
@@ -175,7 +178,6 @@ def candidate_tas(request, exam_id):
     )
 
     assignable, excluded = [], []
-
     for ta in TAUser.objects.filter(isTA=True):
         reasons = []
         if ta.email in leave_set:
@@ -198,11 +200,11 @@ def candidate_tas(request, exam_id):
             reasons.append(f"Different dept ({ta_dept or 'unknown'})")
 
         rec = {
-            "email": ta.email,
+            "email":      ta.email,
             "first_name": ta.name,
-            "last_name": ta.surname,
-            "workload": ta.workload,
-            "program": ta.program,
+            "last_name":  ta.surname,
+            "workload":   ta.workload,
+            "program":    ta.program,
             "department": ta_dept or "Unknown",
         }
 
@@ -223,38 +225,51 @@ def candidate_tas_dean(request, exam_id):
         return JsonResponse({"status": "error"}, status=403)
 
     dean_exam = get_dean_exam_or_404(exam_id)
+    codes     = dean_exam.course_codes
+
+    # only if there is an actual Exam row do we delegate to candidate_tas
+    if len(codes) == 1 and codes[0] in REAL_COURSE_CODES:
+        try:
+            real_exam = Exam.objects.get(
+                course__code = codes[0],
+                date         = dean_exam.date,
+                start_time   = dean_exam.start_time,
+                end_time     = dean_exam.end_time
+            )
+        except Exam.DoesNotExist:
+            # no matching Exam → fall back to enum logic
+            pass
+        else:
+            return candidate_tas(request, exam_id=real_exam.id)
+
+    # dean-only enum logic
     date = dean_exam.date
-    slot = f"{dean_exam.start_time.strftime('%H:%M')}-{dean_exam.end_time.strftime('%H:%M')}"
+    slot = f"{dean_exam.start_time:%H:%M}-{dean_exam.end_time:%H:%M}"
 
     leave_set = set(
         TALeaveRequests.objects.filter(
             status="approved", start_date__lte=date, end_date__gte=date
         ).values_list("ta_user__email", flat=True)
     )
-
     same_day = set(
         ProctoringAssignment.objects.filter(
             Q(exam__date=date) | Q(dean_exam__date=date)
         ).values_list("ta__email", flat=True)
     )
-
     adj_days = set(
         ProctoringAssignment.objects.filter(
-            Q(exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
-            | Q(dean_exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
+            Q(exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)]) |
+            Q(dean_exam__date__in=[date - timedelta(days=1), date + timedelta(days=1)])
         ).values_list("ta__email", flat=True)
     )
-
     conflicts = set(
         TAWeeklySlot.objects.filter(
             day=date.strftime("%a").upper(), time_slot=slot
         ).values_list("ta__email", flat=True)
     )
 
-    all_tas = TAUser.objects.filter(isTA=True)
     result = []
-
-    for ta in all_tas:
+    for ta in TAUser.objects.filter(isTA=True):
         reasons = []
         if ta.email in leave_set:
             reasons.append("On leave")
@@ -265,17 +280,12 @@ def candidate_tas_dean(request, exam_id):
         if ta.email in conflicts:
             reasons.append("Lecture conflict")
 
-        code0 = dean_exam.course_codes[0] if dean_exam.course_codes else ""
-        course_num = int("".join(filter(str.isdigit, code0)))
-        if course_num >= 500 and ta.program != "PhD":
-            reasons.append("MS/PhD only")
-
         rec = {
-            "email": ta.email,
+            "email":      ta.email,
             "first_name": ta.name,
-            "last_name": ta.surname,
-            "workload": ta.workload,
-            "program": ta.program,
+            "last_name":  ta.surname,
+            "workload":   ta.workload,
+            "program":    ta.program,
             "department": ta.advisor or "—",
         }
 
@@ -297,16 +307,14 @@ def ta_details(request):
 
     emails = json.loads(request.body).get("emails", [])
     out = []
-
     for email in emails:
         ta = TAUser.objects.filter(email=email).first()
         if ta:
             out.append({
-                "email": ta.email,
+                "email":      ta.email,
                 "first_name": ta.name,
-                "last_name": ta.surname,
-                "workload": ta.workload,
-                "program": ta.program,
+                "last_name":  ta.surname,
+                "workload":   ta.workload,
+                "program":    ta.program,
             })
-
     return JsonResponse({"success": True, "tas": out})

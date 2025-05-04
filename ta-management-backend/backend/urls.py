@@ -20,6 +20,7 @@ urlpatterns = [
     path('assignment/', include('myapp.taassignment.urls')),    # Call "myapp -> taassignment" functions
     path('reports/', include('myapp.reports.urls')),        # Call "myapp -> reports" functions
     path('charts/', include('myapp.charts.urls')),          # Call "myapp -> charts" functions
+    path('calendar/', include('myapp.calendar.urls')),      # Call "myapp -> calendar" functions
 
     # Default root view
     path('', initial_backend_view), 

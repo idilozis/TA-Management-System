@@ -35,7 +35,7 @@ def department_comparison_data(request):
     # Build advisor-name → department map
     staff_qs = StaffUser.objects.all().only('name','surname','department')
     adv_to_dept = {
-        f"{user.name} {user.surname}": (user.department or "Unknown")
+        f"{user.name} {user.surname}": (user.department or "Other")
         for user in staff_qs
     }
 
@@ -43,13 +43,13 @@ def department_comparison_data(request):
     # Proctoring tallies
     for pa in ProctoringAssignment.objects.select_related('ta'):
         adv = pa.ta.advisor or ""
-        dept = adv_to_dept.get(adv, "Unknown")
+        dept = adv_to_dept.get(adv, "Other")
         stats.setdefault(dept, [0,0])[0] += 1
 
     # Approved duties tallies
     for duty in TADuty.objects.filter(status="approved").select_related('ta_user'):
         adv = duty.ta_user.advisor or ""
-        dept = adv_to_dept.get(adv, "Unknown")
+        dept = adv_to_dept.get(adv, "Other")
         stats.setdefault(dept, [0,0])[1] += 1
 
     labels        = list(stats.keys())

@@ -140,7 +140,23 @@ class StudentList(models.Model):
     def __str__(self):
         return f"{self.surname}, {self.name} ({self.student_id})"
 
+# This class represents the necessary modal for ADMIN users.
+class GlobalSettings(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    current_semester = models.CharField(max_length=50, default=None, blank=True, null=True)
+    max_ta_workload = models.PositiveIntegerField(default=0)
 
+    def save(self, *args, **kwargs):
+        self.id = 1
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'admin_settings'
+
+    def __str__(self):
+        return "Global Settings"
+
+    
 # Import all models for migrations.
 from myapp.taassignment.models import TAAssignment
 from myapp.taassignment.models import TAAllocation

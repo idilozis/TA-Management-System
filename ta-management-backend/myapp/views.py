@@ -1,11 +1,11 @@
 # myapp/views.py
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.mail import EmailMessage
 import json
 
-from myapp.models import Course, TAUser, StaffUser
+from myapp.models import Course, TAUser, StaffUser, AuthorizedUser, GlobalSettings
 
 
 # -----------------------------
@@ -135,6 +135,64 @@ def list_all_courses(request):
             "instructors": instructor_list,  # e.g. ["Alice Smith", "Bob Jones"]
         })
     return JsonResponse({"status": "success", "courses": data})
+
+
+# -----------------------------
+# ADMIN SETTINGS
+# -----------------------------
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def global_settings(request):
+    session_email = request.session.get("user_email")
+    if not session_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    # GET: fetch-or-create the singleton
+    if request.method == "GET":
+        settings, _ = GlobalSettings.objects.get_or_create(
+            pk=1,
+            defaults={
+                "current_semester": "2024-2025 Spring",
+                "max_ta_workload": 60,
+            },
+        )
+        return JsonResponse({
+            "status": "success",
+            "settings": {
+                "current_semester": settings.current_semester,
+                "max_ta_workload": settings.max_ta_workload,
+            }
+        })
+
+    # POST: only ADMIN may update
+    try:
+        auth_user = AuthorizedUser.objects.get(email=session_email)
+    except AuthorizedUser.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Bad session"}, status=401)
+
+    if auth_user.role != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
+
+    # Parse & validate body JSON
+    try:
+        data = json.loads(request.body)
+        sem = data["current_semester"]
+        wl  = int(data["max_ta_workload"])
+    except (KeyError, ValueError, json.JSONDecodeError) as e:
+        return JsonResponse({"status": "error", "message": f"Invalid input: {e}"}, status=400)
+
+    settings = GlobalSettings.objects.get(pk=1)
+    settings.current_semester = sem
+    settings.max_ta_workload = wl
+    settings.save()
+
+    return JsonResponse({
+        "status": "success",
+        "settings": {
+            "current_semester": settings.current_semester,
+            "max_ta_workload": settings.max_ta_workload,
+        }
+    })
 
 
 # -----------------------------

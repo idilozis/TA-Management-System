@@ -63,15 +63,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-      ...(user && user.isTA
-        ? [
-            {
-              name: "Leave Requests",
-              path: "/ta-leaves",
-              icon: CalendarOff,
-            },
-          ]
-        : []),  
+    ...((user && user.isTA) || (user && user.isAuth && (user.role==="SECRETARY" || user.role==="ADMIN"))
+      ? [
+          {
+            name: "Leave Requests",
+            path: "/ta-leaves",
+            icon: CalendarOff,
+          },
+        ]
+      : []),  
     ...(user && !user.isTA && !user.isAuth
       ? [
           {
@@ -81,11 +81,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    {
-      name: user?.isAuth ? "Leave Requests" : "Proctoring",
-      path: "/proctoring",
-      icon: FileText,
-    },
+    ...((user && !user.isTA && !user.isAuth) || (user && user?.isTA)
+      ? [
+          {
+            name: "Proctoring",
+            path: "/proctoring",
+            icon: FileText,
+          },
+        ]
+      : []),
     ...(user && user.isTA
       ? [
           {
@@ -95,8 +99,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && user.isAuth && user.role==="SECRETARY"
-      ? [{ name:"Swaps", path:"/staff-swaps", icon:Repeat }]
+    ...(user && user.isAuth && (user.role==="SECRETARY" || user.role==="ADMIN")
+      ? [
+          { 
+            name:"Swaps", 
+            path:"/staff-swaps", 
+            icon:Repeat 
+          },
+        ]
       : []),      
     ...(user && !user.isTA && user.isAuth && user.role == "DEAN"
       ? [

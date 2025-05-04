@@ -138,7 +138,7 @@ export default function RequestsPage() {
         <AppSidebar user={user} />
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-6">
-            <Inbox className="h-8 w-8 text-blue-600" />
+            <CheckCircle className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold">TA Duty Requests</h1>
           </div>
 

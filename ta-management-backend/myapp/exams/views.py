@@ -14,6 +14,7 @@ from myapp.exams.courses_nondept import NonDeptCourseEnum
 from myapp.proctoring.models import ProctoringAssignment  
 from myapp.swap.models import SwapRequest 
 
+REAL_COURSE_CODES = set(Course.objects.values_list("code", flat=True))
 
 # -----------------------------
 # CREATE AN EXAM
@@ -297,7 +298,17 @@ def list_dean_courses(request):
     if not user or not getattr(user, "isAuth",False):
         return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
 
-    courses = [v for v,_ in NonDeptCourseEnum.choices()]
+    # 1) Real courses from DB
+    real = Course.objects.all().values("code", "name")
+
+    # 2) Enum-only courses from NonDeptCourseEnum
+    enum = [
+        {"code": code, "name": label}
+        for code, label in NonDeptCourseEnum.choices()
+    ]
+
+    # 3) Combine
+    courses = list(real) + enum
     return JsonResponse({"status":"success","courses":courses})
 
 @require_POST
@@ -311,47 +322,58 @@ def create_dean_exam(request):
         return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
 
     data = json.loads(request.body)
-    course_codes = data.get("course_codes",[])
-    rooms = data.get("classrooms", [])
+    codes = data.get("course_codes", [])
+    rooms = data.get("classrooms",  [])
 
-    if not isinstance(course_codes,list) or not course_codes:
+    # basic checks
+    if not isinstance(codes, list) or not codes:
         return JsonResponse({"status":"error","message":"`course_codes` list required"}, status=400)
-    if not isinstance(rooms,list) or not rooms:
+    if not isinstance(rooms, list) or not rooms:
         return JsonResponse({"status":"error","message":"`classrooms` list required"}, status=400)
 
-    valid_course = {v for v,_ in NonDeptCourseEnum.choices()}
-    for course in course_codes:
-        if course not in valid_course:
-            return JsonResponse({"status":"error","message":f"Invalid course code {course}"}, status=400)
+    # build allowed set
+    real_codes = set(Course.objects.values_list("code", flat=True))
+    enum_codes = {c for c, _ in NonDeptCourseEnum.choices()}
+    allowed    = real_codes.union(enum_codes)
 
-    valid_room = {v for v,_ in ClassroomEnum.choices()}
+    # validate user‐submitted codes
+    for c in codes:
+        if c not in allowed:
+            return JsonResponse({"status":"error","message":f"Invalid course code {c}"}, status=400)
+
+    # classroom enum check unchanged
+    valid_rooms = {v for v,_ in ClassroomEnum.choices()}
     for room in rooms:
-        if room not in valid_room:
+        if room not in valid_rooms:
             return JsonResponse({"status":"error","message":f"Invalid classroom {room}"}, status=400)
 
+    # parse date/time
     try:
-        d,s,e = _parse_datetime(data)
+        d = datetime.strptime(data["date"],       "%Y-%m-%d").date()
+        s = datetime.strptime(data["start_time"], "%H:%M").time()
+        e = datetime.strptime(data["end_time"],   "%H:%M").time()
     except ValueError:
         return JsonResponse({"status":"error","message":"Invalid date/time"}, status=400)
-    if s>=e:
+    if s >= e:
         return JsonResponse({"status":"error","message":"Start must be before end"}, status=400)
 
+    # availability check unchanged
     for room in rooms:
-        ok,msg = is_classroom_available(room,d,s,e)
+        ok,msg = is_classroom_available(room, d, s, e)
         if not ok:
             return JsonResponse({"status":"error","message":msg}, status=400)
 
+    # finally create
     dean_exam = DeanExam.objects.create(
-        creator = user,
-        course_codes = course_codes,
-        date = d,
-        start_time = s,
-        end_time = e,
-        num_proctors = data.get("num_proctors",1),
-        student_count = data.get("student_count",0),
-        classrooms = rooms,
+        creator=user,
+        course_codes=codes,
+        date=d, start_time=s, end_time=e,
+        num_proctors=data.get("num_proctors",1),
+        student_count=data.get("student_count",0),
+        classrooms=rooms,
     )
     return JsonResponse({"status":"success","exam_id":dean_exam.id}, status=201)
+
 
 @require_GET
 def list_dean_exams(request):

@@ -65,7 +65,7 @@ export default function MailPopover({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
           onClick={(e) => e.stopPropagation()}
         >
           <div
@@ -91,7 +91,7 @@ export default function MailPopover({
                   }}
                   className="w-full text-left px-3 py-2 rounded hover:bg-emerald-100 transition-colors bg-gray-100"
                 >
-                  Contact with Staff
+                  Contact with Instructors
                 </button>
                 <div className="flex justify-end">
                   <Button variant="secondary" className="bg-blue-600 text-white hover:bg-blue-500" onClick={handleClose}>

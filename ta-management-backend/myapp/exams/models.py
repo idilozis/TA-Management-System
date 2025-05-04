@@ -65,15 +65,21 @@ class DeanExam(models.Model):
     )
 
     def clean(self):
-        # 1) Validate course_codes
-        valid_courses = {v for v, _ in NonDeptCourseEnum.choices()}
+        # 1) Build allowed set from DB + enum
+        real_codes = set(Course.objects.values_list("code", flat=True))
+        enum_codes = {code for code, _ in NonDeptCourseEnum.choices()}
+        allowed = real_codes.union(enum_codes)
+
+        # 2) course_codes must be non-empty list
         if not isinstance(self.course_codes, list) or not self.course_codes:
             raise ValidationError("`course_codes` must be a non-empty list.")
+        
+        # 3) Validate each code
         for code in self.course_codes:
-            if code not in valid_courses:
-                raise ValidationError(f"Invalid non-dept course code: {code}")
+            if code not in allowed:
+                raise ValidationError(f"Invalid course code: {code}")
 
-        # 2) Validate classrooms
+        # 4) Classroom validation
         valid_rooms = {v for v, _ in ClassroomEnum.choices()}
         for room in self.classrooms:
             if room not in valid_rooms:
