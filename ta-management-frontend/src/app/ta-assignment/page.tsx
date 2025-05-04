@@ -408,19 +408,28 @@ export default function TAAssignmentPage() {
   // Filter TAs in the dialog based on search query
   // Add the getFilteredTAs function
   const getFilteredTAs = () => {
-    if (!dialogSearchQuery) return allTAs
+    if (!dialogSearchQuery && !currentPreference) return allTAs
 
     const query = dialogSearchQuery.toLowerCase()
+
+    //this is to get course-specific TAs to avoid duplicates
+    const courseSpecificEmails = [
+      ...(currentPreference?.must_have_ta || []),
+      ...(currentPreference?.preferred_tas || []),
+      ...(currentPreference?.preferred_graders || []),
+      ...(currentPreference?.avoided_tas || []),
+    ].map((ta) => ta.email)
+
     return allTAs.filter(
       (ta) =>
-        ta.name.toLowerCase().includes(query) ||
-        ta.surname.toLowerCase().includes(query) ||
-        ta.email.toLowerCase().includes(query),
+        (!dialogSearchQuery ||
+          ta.name.toLowerCase().includes(query) ||
+          ta.surname.toLowerCase().includes(query) ||
+          ta.email.toLowerCase().includes(query)) &&
+        !courseSpecificEmails.includes(ta.email), 
     )
   }
 
-  // Check if a TA is already in one of the preference categories
-  // Add the isInPreferenceCategories function
   const isInPreferenceCategories = (email: string) => {
     if (!currentPreference) return false
 
@@ -471,34 +480,16 @@ export default function TAAssignmentPage() {
             </Alert>
           )}
 
-          <div className="flex justify-between items-center mb-6">
-            <div className="relative w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </div>
 
           <Tabs defaultValue="assignments" value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
             <TabsList className="mb-6">
-              <TabsTrigger
-                value="assignments"
-                className={activeTab === "assignments" ? "" : "text-blue-600"}
-              >
+              <TabsTrigger value="assignments" className={activeTab === "assignments" ? "" : "text-blue-600"}>
                 Current Assignments
               </TabsTrigger>
-              <TabsTrigger
-                value="preferences"
-                className={activeTab === "preferences" ? "" : "text-blue-600"}
-              >
+              <TabsTrigger value="preferences" className={activeTab === "preferences" ? "" : "text-blue-600"}>
                 Assignment Preferences
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value="assignments">
               <Card>
                 <CardHeader>
@@ -549,6 +540,17 @@ export default function TAAssignmentPage() {
                     </TooltipProvider>
                   </div>
                   <CardDescription>Manage TA and grader assignments for each course</CardDescription>
+                  <div className="flex justify-between items-center mb-6">
+                  <div className="relative w-84">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search courses..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border overflow-auto">
@@ -745,6 +747,15 @@ export default function TAAssignmentPage() {
                     </TooltipProvider>
                   </div>
                   <CardDescription>View instructor preferences for TA assignments</CardDescription>
+                  <div className="relative w-84">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search courses..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border overflow-auto">
@@ -950,24 +961,22 @@ export default function TAAssignmentPage() {
                       </div>
                       <ScrollArea className="h-[200px] border rounded-md p-2">
                         <div className="space-y-2">
-                          {getFilteredTAs()
-                            .filter((ta) => !isInPreferenceCategories(ta.email))
-                            .map((ta) => (
-                              <div key={ta.email} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`all-ta-${ta.email}`}
-                                  checked={selectedTAs.includes(ta.email)}
-                                  onCheckedChange={() => handleToggleTA(ta.email)}
-                                />
-                                <Label htmlFor={`all-ta-${ta.email}`} className="flex items-center gap-2">
-                                  {ta.name} {ta.surname}
-                                  <Badge className="ml-1 bg-gray-100 text-gray-800">
-                                    {ta.is_full_time === false ? "PT (1)" : "FT (2)"}
-                                  </Badge>
-                                </Label>
-                              </div>
-                            ))}
-                          {getFilteredTAs().filter((ta) => !isInPreferenceCategories(ta.email)).length === 0 && (
+                          {getFilteredTAs().map((ta) => (
+                            <div key={ta.email} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`all-ta-${ta.email}`}
+                                checked={selectedTAs.includes(ta.email)}
+                                onCheckedChange={() => handleToggleTA(ta.email)}
+                              />
+                              <Label htmlFor={`all-ta-${ta.email}`} className="flex items-center gap-2">
+                                {ta.name} {ta.surname}
+                                <Badge className="ml-1 bg-gray-100 text-gray-800">
+                                  {ta.is_full_time === false ? "PT (1)" : "FT (2)"}
+                                </Badge>
+                              </Label>
+                            </div>
+                          ))}
+                          {getFilteredTAs().length === 0 && (
                             <div className="text-muted-foreground py-2 text-center">
                               {dialogSearchQuery ? "No matching TAs found" : "No additional TAs available"}
                             </div>
@@ -1051,6 +1060,8 @@ export default function TAAssignmentPage() {
                         <div className="space-y-2">
                           {/* First show the "Other TAs" (must-have and preferred TAs) */}
                           {[...currentPreference.must_have_ta, ...currentPreference.preferred_tas]
+                            // Remove duplicates by using a Map to track emails we've seen
+                            .filter((ta, index, self) => index === self.findIndex((t) => t.email === ta.email))
                             .filter(
                               (ta) =>
                                 !currentPreference.preferred_graders.some((g) => g.email === ta.email) &&
