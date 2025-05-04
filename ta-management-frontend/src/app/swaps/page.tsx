@@ -26,7 +26,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import MySwapHistoryModal from "./MySwapHistoryModal";
+import MySwapHistoryContent from "./MySwapHistoryModal";
 
 interface SwapRow {
   swap_id: number;
@@ -47,9 +47,7 @@ export default function SwapsPage() {
   const [rows, setRows] = useState<SwapRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [historyOpen, setHistoryOpen] = useState(false);
 
-  // fetch all swaps for this TA
   const fetchSwaps = async () => {
     setLoading(true);
     try {
@@ -72,8 +70,7 @@ export default function SwapsPage() {
 
   if (userLoading || loading) return <PageLoader />;
 
-  // split out the two lists
-  const pending  = rows.filter(r => r.role === "sender"   && r.status === "pending");
+  const pending = rows.filter(r => r.role === "sender" && r.status === "pending");
   const incoming = rows.filter(r => r.role === "receiver" && r.status === "pending");
 
   return (
@@ -82,15 +79,6 @@ export default function SwapsPage() {
         <AppSidebar user={user} />
 
         <SidebarInset className="bg-white p-8 w-full">
-          <div className="flex justify-end mb-4">
-            <Button
-              className="bg-blue-600 hover:bg-blue-500 text-white"
-              onClick={() => setHistoryOpen(true)}
-            >
-              My Swap History
-            </Button>
-          </div>
-
           <div className="flex items-center gap-2 mb-6">
             <Repeat className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold">Swaps</h1>
@@ -107,6 +95,7 @@ export default function SwapsPage() {
             <TabsList className="mb-6">
               <TabsTrigger value="pending">Pending Swaps</TabsTrigger>
               <TabsTrigger value="requests">Incoming Requests</TabsTrigger>
+              <TabsTrigger value="history">My Swap History</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pending">
@@ -132,20 +121,17 @@ export default function SwapsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="history">
+              <MySwapHistoryContent />
+            </TabsContent>
           </Tabs>
         </SidebarInset>
       </div>
-
-      <MySwapHistoryModal
-        open={historyOpen}
-        onOpenChange={setHistoryOpen}
-      />
     </SidebarProvider>
   );
 }
 
-
-// inlined table component
 function SwapsTable({
   data,
   empty,
@@ -164,7 +150,6 @@ function SwapsTable({
   const respond = async (id: number, decision: "accept" | "reject") => {
     try {
       await apiClient.post(`/swap/respond/${id}/`, { decision });
-      // refresh after action
       window.location.reload();
     } catch {
       alert("Swap update failed");
@@ -214,6 +199,7 @@ function SwapsTable({
                 {r.role === "receiver" && r.status === "pending" ? (
                   <div className="flex gap-2">
                     <Button
+                      className="bg-blue-600 hover:bg-blue-500"
                       size="sm"
                       onClick={() => respond(r.swap_id, "accept")}
                     >
