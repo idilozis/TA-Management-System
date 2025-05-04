@@ -6,18 +6,18 @@ from myapp.taduties.models import TADuty
 
 def ta_workload_data(request):
     """
-    Returns top 20 TAs by .workload as JSON:
+    Returns top 10 TAs by .workload as JSON:
       [{ "name": "Alice Smith", "workload": 42 }, …]
     """
-    top20 = (
+    top10 = (
         TAUser.objects
         .filter(isTA=True)
-        .order_by('-workload')[:20]
+        .order_by('-workload')[:10]
         .values_list('name', 'surname', 'workload')
     )
     result = [
         { "name": f"{n} {s}", "workload": w }
-        for n, s, w in top20
+        for n, s, w in top10
     ]
     return JsonResponse(result, safe=False)
 

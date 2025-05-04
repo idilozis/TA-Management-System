@@ -108,7 +108,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),      
-    ...(user && !user.isTA && user.isAuth && user.role == "DEAN"
+    ...(user && !user.isTA && user.isAuth && (user.role == "DEAN" || user.role == "ADMIN")
       ? [
           {
             name: "Exams",

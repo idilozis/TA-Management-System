@@ -13,7 +13,12 @@ urlpatterns = [
     
     path("global-settings/", global_settings, name="global-settings"),
     
-    path("create/ta/", create_ta, name="create_ta"),
-    path("create/staff/", create_staff, name="create_staff"),
-    path("create/course/", create_course, name="create_course"),
+    path("create-ta/", create_ta, name="create_ta"),
+    path("delete-ta/<str:email>/", delete_ta, name="delete_ta"),
+
+    path("create-staff/", create_staff, name="create_staff"),
+    path("delete-staff/<str:email>/", delete_staff, name="delete_staff"),
+
+    path("create-course/", create_course, name="create_course"),
+    path("delete-course/<str:code>/", delete_course, name="delete_course"),
 ]

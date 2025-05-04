@@ -3,10 +3,11 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.mail import EmailMessage
+from myapp.userauth.helpers import find_user_by_email
+from django.db import IntegrityError, transaction
 import json
 
 from myapp.models import Course, TAUser, StaffUser, AuthorizedUser, GlobalSettings
-
 
 # -----------------------------
 # LIST EITHER TAs or STAFF
@@ -146,6 +147,10 @@ def global_settings(request):
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    
+    user, user_type = find_user_by_email(session_email)
+    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+        return JsonResponse({"status": "error", "message": "Only authorized users can view pending leave requests"}, status=403)
 
     # GET: fetch-or-create the singleton
     if request.method == "GET":
@@ -195,61 +200,77 @@ def global_settings(request):
     })
 
 
+def require_admin(request):
+    """
+    Return a JsonResponse if the session user is missing / not an ADMIN.
+    Otherwise return None.
+    """
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    try:
+        auth = AuthorizedUser.objects.get(email=email)
+    except AuthorizedUser.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Bad session"}, status=401)
+    if auth.role != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
+    return None
+
+
 # -----------------------------
 # CREATE NEW TA
 # -----------------------------
 @csrf_exempt
 @require_POST
 def create_ta(request):
-    session_email = request.session.get("user_email")
-    if not session_email:
-        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+    # 1) admin check
+    if err := require_admin(request):
+        return err
+
     try:
         data = json.loads(request.body)
-        required_fields = ['name', 'surname', 'student_id', 'tc_no', 'email', 'program']
-        for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"Missing required field: {field}"
-                }, status=400)
+        for f in ("name", "surname", "student_id", "tc_no", "email", "program"):
+            if not data.get(f):
+                return JsonResponse(
+                    {"status": "error", "message": f"Missing required field: {f}"},
+                    status=400,
+                )
 
-        # Create new TA
         ta = TAUser(
-            name=data['name'],
-            surname=data['surname'],
-            student_id=data['student_id'],
-            tc_no=data['tc_no'],
-            email=data['email'],
-            program=data['program'],
-            iban=data.get('iban'),
-            phone=data.get('phone'),
-            advisor=data.get('advisor'),
-            ta_type=data.get('ta_type')
+            name=data["name"],
+            surname=data["surname"],
+            student_id=data["student_id"],
+            tc_no=data["tc_no"],
+            email=data["email"],
+            program=data["program"],
+            iban=data.get("iban"),
+            phone=data.get("phone"),
+            advisor=data.get("advisor"),
+            ta_type=data.get("ta_type"),
         )
-        
-        if 'password' in data:
-            ta.set_password(data['password'])
-            
-        ta.save()
-        
-        return JsonResponse({
-            "status": "success",
-            "message": "TA created successfully",
-            "ta": {
-                "email": ta.email,
-                "name": ta.name,
-                "surname": ta.surname
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            "status": "error",
-            "message": str(e)
-        }, status=400)
+        if "password" in data:
+            ta.set_password(data["password"])
 
+        ta.save()
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "TA created successfully",
+                "ta": {
+                    "email": ta.email,
+                    "name": ta.name,
+                    "surname": ta.surname,
+                },
+            }
+        )
+
+    except IntegrityError:
+        return JsonResponse(
+            {"status": "error", "message": "TA with that email, student_id or TC already exists"},
+            status=409,
+        )
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 # -----------------------------
 # CREATE NEW STAFF
@@ -257,49 +278,48 @@ def create_ta(request):
 @csrf_exempt
 @require_POST
 def create_staff(request):
-    session_email = request.session.get("user_email")
-    if not session_email:
-        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+    # 1) admin check
+    if err := require_admin(request):
+        return err
+
     try:
         data = json.loads(request.body)
-        required_fields = ['name', 'surname', 'email']
-        for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"Missing required field: {field}"
-                }, status=400)
+        for f in ("name", "surname", "email"):
+            if not data.get(f):
+                return JsonResponse(
+                    {"status": "error", "message": f"Missing required field: {f}"},
+                    status=400,
+                )
 
-        # Create new Staff
         staff = StaffUser(
-            name=data['name'],
-            surname=data['surname'],
-            email=data['email'],
-            department=data.get('department')
+            name=data["name"],
+            surname=data["surname"],
+            email=data["email"],
+            department=data.get("department"),
         )
-        
-        if 'password' in data:
-            staff.set_password(data['password'])
-            
-        staff.save()
-        
-        return JsonResponse({
-            "status": "success",
-            "message": "Staff created successfully",
-            "staff": {
-                "email": staff.email,
-                "name": staff.name,
-                "surname": staff.surname
-            }
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            "status": "error",
-            "message": str(e)
-        }, status=400)
+        if "password" in data:
+            staff.set_password(data["password"])
 
+        staff.save()
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "Staff created successfully",
+                "staff": {
+                    "email": staff.email,
+                    "name": staff.name,
+                    "surname": staff.surname,
+                },
+            }
+        )
+
+    except IntegrityError:
+        return JsonResponse(
+            {"status": "error", "message": "Staff with that email already exists"},
+            status=409,
+        )
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 # -----------------------------
 # CREATE NEW COURSE
@@ -307,50 +327,104 @@ def create_staff(request):
 @csrf_exempt
 @require_POST
 def create_course(request):
-    session_email = request.session.get("user_email")
-    if not session_email:
-        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+    # 1) admin check
+    if err := require_admin(request):
+        return err
+
     try:
         data = json.loads(request.body)
-        required_fields = ['code', 'name']
-        for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"Missing required field: {field}"
-                }, status=400)
+        for f in ("code", "name"):
+            if not data.get(f):
+                return JsonResponse(
+                    {"status": "error", "message": f"Missing required field: {f}"},
+                    status=400,
+                )
 
-        # Create new Course
-        course = Course(
-            code=data['code'],
-            name=data['name']
-        )
-        course.save()
-        
-        # Add instructors if provided
-        if 'instructor_emails' in data:
-            for email in data['instructor_emails']:
+        with transaction.atomic():
+            course = Course.objects.create(code=data["code"], name=data["name"])
+            for email in data.get("instructor_emails", []):
                 try:
-                    instructor = StaffUser.objects.get(email=email)
-                    course.instructors.add(instructor)
+                    inst = StaffUser.objects.get(email=email)
                 except StaffUser.DoesNotExist:
-                    return JsonResponse({
-                        "status": "error",
-                        "message": f"Instructor with email {email} not found"
-                    }, status=404)
-        
-        return JsonResponse({
-            "status": "success",
-            "message": "Course created successfully",
-            "course": {
-                "code": course.code,
-                "name": course.name
+                    return JsonResponse(
+                        {"status": "error", "message": f"Instructor {email} not found"},
+                        status=404,
+                    )
+                course.instructors.add(inst)
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "Course created successfully",
+                "course": {
+                    "code": course.code,
+                    "name": course.name,
+                    "instructors": list(course.instructors.values_list("email", flat=True)),
+                },
             }
-        })
-        
+        )
+
+    except IntegrityError:
+        return JsonResponse(
+            {"status": "error", "message": "Course code already exists"},
+            status=409,
+        )
     except Exception as e:
-        return JsonResponse({
-            "status": "error",
-            "message": str(e)
-        }, status=400)
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+# -----------------------------
+# DELETE COURSE
+# -----------------------------
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_course(request, code):
+    # only ADMIN
+    if err := require_admin(request):
+        return err
+
+    try:
+        course = Course.objects.get(code=code)
+        course.delete()
+        return JsonResponse({"status": "success", "message": "Course deleted"}, status=200)
+    except Course.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Course not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    
+# -----------------------------
+# DELETE TA
+# -----------------------------
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_ta(request, email):
+    # only ADMIN
+    if err := require_admin(request):
+        return err
+
+    try:
+        ta = TAUser.objects.get(email=email)
+        ta.delete()
+        return JsonResponse({"status": "success", "message": "TA deleted"}, status=200)
+    except TAUser.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "TA not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+# -----------------------------
+# DELETE STAFF
+# -----------------------------
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_staff(request, email):
+    # only ADMIN
+    if err := require_admin(request):
+        return err
+
+    try:
+        staff = StaffUser.objects.get(email=email)
+        staff.delete()
+        return JsonResponse({"status": "success", "message": "Staff deleted"}, status=200)
+    except StaffUser.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Staff not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

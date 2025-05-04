@@ -428,7 +428,7 @@ export default function TAAssignmentPage() {
       ...currentPreference.must_have_ta,
       ...currentPreference.preferred_tas,
       ...currentPreference.avoided_tas,
-      ...currentPreference.preferred_graders,
+      // ...currentPreference.preferred_graders,
     ].some((ta) => ta.email === email)
   }
 

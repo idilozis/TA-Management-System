@@ -37,7 +37,7 @@ export function TopWorkloadChart() {
   return (
     <Card className="w-full h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-medium">Top 20 TA Workloads</CardTitle>
+        <CardTitle className="text-lg font-medium">Top 10 TA Workloads</CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
           Visualizing the distribution of workload hours among TAs
         </CardDescription>

@@ -1,3 +1,4 @@
+// app/tables/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,23 +9,25 @@ import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
 import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import {
-  courseColumns,
-  taColumns,
-  staffColumns,
+  useCourseColumns,
+  useTAColumns,
+  useStaffColumns,
   type CourseData,
   type TAData,
   type StaffData,
 } from "./columns"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import MailPopover from "@/app/home-page/mail-system/MailPopover"
 import { PageLoader, LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
+import CreateCourseModal from "./CreateCourseModal"
 import CreateTAModal from "./CreateTAModal"
 import CreateStaffModal from "./CreateStaffModal"
-import CreateCourseModal from "./CreateCourseModal"
 
 type Tab = "courses" | "tas" | "staff"
 
@@ -32,121 +35,94 @@ export default function TablesPage() {
   const { user, loading } = useUser()
   const [activeTab, setActiveTab] = useState<Tab>("courses")
 
-  // State for each table data
+  // Table data state
   const [courses, setCourses] = useState<CourseData[]>([])
-  const [tas, setTAs] = useState<TAData[]>([])
-  const [staff, setStaff] = useState<StaffData[]>([])
-  const [error, setError] = useState("")
+  const [tas, setTAs]         = useState<TAData[]>([])
+  const [staff, setStaff]     = useState<StaffData[]>([])
+  const [error, setError]     = useState("")
   const [loadingData, setLoadingData] = useState(false)
 
   // Mail popover state
-  const [mailOpen, setMailOpen] = useState(false)
-  const [mailRole, setMailRole] = useState<"TA" | "Staff" | null>(null)
+  const [mailOpen, setMailOpen]   = useState(false)
+  const [mailRole, setMailRole]   = useState<"TA" | "Staff" | null>(null)
   const [mailEmail, setMailEmail] = useState<string | null>(null)
 
-  // Add state for modals
-  const [createTAOpen, setCreateTAOpen] = useState(false)
-  const [createStaffOpen, setCreateStaffOpen] = useState(false)
-  const [createCourseOpen, setCreateCourseOpen] = useState(false)
-
-  // Move fetchData outside useEffect and make it a function of the component
-  const fetchData = async () => {
-    setLoadingData(true)
-    setError("")
-    try {
-      if (activeTab === "courses") {
-        const res = await apiClient.get("/list/courses/")
-        if (res.data.status === "success") {
-          setCourses(res.data.courses)
-        } else {
-          setError(res.data.message || "Error fetching courses.")
-        }
-      } else if (activeTab === "tas") {
-        const res = await apiClient.get("/list/tas/")
-        if (res.data.status === "success") {
-          setTAs(res.data.tas)
-        } else {
-          setError(res.data.message || "Error fetching TAs.")
-        }
-      } else if (activeTab === "staff") {
-        const res = await apiClient.get("/list/staff/")
-        if (res.data.status === "success") {
-          setStaff(res.data.staff)
-        } else {
-          setError(res.data.message || "Error fetching staff.")
-        }
-      }
-    } catch (err: any) {
-      setError("Error fetching data. Please try again.")
-      console.error(err)
-    } finally {
-      setLoadingData(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [activeTab])
-
-  // Handle opening mail popover
   const handleOpenMail = (email: string, role: "TA" | "Staff") => {
     setMailEmail(email)
     setMailRole(role)
     setMailOpen(true)
   }
-
-  // Handle mail popover close
   const handleMailClose = () => {
     setMailOpen(false)
     setMailRole(null)
     setMailEmail(null)
   }
 
-  // First, add a helper function at the top of the component
-  const canCreateRecords = (user: any) => {
-    return user?.isAuth && user?.role === "ADMIN"
+  // Create-modal state
+  const [createCourseOpen, setCreateCourseOpen] = useState(false)
+  const [createTAOpen, setCreateTAOpen]         = useState(false)
+  const [createStaffOpen, setCreateStaffOpen]   = useState(false)
+
+  // Fetch function (used by columns hooks and effect)
+  const fetchData = async () => {
+    setLoadingData(true)
+    setError("")
+    try {
+      if (activeTab === "courses") {
+        const res = await apiClient.get("/list/courses/")
+        if (res.data.status === "success") setCourses(res.data.courses)
+        else setError(res.data.message || "Error fetching courses.")
+      } else if (activeTab === "tas") {
+        const res = await apiClient.get("/list/tas/")
+        if (res.data.status === "success") setTAs(res.data.tas)
+        else setError(res.data.message || "Error fetching TAs.")
+      } else {
+        const res = await apiClient.get("/list/staff/")
+        if (res.data.status === "success") setStaff(res.data.staff)
+        else setError(res.data.message || "Error fetching staff.")
+      }
+    } catch {
+      setError("Error fetching data. Please try again.")
+    } finally {
+      setLoadingData(false)
+    }
   }
 
-  if (loading) {
-    return <PageLoader />
-  }
+  // Column definitions (depend on fetchData and user)
+  const courseColumns = useCourseColumns(fetchData)
+  const taColumns     = useTAColumns(fetchData)
+  const staffColumns  = useStaffColumns(fetchData)
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        No user found
-      </div>
-    )
-  }
+  useEffect(() => {
+    fetchData()
+  }, [activeTab])
+
+  if (loading) return <PageLoader />
+  if (!user)  return <div className="min-h-screen flex items-center justify-center">No user found</div>
+
+  const canCreate = user.isAuth && user.role === "ADMIN"
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen>
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar user={user} />
-
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-4">
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Archive className="h-8 w-8 text-blue-600" /> Records
-              </h1>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Archive className="h-8 w-8 text-blue-600" /> Records
+            </h1>
           </div>
 
           <Tabs
             defaultValue="courses"
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as Tab)}
+            onValueChange={v => setActiveTab(v as Tab)}
             className="w-full"
           >
             <TabsList className="mb-4">
-              <TabsTrigger value="courses" className="cursor-pointer">
-                Courses
-              </TabsTrigger>
-              <TabsTrigger value="tas" className="cursor-pointer">
-                TAs
-              </TabsTrigger>
-              <TabsTrigger value="staff" className="cursor-pointer">
-                Instructors
-              </TabsTrigger>
+              <TabsTrigger value="courses">Courses</TabsTrigger>
+              <TabsTrigger value="tas">TAs</TabsTrigger>
+              <TabsTrigger value="staff">Instructors</TabsTrigger>
             </TabsList>
 
             {error && (
@@ -163,24 +139,25 @@ export default function TablesPage() {
               </div>
             ) : (
               <>
-                {/* COURSES TAB */}
+                {/* COURSES */}
                 <TabsContent value="courses">
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-blue-700">COURSES (2024-2025 SPRING)</CardTitle>
-                      {canCreateRecords(user) && (
-                        <Button onClick={() => setCreateCourseOpen(true)} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Course
+                      <CardTitle className="text-blue-700">COURSES</CardTitle>
+                      {canCreate && (
+                        <Button
+                          onClick={() => setCreateCourseOpen(true)}
+                          size="sm"
+                          className="w-auto max-w-max flex-none bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Create Course
                         </Button>
                       )}
                     </CardHeader>
-
                     <CardContent>
                       <DataTable
                         columns={courseColumns}
                         data={courses}
-                        // Move search bar to the left & hide row count
                         toolbarClassName="justify-start"
                         hideRowCount
                         tableClassName="text-sm"
@@ -188,30 +165,32 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
-                  <CreateCourseModal 
-                    open={createCourseOpen} 
+                  <CreateCourseModal
+                    open={createCourseOpen}
                     onOpenChange={setCreateCourseOpen}
-                    onSuccess={() => {
-                      setCreateCourseOpen(false)
-                      fetchData()
+                    onSuccess={() => { setCreateCourseOpen(false); fetchData() }}
+                    user={{
+                      isAuth: Boolean(user.isAuth),
+                      role:   user.role ?? "",
                     }}
-                    user={user}
                   />
                 </TabsContent>
 
-                {/* TAs TAB */}
+                {/* TAs */}
                 <TabsContent value="tas">
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">TEACHING ASSISTANTS</CardTitle>
-                      {canCreateRecords(user) && (
-                        <Button onClick={() => setCreateTAOpen(true)} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create TA
+                      {canCreate && (
+                        <Button
+                          onClick={() => setCreateTAOpen(true)}
+                          size="sm"
+                          className="w-auto max-w-max flex-none bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Create TA
                         </Button>
                       )}
                     </CardHeader>
-
                     <CardContent>
                       <DataTable
                         columns={taColumns}
@@ -224,30 +203,32 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
-                  <CreateTAModal 
-                    open={createTAOpen} 
+                  <CreateTAModal
+                    open={createTAOpen}
                     onOpenChange={setCreateTAOpen}
-                    onSuccess={() => {
-                      setCreateTAOpen(false)
-                      fetchData()
+                    onSuccess={() => { setCreateTAOpen(false); fetchData() }}
+                    user={{
+                      isAuth: Boolean(user.isAuth),
+                      role:   user.role ?? "",
                     }}
-                    user={user}
                   />
                 </TabsContent>
 
-                {/* STAFF TAB */}
+                {/* STAFF */}
                 <TabsContent value="staff">
                   <Card className="border-black">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-blue-700">INSTRUCTORS</CardTitle>
-                      {canCreateRecords(user) && (
-                        <Button onClick={() => setCreateStaffOpen(true)} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Instructor
+                      {canCreate && (
+                        <Button
+                          onClick={() => setCreateStaffOpen(true)}
+                          size="sm"
+                          className="w-auto max-w-max flex-none bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Create Instructor
                         </Button>
                       )}
                     </CardHeader>
-
                     <CardContent>
                       <DataTable
                         columns={staffColumns}
@@ -260,29 +241,29 @@ export default function TablesPage() {
                       />
                     </CardContent>
                   </Card>
-                  <CreateStaffModal 
-                    open={createStaffOpen} 
+                  <CreateStaffModal
+                    open={createStaffOpen}
                     onOpenChange={setCreateStaffOpen}
-                    onSuccess={() => {
-                      setCreateStaffOpen(false)
-                      fetchData()
+                    onSuccess={() => { setCreateStaffOpen(false); fetchData() }}
+                    user={{
+                      isAuth: Boolean(user.isAuth),
+                      role:   user.role ?? "",
                     }}
-                    user={user}
                   />
                 </TabsContent>
               </>
             )}
-          </Tabs>
 
-          {/* Mail Popover - no visible trigger button here */}
-          <MailPopover
-            forceOpen={mailOpen}
-            initialRole={mailRole}
-            initialEmail={mailEmail}
-            onClose={handleMailClose}
-            hideButton
-            hideSearchAndChoose
-          />
+            {/* Mail Popover */}
+            <MailPopover
+              forceOpen={mailOpen}
+              initialRole={mailRole}
+              initialEmail={mailEmail}
+              onClose={handleMailClose}
+              hideButton
+              hideSearchAndChoose
+            />
+          </Tabs>
         </SidebarInset>
       </div>
     </SidebarProvider>
