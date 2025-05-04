@@ -1,7 +1,7 @@
 # myapp/proctoring/deansolver.py
 from myapp.proctoring.restrictions import ProctoringAssignmentSolver as BaseSolver
 from types import SimpleNamespace
-from myapp.models import TAUser
+from myapp.models import TAUser, GlobalSettings
 
 class DeanProctoringSolver(BaseSolver):
     def __init__(self, dean_exam):
@@ -14,4 +14,12 @@ class DeanProctoringSolver(BaseSolver):
           num_proctors = dean_exam.num_proctors,
         )
         super().__init__(fake_exam)
-        self.candidate_tas = list(TAUser.objects.filter(isTA=True))
+
+        # Override: For dean exams (enum logic), consider *all* TAs under the same workload cap
+        settings = GlobalSettings.objects.filter(pk=1).first()
+        max_wl = settings.max_ta_workload if settings else None
+        qs = TAUser.objects.filter(isTA=True)
+        if max_wl and max_wl > 0:
+            qs = qs.filter(workload__lte=max_wl)
+
+        self.candidate_tas = list(qs)

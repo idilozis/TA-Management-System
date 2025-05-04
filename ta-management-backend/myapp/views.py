@@ -144,15 +144,12 @@ def list_all_courses(request):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def global_settings(request):
+    # 1) Anybody who’s logged in can view
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
-    user, user_type = find_user_by_email(session_email)
-    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
-        return JsonResponse({"status": "error", "message": "Only authorized users can view pending leave requests"}, status=403)
 
-    # GET: fetch-or-create the singleton
+    # --- GET: just fetch or create the singleton ---
     if request.method == "GET":
         settings, _ = GlobalSettings.objects.get_or_create(
             pk=1,
@@ -169,16 +166,12 @@ def global_settings(request):
             }
         })
 
-    # POST: only ADMIN may update
-    try:
-        auth_user = AuthorizedUser.objects.get(email=session_email)
-    except AuthorizedUser.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Bad session"}, status=401)
+    # --- POST: only ADMIN may update ---
+    # use your existing helper that returns a JsonResponse on failure
+    if err := require_admin(request):
+        return err
 
-    if auth_user.role != "ADMIN":
-        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
-
-    # Parse & validate body JSON
+    # parse & validate input JSON
     try:
         data = json.loads(request.body)
         sem = data["current_semester"]
@@ -186,6 +179,7 @@ def global_settings(request):
     except (KeyError, ValueError, json.JSONDecodeError) as e:
         return JsonResponse({"status": "error", "message": f"Invalid input: {e}"}, status=400)
 
+    # update and save
     settings = GlobalSettings.objects.get(pk=1)
     settings.current_semester = sem
     settings.max_ta_workload = wl
@@ -198,6 +192,7 @@ def global_settings(request):
             "max_ta_workload": settings.max_ta_workload,
         }
     })
+
 
 
 def require_admin(request):

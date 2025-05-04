@@ -26,7 +26,7 @@ from myapp.schedule.models import TAWeeklySlot
 from myapp.exams.models import Exam
 from myapp.proctoring.models import ProctoringAssignment
 from myapp.taassignment.models import TAAllocation
-
+from myapp.models import GlobalSettings
 
 class ProctoringAssignmentSolver:
     def __init__(self, exam: Exam):
@@ -40,10 +40,14 @@ class ProctoringAssignmentSolver:
         staffs = StaffUser.objects.filter(department__iexact=dept)
         advisor_names = [f"{s.name} {s.surname}" for s in staffs]
 
-        # 3) Seed candidate_tas to TAs whose advisor matches
-        self.candidate_tas = list(
-            TAUser.objects.filter(isTA=True, advisor__in=advisor_names)
-        )
+        # 3) Seed candidate_tas to TAs whose advisor matches and under the global workload cap
+        settings = GlobalSettings.objects.filter(pk=1).first()
+        max_wl = settings.max_ta_workload if settings else None
+        
+        qs = TAUser.objects.filter(isTA=True, advisor__in=advisor_names)
+        if max_wl is not None and max_wl > 0:
+            qs = qs.filter(workload__lte=max_wl)
+        self.candidate_tas = list(qs)
 
         # 4) If this is a *real* Course instance, grab the latest TAAllocation
         #    to give those TAs a small “bonus” in the objective.
@@ -153,7 +157,7 @@ class ProctoringAssignmentSolver:
 
             # c) subtract a small bonus if already allocated to this course
             if ta.email in self.allocated_emails:
-                base_cost -= 50
+                base_cost -= 60
 
             terms.append(base_cost * self.assignment_vars[ta.email])
 

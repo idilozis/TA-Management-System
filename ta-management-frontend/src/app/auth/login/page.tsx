@@ -217,7 +217,7 @@ const Login = () => {
 
                     <Button
                       type="submit"
-                      className="w-full text-white border border-transparent hover:border-white bg-blue-600 transition duration-200">
+                      className="w-full text-white border border-transparent hover:border-white bg-blue-600 hover:bg-blue-400 transition duration-200">
                       Sign In 
                     </Button>
                     {isSubmitting && (<div className="text-center text-sm text-blue-700 font-medium">Loading...</div>)}

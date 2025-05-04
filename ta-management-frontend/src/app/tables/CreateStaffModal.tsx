@@ -204,7 +204,7 @@ export default function CreateStaffModal({
 
           {/* Optional Courses Taught */}
           <div className="space-y-2">
-            <Label>Courses Taught <small className="text-muted">(optional)</small></Label>
+            <Label>Courses Taught (Optional)<small className="text-muted">(optional)</small></Label>
             <Command className="border rounded">
               <CommandInput
                 placeholder="Search courses..."
