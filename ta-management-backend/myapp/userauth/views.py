@@ -13,8 +13,8 @@ from django.utils import timezone
 import json
 import secrets, datetime
 
+from myapp.userauth.models import AuthLog
 from .helpers import find_user_by_email
-
 
 # -----------------------------
 # LOGIN
@@ -22,32 +22,38 @@ from .helpers import find_user_by_email
 @require_POST
 @transaction.atomic
 def login(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        email = data.get('email')
-        password = data.get('password')
+    data = json.loads(request.body)
+    email = data.get("email")
+    password = data.get("password")
 
-        # Check E-mail
-        user, user_type = find_user_by_email(email)
-        if not user:
-            return JsonResponse({"status": "error", "message": "Invalid credentials."}, status=401)
+    user, user_type = find_user_by_email(email)
+    if not user or not user.check_password(password):
+        return JsonResponse({"status":"error","message":"Invalid credentials."}, status=401)
 
-        # Check Password
-        if user.check_password(password):
-            request.session["user_email"] = user.email # Store user in session.
-            return JsonResponse({
-                "status": "success",
-                "message": "Login successful.",
-                "userType": user_type,
-            })
-        else:
-            return JsonResponse({"status": "error", "message": "Invalid credentials."}, status=401)
-    
-    return JsonResponse({"message": "Method not allowed"}, status=405)
+    # Record the successful login
+    AuthLog.objects.create(
+        user_email = user.email,
+        user_type = user_type,
+        action = AuthLog.LOGIN,
+        ip_address = request.META.get("REMOTE_ADDR"),
+        user_agent = request.META.get("HTTP_USER_AGENT","")[:255],
+    )
 
+    request.session["user_email"] = user.email
+    return JsonResponse({
+        "status": "success",
+        "message": "Login successful.",
+        "userType": user_type,
+    })
+
+
+# -----------------------------
+# CSRF TOKEN
+# -----------------------------
 @ensure_csrf_cookie
 def get_csrf_token(request): 
     return JsonResponse({"message": "CSRF cookie set."})
+
 
 # -----------------------------
 # GET CURRENT USER SESSION
@@ -274,6 +280,43 @@ def verify_password(request):
 @csrf_exempt
 @require_POST
 def logout(request):
-    # Clear all session data
+    email = request.session.get("user_email")
+    user, user_type = (None, None)
+    if email:
+        user, user_type = find_user_by_email(email)
+
+    if user:
+        AuthLog.objects.create(
+            user_email = email,
+            user_type = user_type,
+            action = AuthLog.LOGOUT,
+            ip_address = request.META.get("REMOTE_ADDR"),
+            user_agent = request.META.get("HTTP_USER_AGENT","")[:255],
+        )
+
     request.session.flush()
-    return JsonResponse({"status": "success", "message": "Logged out successfully."})
+    return JsonResponse({"status":"success","message":"Logged out."})
+
+
+# -----------------------------
+# FETCH AUTH LOGS
+# -----------------------------
+@require_GET
+def get_auth_logs(request):
+    email = request.session.get("user_email")
+    user, user_type = find_user_by_email(email)
+    if user_type != "Authorized":
+        return JsonResponse({"status":"error","message":"Forbidden"}, status=403)
+
+    # Fetch the last 50 logs
+    logs = AuthLog.objects.all()[:50]
+    data = [{
+        "user_email": l.user_email,
+        "user_type": l.user_type,
+        "action": l.action,
+        "when": l.timestamp.isoformat(),
+        "ip": l.ip_address or "",
+        "agent": l.user_agent,
+    } for l in logs]
+
+    return JsonResponse({"status":"success","logs": data})

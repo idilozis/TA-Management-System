@@ -14,4 +14,5 @@ urlpatterns = [
     path('update-profile/', update_profile, name='update_profile'), # auth/update-profile/
 
     path("logout/", logout, name="logout"), # auth/logout/
+    path("logs/", get_auth_logs, name="logs"), # auth/logs/
 ]

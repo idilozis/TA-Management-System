@@ -156,8 +156,9 @@ class GlobalSettings(models.Model):
     def __str__(self):
         return "Global Settings"
 
-    
+
 # Import all models for migrations.
+from myapp.userauth.models import AuthLog
 from myapp.taassignment.models import TAAssignment
 from myapp.taassignment.models import TAAllocation
 from myapp.taduties.models import TADuty
