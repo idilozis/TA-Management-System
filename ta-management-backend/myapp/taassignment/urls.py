@@ -8,4 +8,5 @@ urlpatterns = [
     path('assign-tas/', assign_tas, name='assign_tas'),
     path('assign-graders/', assign_graders, name='assign_graders'),
     path('list-allocations/', list_allocations, name='list_allocations'),
+    path('list-department-tas/', list_department_tas, name='list_department_tas'),
 ]

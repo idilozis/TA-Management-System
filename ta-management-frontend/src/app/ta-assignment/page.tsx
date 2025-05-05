@@ -80,8 +80,9 @@ export default function TAAssignmentPage() {
   const [assignmentType, setAssignmentType] = useState<"tas" | "graders">("tas")
   const [submitting, setSubmitting] = useState(false)
   const [dialogError, setDialogError] = useState("")
-  // Add the allTAs state and dialogSearchQuery state
+  // allTAs and departmentTAs state and dialogSearchQuery state
   const [allTAs, setAllTAs] = useState<TA[]>([])
+  const [departmentTAs, setDepartmentTAs] = useState<TA[]>([])
   const [dialogSearchQuery, setDialogSearchQuery] = useState("")
 
   // Add these new state variables near the other state declarations
@@ -182,6 +183,20 @@ export default function TAAssignmentPage() {
     }
   }
 
+  const fetchDepartmentTAs = async (courseCode: string) => {
+    try {
+      const res = await apiClient.get("/assignment/list-department-tas/", {
+        params: { course_code: courseCode },
+      })
+      if (res.data.status === "success") {
+        setDepartmentTAs(res.data.tas)
+      }
+    } catch (err) {
+      console.error("Error fetching department TAs:", err)
+      setDepartmentTAs([])
+    }
+  }
+
   const refreshData = async () => {
     setIsRefreshing(true)
     await fetchData()
@@ -207,6 +222,7 @@ export default function TAAssignmentPage() {
       setSelectedGraders([])
     }
 
+    fetchDepartmentTAs(course.code)
     setAssignDialogOpen(true)
     setDialogError("")
   }
@@ -416,7 +432,7 @@ export default function TAAssignmentPage() {
     const courseSpecificEmails = [
       ...(currentPreference?.must_have_ta || []),
       ...(currentPreference?.preferred_tas || []),
-      ...(currentPreference?.preferred_graders || []),
+      // ...(currentPreference?.preferred_graders || []),
       ...(currentPreference?.avoided_tas || []),
     ].map((ta) => ta.email)
 
@@ -608,7 +624,7 @@ export default function TAAssignmentPage() {
                                   )}
                                   {!allMustHaveAssigned && mustHaveEmails.length > 0 && (
                                     <Badge variant="outline" className="ml-2 bg-red-100 text-red-800 border-red-200">
-                                      Missing must-have TAs
+                                      Missing must-have TA
                                     </Badge>
                                   )}
                                 </div>
@@ -854,7 +870,7 @@ export default function TAAssignmentPage() {
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-blue-600">
               {assignmentType === "tas" ? "Assign TAs" : "Assign Graders"} to {currentCourse?.code}
             </DialogTitle>
           </DialogHeader>
@@ -947,9 +963,9 @@ export default function TAAssignmentPage() {
                       </div>
                     </div>
 
-                    {/* All TAs section */}
+                    {/* Department TAs section */}
                     <div className="space-y-2">
-                      <Label className="font-medium">All TAs</Label>
+                      <Label className="font-medium">Department TAs</Label>
                       <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -960,8 +976,20 @@ export default function TAAssignmentPage() {
                         />
                       </div>
                       <ScrollArea className="h-[200px] border rounded-md p-2">
-                        <div className="space-y-2">
-                          {getFilteredTAs().map((ta) => (
+                        {departmentTAs
+                          // exclude any already in must/preferred/avoided
+                          .filter((ta) => !isInPreferenceCategories(ta.email))
+                          // then apply search filter
+                          .filter((ta) => {
+                            const q = dialogSearchQuery.toLowerCase()
+                            return (
+                              !q ||
+                              ta.name.toLowerCase().includes(q) ||
+                              ta.surname.toLowerCase().includes(q) ||
+                              ta.email.toLowerCase().includes(q)
+                            )
+                          })
+                          .map((ta) => (
                             <div key={ta.email} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`all-ta-${ta.email}`}
@@ -975,13 +1003,13 @@ export default function TAAssignmentPage() {
                                 </Badge>
                               </Label>
                             </div>
-                          ))}
-                          {getFilteredTAs().length === 0 && (
-                            <div className="text-muted-foreground py-2 text-center">
-                              {dialogSearchQuery ? "No matching TAs found" : "No additional TAs available"}
-                            </div>
-                          )}
-                        </div>
+                          ))
+                        }
+                        {departmentTAs.length === 0 && (
+                          <div className="text-muted-foreground py-2 text-center">
+                            No department TAs found
+                          </div>
+                        )}
                       </ScrollArea>
                     </div>
 
@@ -1044,9 +1072,9 @@ export default function TAAssignmentPage() {
                       </div>
                     </div>
 
-                    {/* All TAs section for graders (including Other TAs) */}
+                    {/* All TAs section for graders */}
                     <div className="space-y-2">
-                      <Label className="font-medium">All TAs</Label>
+                      <Label className="font-medium">Department TAs</Label>
                       <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -1057,67 +1085,42 @@ export default function TAAssignmentPage() {
                         />
                       </div>
                       <ScrollArea className="h-[200px] border rounded-md p-2">
-                        <div className="space-y-2">
-                          {/* First show the "Other TAs" (must-have and preferred TAs) */}
-                          {[...currentPreference.must_have_ta, ...currentPreference.preferred_tas]
-                            // Remove duplicates by using a Map to track emails we've seen
-                            .filter((ta, index, self) => index === self.findIndex((t) => t.email === ta.email))
-                            .filter(
-                              (ta) =>
-                                !currentPreference.preferred_graders.some((g) => g.email === ta.email) &&
-                                (!dialogSearchQuery ||
-                                  ta.name.toLowerCase().includes(dialogSearchQuery.toLowerCase()) ||
-                                  ta.surname.toLowerCase().includes(dialogSearchQuery.toLowerCase()) ||
-                                  ta.email.toLowerCase().includes(dialogSearchQuery.toLowerCase())),
+                        {departmentTAs
+                          // exclude any already in preferred graders
+                          .filter((ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email))
+                          // then apply search filter
+                          .filter((ta) => {
+                            const q = dialogSearchQuery.toLowerCase()
+                            return (
+                              !q ||
+                              ta.name.toLowerCase().includes(q) ||
+                              ta.surname.toLowerCase().includes(q) ||
+                              ta.email.toLowerCase().includes(q)
                             )
-                            .map((ta) => (
-                              <div key={ta.email} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`other-${ta.email}`}
-                                  checked={selectedGraders.includes(ta.email)}
-                                  onCheckedChange={() => handleToggleGrader(ta.email)}
-                                />
-                                <Label htmlFor={`other-${ta.email}`} className="flex items-center gap-2">
-                                  {ta.name} {ta.surname}
-                                  <Badge className="ml-2 bg-blue-100 text-blue-800">Course TA</Badge>
-                                </Label>
-                              </div>
-                            ))}
-
-                          {/* Then show all other TAs not in any preference category */}
-                          {getFilteredTAs()
-                            .filter(
-                              (ta) =>
-                                !currentPreference.preferred_graders.some((g) => g.email === ta.email) &&
-                                ![...currentPreference.must_have_ta, ...currentPreference.preferred_tas].some(
-                                  (t) => t.email === ta.email,
-                                ),
-                            )
-                            .map((ta) => (
-                              <div key={ta.email} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`all-grader-${ta.email}`}
-                                  checked={selectedGraders.includes(ta.email)}
-                                  onCheckedChange={() => handleToggleGrader(ta.email)}
-                                />
-                                <Label htmlFor={`all-grader-${ta.email}`}>
-                                  {ta.name} {ta.surname}
-                                </Label>
-                              </div>
-                            ))}
-
-                          {/* Show message if no TAs are found */}
-                          {getFilteredTAs().filter(
-                            (ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email),
-                          ).length === 0 &&
-                            [...currentPreference.must_have_ta, ...currentPreference.preferred_tas].filter(
-                              (ta) => !currentPreference.preferred_graders.some((g) => g.email === ta.email),
-                            ).length === 0 && (
-                              <div className="text-muted-foreground py-2 text-center">
-                                {dialogSearchQuery ? "No matching TAs found" : "No additional TAs available"}
-                              </div>
-                            )}
-                        </div>
+                          })
+                          .map((ta) => (
+                            <div key={ta.email} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`all-grader-${ta.email}`}
+                                checked={selectedGraders.includes(ta.email)}
+                                onCheckedChange={() => handleToggleGrader(ta.email)}
+                              />
+                              <Label htmlFor={`all-grader-${ta.email}`} className="flex items-center gap-2">
+                                {ta.name} {ta.surname}
+                                {currentPreference.must_have_ta.some((t) => t.email === ta.email) && (
+                                  <Badge className="ml-2 bg-blue-100 text-blue-800">Must-Have TA</Badge>
+                                )}
+                                {currentPreference.preferred_tas.some((t) => t.email === ta.email) && (
+                                  <Badge className="ml-2 bg-green-100 text-green-800">Preferred TA</Badge>
+                                )}
+                              </Label>
+                            </div>
+                          ))}
+                        {departmentTAs.length === 0 && (
+                          <div className="text-muted-foreground py-2 text-center">
+                            No department TAs found
+                          </div>
+                        )}
                       </ScrollArea>
                     </div>
 

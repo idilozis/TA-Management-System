@@ -3,9 +3,16 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from myapp.userauth.helpers import find_user_by_email
-import json
-from myapp.models import StaffUser, TAUser, Course
+from myapp.notificationsystem.views import create_notification
+from myapp.utils import advisor_department
+from myapp.models import AuthorizedUser, StaffUser, TAUser, Course
 from myapp.taassignment.models import TAAssignment, TAAllocation
+import json, re
+
+def check_staff_or_authorized(email):
+    user_obj, user_type = find_user_by_email(email)
+    is_allowed = user_type in ("Staff", "Authorized")
+    return user_obj, user_type, is_allowed
 
 @require_GET
 @ensure_csrf_cookie
@@ -13,6 +20,10 @@ def list_assignment_preferences(request):
     email = request.session.get("user_email")
     if not email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    _, _, is_allowed = check_staff_or_authorized(email)
+    if not is_allowed:
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
 
     assignments = TAAssignment.objects.all().select_related("staff", "course") \
         .prefetch_related("must_have_ta", "preferred_tas", "preferred_graders", "avoided_tas")
@@ -55,18 +66,14 @@ def list_assignment_preferences(request):
 def assign_tas(request):
     """
     Endpoint for staff to manually assign general TA(s) to a course.
-    Expects JSON payload with: 
-      - course_code (string)
-      - assigned_tas (list of TA emails)
     """
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
-    try:
-        staff = StaffUser.objects.get(email=session_email)
-    except StaffUser.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Staff user not found"}, status=404)
+    user_obj, user_type, is_allowed = check_staff_or_authorized(session_email)
+    if not is_allowed:
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
     
     data = json.loads(request.body)
     course_code = data.get("course_code")
@@ -80,11 +87,11 @@ def assign_tas(request):
         return JsonResponse({"status": "error", "message": "Course not found"}, status=404)
     
     try:
-        assignment = TAAssignment.objects.get(staff=staff, course=course)
+        assignment = TAAssignment.objects.get(course=course)
     except TAAssignment.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
 
-    # Compute total load.
+    # Compute total load and build TA list
     total_load = 0
     assigned_tas_list = []
     for email in assigned_tas_emails:
@@ -99,41 +106,52 @@ def assign_tas(request):
         except TAUser.DoesNotExist:
             return JsonResponse({"status": "error", "message": f"TA with email {email} not found."}, status=404)
     
-    # Check load boundaries.
-    # if total_load < assignment.min_load and total_load != 0:
-    #     return JsonResponse({
-    #         "status": "error", 
-    #         "message": f"Total load ({total_load}) is below the minimum required ({assignment.min_load})."
-    #     }, status=400)
+    # Check max load boundary
     if total_load > assignment.max_load:
         return JsonResponse({
             "status": "error", 
             "message": f"Total load ({total_load}) exceeds the maximum allowed ({assignment.max_load})."
         }, status=400)
     
-    force_override = data.get("force", False)
-
-    # Check if all must-have TAs are included
+    # Must-have TA check
     must_have_emails = [ta.email for ta in assignment.must_have_ta.all()]
-    missing_must_haves = [email for email in must_have_emails if email not in assigned_tas_emails]
-
-    if missing_must_haves and not force_override:
+    missing = [e for e in must_have_emails if e not in assigned_tas_emails]
+    if missing and not data.get("force", False):
         return JsonResponse({
             "status": "warning",
-            "message": f"The following must-have TAs are missing: {', '.join(missing_must_haves)}.",
-            "missing_must_have": missing_must_haves,
+            "message": f"The following must-have TAs are missing: {', '.join(missing)}.",
+            "missing_must_have": missing,
             "require_confirmation": True
         }, status=202)
 
+    if user_type == "Staff":
+        staff = user_obj
+    else:  # Authorized user
+        staff = assignment.staff
     
     # Get or create the TAAllocation record.
-    allocation, created = TAAllocation.objects.get_or_create(
-        staff=staff, course=course
-    )
-    allocation.assigned_tas.clear()
-    for ta in assigned_tas_list:
-        allocation.assigned_tas.add(ta)
+    allocation, _ = TAAllocation.objects.get_or_create(staff=staff, course=course)
+    allocation.assigned_tas.set(assigned_tas_list)
     allocation.save()
+    
+    # Send in-app notifications
+    ta_message = (
+        f"You have been assigned as a TA to {course.code} - {course.name} by "
+        f"{user_obj.name} {user_obj.surname}."
+    )
+    for ta in assigned_tas_list:
+        create_notification(recipient_email=ta.email, message=ta_message)
+
+    instructors = course.instructors.all()
+    if instructors.exists():
+        assigned_ta_names = [f"{ta.name} {ta.surname}" for ta in assigned_tas_list]
+        instr_message = (
+            f"{', '.join(assigned_ta_names)} were assigned as TAs to your course {course.code} "
+            f"by {user_obj.name} {user_obj.surname}."
+        )
+        for instructor in instructors:
+            create_notification(recipient_email=instructor.email, message=instr_message)
+        
     return JsonResponse({"status": "success", "message": "General TA(s) assigned successfully.", "total_load": total_load})
 
 
@@ -142,22 +160,18 @@ def assign_tas(request):
 def assign_graders(request):
     """
     Endpoint for staff to manually assign grader(s) to a course.
-    Expects JSON payload with: 
-      - course_code (string)
-      - assigned_graders (list of TA emails)
     """
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
-    try:
-        staff = StaffUser.objects.get(email=session_email)
-    except StaffUser.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Staff user not found"}, status=404)
+    user_obj, user_type, is_allowed = check_staff_or_authorized(session_email)
+    if not is_allowed:
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
     
     data = json.loads(request.body)
     course_code = data.get("course_code")
-    assigned_graders_emails = data.get("assigned_graders")
+    grader_emails = data.get("assigned_graders")
     if not course_code:
         return JsonResponse({"status": "error", "message": "Missing parameter"}, status=400)
     
@@ -167,32 +181,51 @@ def assign_graders(request):
         return JsonResponse({"status": "error", "message": "Course not found"}, status=404)
     
     try:
-        assignment = TAAssignment.objects.get(staff=staff, course=course)
+        assignment = TAAssignment.objects.get(course=course)
     except TAAssignment.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
     
-    required = assignment.num_graders
-    if len(assigned_graders_emails) > required:
+    if len(grader_emails) > assignment.num_graders:
         return JsonResponse({
             "status": "error",
-            "message": f"Exactly {required} grader(s) must be assigned."
+            "message": f"Exactly {assignment.num_graders} grader(s) must be assigned."
         }, status=400)
 
-    assigned_graders_list = []
-    for email in assigned_graders_emails:
+    graders = []
+    for email in grader_emails:
         try:
             ta = TAUser.objects.get(email=email)
-            assigned_graders_list.append(ta)
+            graders.append(ta)
         except TAUser.DoesNotExist:
             return JsonResponse({"status": "error", "message": f"TA with email {email} not found."}, status=404)
     
-    allocation, created = TAAllocation.objects.get_or_create(
-        staff=staff, course=course
-    )
-    allocation.assigned_graders.clear()
-    for ta in assigned_graders_list:
-        allocation.assigned_graders.add(ta)
+    if user_type == "Staff":
+        staff = user_obj
+    else:  # Authorized user
+        staff = assignment.staff
+    
+    allocation, _ = TAAllocation.objects.get_or_create(staff=staff, course=course)
+    allocation.assigned_graders.set(graders)
     allocation.save()
+
+    # Send in-app notifications
+    grader_message = (
+        f"You have been assigned as a grader to {course.code} - {course.name} by "
+        f"{user_obj.name} {user_obj.surname}."
+    )
+    for ta in graders:
+        create_notification(recipient_email=ta.email, message=grader_message)
+
+    instructors = course.instructors.all()
+    if instructors.exists():
+        grader_names = [f"{ta.name} {ta.surname}" for ta in graders]
+        instr_message = (
+            f"{', '.join(grader_names)} were assigned as graders to your course {course.code} by "
+            f"{user_obj.name} {user_obj.surname}."
+        )
+        for instructor in instructors:
+            create_notification(recipient_email=instructor.email, message=instr_message)
+
     return JsonResponse({"status": "success", "message": "Grader(s) assigned successfully."})
 
 
@@ -203,8 +236,6 @@ def list_allocations(request):
         return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
 
     user_obj, user_type = find_user_by_email(email)
-
-    # Only Staff and Authorized can see allocations
     if user_type not in ("Staff", "Authorized"):
         return JsonResponse({"status":"error","message":"Access denied"}, status=403)
 
@@ -246,3 +277,40 @@ def list_allocations(request):
         })
 
     return JsonResponse({"status":"success","allocations": allocations_data})
+
+
+@require_GET
+def list_department_tas(request):
+    """
+    Returns all TAUser records whose department matches the
+    alphabetical prefix of the given course_code (e.g. "CS" for "CS315").
+    """
+    user_email = request.session.get("user_email")
+    if not user_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    _, _, is_allowed = check_staff_or_authorized(user_email)
+    if not is_allowed:
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
+
+    # validate param
+    code = request.GET.get("course_code", "").strip()
+    if not code:
+        return JsonResponse({"status": "error", "message": "Missing parameter: course_code"}, status=400)
+
+    dept = "".join(ch for ch in code if ch.isalpha()).upper()
+    if not dept:
+        return JsonResponse({"status": "error", "message": "Invalid course_code format"}, status=400)
+
+    # filter TAs by advisor’s department
+    result = []
+    for ta in TAUser.objects.all():
+        ta_dept = advisor_department(ta.advisor or "")
+        if ta_dept and ta_dept.upper() == dept:
+            result.append({
+                "name": ta.name,
+                "surname": ta.surname,
+                "email": ta.email,
+            })
+
+    return JsonResponse({"status": "success", "tas": result})
