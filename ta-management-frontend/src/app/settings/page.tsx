@@ -30,8 +30,14 @@ export default function SettingsPage() {
       switch (user.role) {
         case "ADMIN":
           return "Administrator"
-        case "SECRETARY":
-          return "Secretary"
+        case "CS SECRETARY":
+          return "CS Secretary"
+        case "IE SECRETARY":
+          return "IE Secretary"
+        case "EEE SECRETARY":
+          return "EEE Secretary"
+        case "ME SECRETARY":
+          return "ME Secretary"
         case "DEAN":
           return "Dean Office"
         default:
