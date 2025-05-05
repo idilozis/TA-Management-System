@@ -38,6 +38,7 @@ interface TA {
   assignable: boolean
   reason?: string
   penalty?: number
+  already_assigned?: boolean
 }
 
 interface AssignmentResult {
@@ -170,6 +171,19 @@ export default function ProctorStaff() {
   // Separate assigned and unassigned exams
   const unassignedExams = exams.filter((exam) => exam.assigned_tas.length === 0)
   const assignedExams = exams.filter((exam) => exam.assigned_tas.length > 0)
+
+  const assignableTAs = manualTAs
+    .filter((t) => t.assignable)
+    .sort((a, b) => {
+      // 1) previously‐assigned first
+      if (a.already_assigned && !b.already_assigned) return -1;
+      if (!a.already_assigned && b.already_assigned) return 1;
+      // 2) then by penalty
+      const pa = (a.penalty ?? 0) - (b.penalty ?? 0);
+      if (pa !== 0) return pa;
+      // 3) then by workload
+      return a.workload - b.workload;
+    });
 
   return (
     <div>
@@ -406,33 +420,38 @@ export default function ProctorStaff() {
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Assignable TAs
               </h3>
               <ScrollArea className="h-[200px] rounded-md border">
-                {manualTAs
-                  .filter((t) => t.assignable)
-                  .map((ta) => (
-                    <div
-                      key={ta.email}
-                      className={`flex justify-between items-center p-3 border-b cursor-pointer hover:bg-muted/50 ${
-                        selected.includes(ta.email) ? "bg-blue-50 border-blue-200" : ""
-                      }`}
-                      onClick={() => toggle(ta.email)}
-                    >
-                      <div>
-                        <div className="font-medium">
-                          {ta.first_name} {ta.last_name}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{ta.email}</div>
+                {assignableTAs.map((ta) => (
+                  <div
+                    key={ta.email}
+                    className={`
+                      flex justify-between items-center p-3 border-b cursor-pointer hover:bg-muted/50
+                      ${ta.already_assigned ? "bg-yellow-50 border-yellow-200" : ""}
+                      ${selected.includes(ta.email) ? "bg-blue-50 border-blue-200" : ""}
+                    `}
+                    onClick={() => toggle(ta.email)}
+                  >
+                    <div>
+                      <div className="font-medium flex items-center">
+                        {ta.first_name} {ta.last_name}
+                        {ta.already_assigned && (
+                          <Badge className="ml-2 bg-yellow-100 text-yellow-800">
+                            Course TA
+                          </Badge>
+                        )}
                       </div>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-800">
-                        Workload: {ta.workload}
-                      </Badge>
+                      <div className="text-sm text-muted-foreground">{ta.email}</div>
                     </div>
-                  ))}
+                    <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                      Workload: {ta.workload}
+                    </Badge>
+                  </div>
+                ))}
               </ScrollArea>
             </div>
 
             <div>
               <h3 className="text-sm font-medium text-red-700 mb-2 flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" /> Not Assignable TAs
+                <AlertCircle className="h-4 w-4 mr-1" /> Non-Assignable TAs
               </h3>
               <ScrollArea className="h-[150px] rounded-md border">
                 {manualTAs

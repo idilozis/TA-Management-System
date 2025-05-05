@@ -15,6 +15,7 @@ from myapp.proctoring.restrictions import ProctoringAssignmentSolver
 from myapp.proctoring.deansolver import DeanProctoringSolver
 from myapp.taleave.models import TALeaveRequests
 from myapp.schedule.models import TAWeeklySlot
+from myapp.taassignment.models import TAAllocation
 from myapp.models import GlobalSettings
 
 # Precompute real-course codes
@@ -77,6 +78,18 @@ def _filter_tas_for_course(course, date, start_time, end_time, instr_dept=None):
             day=date.strftime("%a").upper(), time_slot=slot
         ).values_list("ta__email", flat=True)
     )
+    
+    alloc = (
+        TAAllocation.objects
+            .filter(course=course)
+            .order_by('-created_at')
+            .first()
+    )
+    allocated_emails = set()
+    if alloc:
+        allocated_emails = set(
+            alloc.assigned_tas.values_list('email', flat=True)
+        )
 
     settings = GlobalSettings.objects.first()
     max_wl = settings.max_ta_workload if settings else None
@@ -115,6 +128,7 @@ def _filter_tas_for_course(course, date, start_time, end_time, instr_dept=None):
             "workload":   ta.workload,
             "program":    ta.program,
             "department": ta_dept or "Unknown",
+            "already_assigned": ta.email in allocated_emails,
         }
 
         if reasons:
@@ -124,7 +138,13 @@ def _filter_tas_for_course(course, date, start_time, end_time, instr_dept=None):
             assignable.append({**rec, "assignable": True, "penalty": penalty})
 
     # Sort by penalty then workload
-    assignable.sort(key=lambda x: (x["penalty"], x["workload"]))
+    assignable.sort(
+        key=lambda x: (
+            not x["already_assigned"],
+            x["penalty"], 
+            x["workload"],
+        )
+    )
     return assignable, excluded
 
 
