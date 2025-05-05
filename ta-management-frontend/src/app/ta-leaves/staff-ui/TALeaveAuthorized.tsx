@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import apiClient from "@/lib/axiosClient"
 import { useUser } from "@/components/general/user-data"
-import { Inbox, FileDown } from "lucide-react"
+import { CalendarOff, FileDown } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -120,8 +120,8 @@ export default function TALeaveAuthorized() {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex items-center gap-2 mb-6">
-        <Inbox className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold">TA Leave Requests</h1>
+        <CalendarOff className="h-8 w-8 text-blue-600" />
+        <h1 className="text-3xl font-bold">Leave Requests</h1>
       </div>
 
       {message && (

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import apiClient from "@/lib/axiosClient"
 import { useUser } from "@/components/general/user-data"
 import { PageLoader } from "@/components/ui/loading-spinner"
-import { CalendarOff, Paperclip, Plus } from "lucide-react"
+import { CalendarOff, Paperclip, Plus, FileDown } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -233,15 +233,19 @@ export default function TALeaveTA() {
                           <TableCell className="max-w-[200px] truncate">{leave.description}</TableCell>
                           <TableCell>
                             {leave.document_url ? (
-                              <a
-                                href={`${process.env.NEXT_PUBLIC_API_URL}/taleave/leaves/${leave.id}/download-document/`}
-                                className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                asChild
                               >
-                                <Paperclip className="h-4 w-4 mr-1" />
-                                <span>Download</span>
-                              </a>
+                                <a href={`http://localhost:8000/taleave/leaves/${leave.id}/download-document/`}>
+                                  <FileDown className="h-4 w-4" />
+                                  <span>Download</span>
+                                </a>
+                              </Button>
                             ) : (
-                              "N/A"
+                              <span className="text-muted-foreground">N/A</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -308,15 +312,19 @@ export default function TALeaveTA() {
                           <TableCell className="max-w-[200px] truncate">{leave.description}</TableCell>
                           <TableCell>
                             {leave.document_url ? (
-                              <a
-                                href={`${process.env.NEXT_PUBLIC_API_URL}/taleave/leaves/${leave.id}/download-document/`}
-                                className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                asChild
                               >
-                                <Paperclip className="h-4 w-4 mr-1" />
-                                <span>Download</span>
-                              </a>
+                                <a href={`http://localhost:8000/taleave/leaves/${leave.id}/download-document/`}>
+                                  <FileDown className="h-4 w-4" />
+                                  <span>Download</span>
+                                </a>
+                              </Button>
                             ) : (
-                              "N/A"
+                              <span className="text-muted-foreground">N/A</span>
                             )}
                           </TableCell>
                         </TableRow>

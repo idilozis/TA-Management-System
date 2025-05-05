@@ -8,10 +8,6 @@ class TAUser(models.Model):
     surname = models.CharField(max_length=255)
     student_id = models.CharField(max_length=20, unique=True)
     
-    tc_no = models.CharField(max_length=11, unique=True)  
-    iban = models.CharField(max_length=34, blank=True, null=True) 
-    phone = models.CharField(max_length=15, blank=True, null=True)  
-    
     email = models.EmailField(primary_key=True)  # Email PK
 
     advisor = models.CharField(max_length=255, blank=True, null=True)  

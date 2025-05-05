@@ -82,7 +82,6 @@ def list_all_tas(request):
             "advisor": ta.advisor if ta.advisor else "-",
             "program": ta.program,
             "student_id": ta.student_id,
-            "phone": ta.phone if ta.phone else "-",
         })
     return JsonResponse({"status": "success", "tas": data})
 
@@ -224,7 +223,7 @@ def create_ta(request):
 
     try:
         data = json.loads(request.body)
-        for f in ("name", "surname", "student_id", "tc_no", "email", "program"):
+        for f in ("name", "surname", "student_id", "email", "program"):
             if not data.get(f):
                 return JsonResponse(
                     {"status": "error", "message": f"Missing required field: {f}"},
@@ -235,11 +234,8 @@ def create_ta(request):
             name=data["name"],
             surname=data["surname"],
             student_id=data["student_id"],
-            tc_no=data["tc_no"],
             email=data["email"],
             program=data["program"],
-            iban=data.get("iban"),
-            phone=data.get("phone"),
             advisor=data.get("advisor"),
             ta_type=data.get("ta_type"),
         )

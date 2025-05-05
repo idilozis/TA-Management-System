@@ -6,6 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { 
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem
+} from "@/components/ui/command"
+import { Check } from "lucide-react"
 
 interface UserOption {
   email: string
@@ -52,10 +61,6 @@ export default function MailForm({
     }
   }, [role, hideSearchAndChoose])
 
-  const filteredUsers = users.filter((u) =>
-    u.label.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   async function handleSendMail() {
     if (!selectedUserEmail || !message.trim()) {
       setError("You must choose a recipient and enter a message.")
@@ -83,42 +88,44 @@ export default function MailForm({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {error && <div className="text-red-600">{error}</div>}
       {successMessage && <div className="text-green-600">{successMessage}</div>}
 
       {/* Conditionally render search and choose fields */}
       {!hideSearchAndChoose && (
-        <>
-          <div>
-            <Label className="text-sm font-medium mb-1">
-              Search {role === "TA" ? "TAs" : "Instructor"}
-            </Label>
-            <Input
-              placeholder={`Search among ${
-                role === "TA" ? "TAs" : "Instructors"
-              }...`}
+        <div className="space-y-2">
+          <Label htmlFor="search">Search {role === "TA" ? "TAs" : "Instructor"}</Label>
+          <Command className="border rounded">
+            <CommandInput
+              placeholder="Search..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onValueChange={setSearchQuery}
             />
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium mb-1">Choose Recipient:</Label>
-            <select
-              className="border border-gray-300 p-2 w-full rounded"
-              value={selectedUserEmail}
-              onChange={(e) => setSelectedUserEmail(e.target.value)}
-            >
-              <option value="">-- Select --</option>
-              {filteredUsers.map((u) => (
-                <option key={u.email} value={u.email}>
-                  {u.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </>
+            <CommandList className="max-h-[7rem] overflow-y-auto">
+              <CommandEmpty>No {role === "TA" ? "TAs" : "instructors"} found.</CommandEmpty>
+              <CommandGroup>
+                {users
+                  .filter((u) =>
+                    u.label.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((user) => (
+                    <CommandItem
+                      key={user.email}
+                      onSelect={() => setSelectedUserEmail(user.email)}
+                    >
+                      <Check
+                        className={`mr-2 ${
+                          selectedUserEmail === user.email ? "opacity-100" : "opacity-0"
+                        }`}
+                      />
+                      {user.label}
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </div>
       )}
 
       {/* "To:" field (always shown, read-only) */}
@@ -151,5 +158,4 @@ export default function MailForm({
       </div>
     </div>
   )
-
 }

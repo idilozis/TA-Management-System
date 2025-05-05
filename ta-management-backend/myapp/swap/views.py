@@ -515,6 +515,8 @@ def staff_swap(request, assignment_id):
 # -----------------------------
 # List All Swaps for Authorized Users
 # -----------------------------
+# Modified list_all_swaps function for proper department filtering
+
 @require_GET
 def list_all_swaps(request):
     session_email = request.session.get("user_email")
@@ -528,12 +530,28 @@ def list_all_swaps(request):
         "requested_by", "requested_by_staff", "previous_ta", "requested_to"
     ).order_by("-created_at")
 
+    # Filter for department secretaries
     if user.role.endswith("SECRETARY"):
         dept = user.role.split()[0]
-        swaps = [sr for sr in swaps if advisor_department(sr.original_assignment.ta.advisor) == dept]
+        # Check if EITHER TA belongs to this department
+        filtered_swaps = []
+        for sr in swaps:
+            # Get the original TA (who initiated the swap or who was swapped from)
+            original_ta = sr.requested_by if sr.requested_by else sr.previous_ta
+            # Get the target TA
+            target_ta = sr.requested_to
+            
+            # Check if either TA belongs to this department
+            original_dept = advisor_department(original_ta.advisor) if original_ta else None
+            target_dept = advisor_department(target_ta.advisor) if target_ta else None
+            
+            if original_dept == dept or target_dept == dept:
+                filtered_swaps.append(sr)
+        
+        swaps = filtered_swaps
 
     def _serialize_admin(sr):
-        # 1) Figure out the “initiator” (who kicked this off)
+        # 1) Figure out the "initiator" (who kicked this off)
         if sr.requested_by_staff:
             initiator = sr.requested_by_staff
         else:
@@ -545,7 +563,7 @@ def list_all_swaps(request):
             "Unknown"
         )
 
-        # 2) Figure out the “old TA” (previous to swap)
+        # 2) Figure out the "old TA" (previous to swap)
         if sr.previous_ta:
             old_ta = sr.previous_ta
         else:
@@ -567,11 +585,11 @@ def list_all_swaps(request):
         label = (
             f"{code} "
             f"{exam.date.strftime('%d.%m.%Y')} "
-            f"{exam.start_time.strftime('%H:%M')}–{exam.end_time.strftime('%H:%M')}"
+            f"{exam.start_time.strftime('%H:%M')}-{exam.end_time.strftime('%H:%M')}"
         )
 
         return {
-            "id":           sr.id,
+            "id":          sr.id,
             # header
             "initiator":   old_name,
             "target":      new_name,

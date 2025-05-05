@@ -21,7 +21,6 @@ export interface TAData {
   advisor: string
   program: string
   student_id: string
-  phone: string
 }
 export interface StaffData {
   email: string
@@ -168,11 +167,6 @@ export function useTAColumns(onDataChange: () => void) {
         ),
       },
       { accessorKey: "student_id", header: "Student ID" },
-      {
-        accessorKey: "phone",
-        header: "Phone",
-        cell: ({ row }) => row.getValue("phone") || "-",
-      },
       {
         accessorKey: "email",
         header: "Email",

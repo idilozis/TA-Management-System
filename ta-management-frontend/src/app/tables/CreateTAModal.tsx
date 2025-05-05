@@ -46,13 +46,10 @@ export default function CreateTAModal({
     name: "",
     surname: "",
     student_id: "",
-    tc_no: "",
     email: "",
     program: "MS",
     ta_type: "FT",
     advisor: "",
-    phone: "",
-    iban: "",
   });
 
   // 1) Fetch staff list for Advisor dropdown
@@ -176,7 +173,7 @@ export default function CreateTAModal({
             />
           </div>
 
-          {/* Student ID / TC No */}
+          {/* Student ID*/}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="student_id">Student ID <span className="text-red-600">*</span></Label>
@@ -186,17 +183,6 @@ export default function CreateTAModal({
                 value={formData.student_id}
                 onChange={(e) =>
                   setFormData({ ...formData, student_id: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tc_no">TC No <span className="text-red-600">*</span></Label>
-              <Input
-                id="tc_no"
-                required
-                value={formData.tc_no}
-                onChange={(e) =>
-                  setFormData({ ...formData, tc_no: e.target.value })
                 }
               />
             </div>
@@ -260,30 +246,6 @@ export default function CreateTAModal({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Phone / IBAN */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone <span className="text-red-600">*</span></Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="iban">IBAN <span className="text-red-600">*</span></Label>
-              <Input
-                id="iban"
-                value={formData.iban}
-                onChange={(e) =>
-                  setFormData({ ...formData, iban: e.target.value })
-                }
-              />
-            </div>
           </div>
 
           {/* Actions */}
