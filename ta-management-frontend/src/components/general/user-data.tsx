@@ -27,7 +27,7 @@ export interface UserData {
   courses?: Course[];
 
   // Authorized User
-  role?: 'SECRETARY' | 'DEAN' | 'ADMIN';
+  role?: 'CS SECRETARY' | 'IE SECRETARY' | 'EEE SECRETARY' | 'ME SECRETARY' | 'DEAN' | 'ADMIN';
 }
 
 /**

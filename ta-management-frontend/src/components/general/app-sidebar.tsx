@@ -38,14 +38,22 @@ export function AppSidebar({ user }: AppSidebarProps) {
     switch (user.role) {
       case "DEAN":
         return <>Dean Office</>;
-      case "SECRETARY":
-        return <>Department Secretary</>;
+      case "CS SECRETARY":
+        return <>CS Department Secretary</>;
+      case "IE SECRETARY":
+        return <>IE Department Secretary</>;
+      case "EEE SECRETARY":
+        return <>EEE Department Secretary</>;
+      case "ME SECRETARY":
+        return <>ME Department Secretary</>;
       case "ADMIN":
         return <>System Administrator</>;
       default:
         return <>Authorized User</>;
     }
   };
+
+  const SECRETARY = user && (user.role=="CS SECRETARY" || user.role=="IE SECRETARY" || user.role=="EEE SECRETARY" || user.role=="ME SECRETARY");
 
   // NAVIGATION ITEMS
   const navItems = [
@@ -63,7 +71,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...((user && user.isTA) || (user && user.isAuth && (user.role==="SECRETARY" || user.role==="ADMIN"))
+    ...((user && user.isTA) || (user && user.isAuth)
       ? [
           {
             name: "Leave Requests",
@@ -99,7 +107,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && user.isAuth && (user.role==="SECRETARY" || user.role==="ADMIN")
+    ...(user && user.isAuth && (SECRETARY || user.role == "ADMIN")
       ? [
           { 
             name:"Swaps", 

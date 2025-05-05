@@ -5,8 +5,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
+from myapp.utils import advisor_department
 import os
 import mimetypes
 
@@ -37,10 +39,10 @@ def create_leave(request):
     start_time_str = request.POST.get("start_time")
     end_time_str = request.POST.get("end_time")
     description = request.POST.get("description")  # required
+    document = request.FILES.get("document")  # optional
     
     if not (leave_type and start_date_str and end_date_str and start_time_str and end_time_str and description):
         return JsonResponse({"status": "error", "message": "Missing required fields"}, status=400)
-    
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
@@ -49,14 +51,10 @@ def create_leave(request):
     except ValueError:
         return JsonResponse({"status": "error", "message": "Invalid date/time format"}, status=400)
     
-    if end_date < start_date:
-        return JsonResponse({"status": "error", "message": "End date cannot be before start date"}, status=400)
-    # If same day, end time must be later than start time.
-    if end_date == start_date and end_time < start_time:
-        return JsonResponse({"status": "error", "message": "End time cannot be before start time"}, status=400)
+    if end_date < start_date or (end_date == start_date and end_time < start_time):
+        return JsonResponse({"status":"error","message":"Invalid date/time range"}, status=400)
     
-    document = request.FILES.get("document")
-    
+    # Create leave request
     leave = TALeaveRequests.objects.create(
         ta_user=user,
         leave_type=leave_type,
@@ -69,20 +67,22 @@ def create_leave(request):
         status="pending"
     )
 
-    # Notify authorized users (SECRETARY and DEAN roles) about the new leave request
-    authorizedUsers = AuthorizedUser.objects.filter(role__in=['SECRETARY', 'DEAN'])
-    for auth in authorizedUsers:
+    # Notify department SECRETARY and all DEANS
+    dept = advisor_department(user.advisor)
+    if dept:
+        secretary_role = f"{dept} SECRETARY"
+        authorized_list = AuthorizedUser.objects.filter(
+            Q(role=secretary_role) | Q(role="DEAN")
+        )
+    else:
+        authorized_list = AuthorizedUser.objects.filter(role="DEAN")
+    for auth in authorized_list:
         create_notification(
             recipient_email=auth.email,
             message=f"{user.name} {user.surname} created a leave request."
         )
         
-    return JsonResponse({
-        "status": "success",
-        "message": "Leave request created successfully.",
-        "leave_id": leave.id
-    })
-
+    return JsonResponse({"status":"success","message":"Leave request created successfully.","leave_id": leave.id})
 
 # -----------------------------
 # LIST MY LEAVE REQUESTS (TA side)
@@ -125,22 +125,18 @@ def list_pending_leaves(request):
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
     user, user_type = find_user_by_email(session_email)
-    # Only authorized users can view pending leave requests
-    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+    if user_type != "Authorized" or not user.isAuth:
         return JsonResponse({"status": "error", "message": "Only authorized users can view pending leave requests"}, status=403)
     
-    # Filter pending leaves
-    pending_leaves = TALeaveRequests.objects.filter(
-        status="pending"
-    ).order_by("-start_date")
+    dept = user.role.split()[0] if user.role.endswith("SECRETARY") else None
+    qs = TALeaveRequests.objects.filter(status="pending").order_by("-start_date")
+    if dept:
+        qs = [lv for lv in qs if advisor_department(lv.ta_user.advisor) == dept]
     
-    def compute_total_days(start_date, end_date):
-        return (end_date - start_date).days + 1
-
-    leave_list = []
-    for leave in pending_leaves:
-        total_days = compute_total_days(leave.start_date, leave.end_date)
-        leave_list.append({
+    data = []
+    for leave in qs:
+        total_days = (leave.end_date - leave.start_date).days + 1
+        data.append({
             "id": leave.id,
             "ta_email": leave.ta_user.email,
             "ta_name": f"{leave.ta_user.name} {leave.ta_user.surname}",
@@ -156,7 +152,7 @@ def list_pending_leaves(request):
             "document_url": leave.document.url if leave.document else None,
         })
     
-    return JsonResponse({"status": "success", "leaves": leave_list})
+    return JsonResponse({"status": "success", "leaves": data})
 
 
 # -----------------------------
@@ -169,20 +165,18 @@ def list_past_leaves(request):
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
     
     user, user_type = find_user_by_email(session_email)
-    if not user or user_type != "Authorized" or not getattr(user, 'isAuth', False):
+    if user_type != "Authorized" or not user.isAuth:
         return JsonResponse({"status": "error", "message": "Only authorized users can view past leave requests"}, status=403)
     
-    past_leaves_qs = TALeaveRequests.objects.filter(
-        status__in=["approved", "rejected"]
-    ).order_by("-start_date")
+    dept = user.role.split()[0] if user.role.endswith("SECRETARY") else None
+    qs = TALeaveRequests.objects.filter(status__in=["approved","rejected"]).order_by("-start_date")
+    if dept:
+        qs = [lv for lv in qs if advisor_department(lv.ta_user.advisor) == dept]
     
-    def compute_total_days(start_date, end_date):
-        return (end_date - start_date).days + 1
-
-    leave_list = []
-    for leave in past_leaves_qs:
-        total_days = compute_total_days(leave.start_date, leave.end_date)
-        leave_list.append({
+    data = []
+    for leave in qs:
+        total_days = (leave.end_date - leave.start_date).days + 1
+        data.append({
             "id": leave.id,
             "ta_email": leave.ta_user.email,
             "ta_name": f"{leave.ta_user.name} {leave.ta_user.surname}",
@@ -198,7 +192,7 @@ def list_past_leaves(request):
             "document_url": leave.document.url if leave.document else None,
         })
     
-    return JsonResponse({"status": "success", "leaves": leave_list})
+    return JsonResponse({"status": "success", "leaves": data})
 
 
 # -----------------------------

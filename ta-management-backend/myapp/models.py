@@ -91,9 +91,12 @@ class Course(models.Model):
 # Authorized Users: Department Secretaries, Dean Office, and Admin
 class AuthorizedUser(models.Model):
     ROLE_CHOICES = [
-        ('SECRETARY', 'Secretary'),
-        ('DEAN',      'Dean'),
-        ('ADMIN',     'Admin'),
+        ('CS SECRETARY', 'CS Secretary'),
+        ('IE SECRETARY', 'IE Secretary'),
+        ('EEE SECRETARY', 'ME Secretary'),
+        ('ME SECRETARY', 'EEE Secretary'),
+        ('DEAN', 'Dean'),
+        ('ADMIN', 'Admin'),
     ]
 
     name = models.CharField(max_length=255)
@@ -101,6 +104,8 @@ class AuthorizedUser(models.Model):
     email = models.EmailField(primary_key=True)  # Email PK
     password = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+    # Not a TA, but has authorization
     isTA = models.BooleanField(default=False)
     isAuth = models.BooleanField(default=True)
 
