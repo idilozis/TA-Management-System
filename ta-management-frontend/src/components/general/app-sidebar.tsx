@@ -107,21 +107,21 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && user.isAuth && (SECRETARY || user.role == "ADMIN")
-      ? [
-          { 
-            name:"Swaps", 
-            path:"/staff-swaps", 
-            icon:Repeat 
-          },
-        ]
-      : []),      
     ...(user && !user.isTA && user.isAuth && (user.role == "DEAN" || user.role == "ADMIN")
       ? [
           {
             name: "Exams",
             path: "/dean-exams",
             icon: BookOpenCheck,
+          },
+        ]
+      : []),
+    ...(user && user.isAuth
+      ? [
+          { 
+            name:"Swaps", 
+            path:"/staff-swaps", 
+            icon:Repeat 
           },
         ]
       : []),
