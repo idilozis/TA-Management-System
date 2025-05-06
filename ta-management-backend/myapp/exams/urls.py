@@ -10,6 +10,7 @@ urlpatterns = [
     path('list-ta-exams/', list_ta_exams, name='list_ta_exams'),
     path('delete-exam/', delete_exam, name='delete_exam'),
     path("list-classrooms/", list_classrooms, name="list_classrooms"),
+    path('update-exam/', update_exam, name='update_exam'),
 
     # dean/authorized
     path("list-dean-courses/", list_dean_courses, name="list_dean_courses"),

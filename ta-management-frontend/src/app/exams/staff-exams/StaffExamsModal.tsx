@@ -6,10 +6,19 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
-         AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Pencil, Trash2 } from "lucide-react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import EditExamModal from "@/app/exams/edit-exam/EditExamModal"
 
 interface Exam {
   id: number
@@ -32,8 +41,10 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [examToDelete, setExamToDelete] = useState<number | null>(null)
+  const [examToEdit, setExamToEdit] = useState<Exam | null>(null)
+
   const formatDate = (iso: string) => {
-    const [year, month, day] = iso.split('-')
+    const [year, month, day] = iso.split("-")
     return `${day}.${month}.${year}`
   }
 
@@ -71,6 +82,17 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
       setError("Error deleting exam. Please try again.")
     } finally {
       setExamToDelete(null)
+    }
+  }
+
+  const handleEditExam = (exam: Exam) => {
+    setExamToEdit(exam)
+  }
+
+  const handleEditClose = (refreshNeeded = false) => {
+    setExamToEdit(null)
+    if (refreshNeeded) {
+      fetchExams()
     }
   }
 
@@ -117,7 +139,7 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                       <TableCell className="whitespace-nowrap">{exam.classrooms.join(", ")}</TableCell>
                       <TableCell className="whitespace-nowrap">{exam.num_proctors}</TableCell>
                       <TableCell className="whitespace-nowrap">{exam.student_count}</TableCell>
-                      
+
                       <TableCell className="whitespace-nowrap flex items-center gap-2">
                         {/* Delete */}
                         <Button
@@ -126,14 +148,21 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                           onClick={() => setExamToDelete(exam.id)}
                           className="flex items-center gap-1"
                         >
-                        <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                           Delete
                         </Button>
-                        
-                        {/* Print dropdown */}
-                        <Popover>
+
+                        {/* Edit */}
+                        <Button variant="outline" size="sm" onClick={() => handleEditExam(exam)} className="flex items-center gap-1">
+                          <Pencil className="h-4 w-4" />
+                          Edit
+                        </Button>
+                         {/* Print dropdown */}
+                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500">Student List</Button>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
+                              Student List
+                            </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-40 p-1">
                             <Button
@@ -143,7 +172,7 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                               onClick={() =>
                                 window.open(
                                   `${apiClient.defaults.baseURL}/reports/studentlist-alphabetic/${exam.id}/`,
-                                  "_blank"
+                                  "_blank",
                                 )
                               }
                             >
@@ -156,7 +185,7 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                               onClick={() =>
                                 window.open(
                                   `${apiClient.defaults.baseURL}/reports/studentlist-random/${exam.id}/`,
-                                  "_blank"
+                                  "_blank",
                                 )
                               }
                             >
@@ -164,6 +193,7 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                             </Button>
                           </PopoverContent>
                         </Popover>
+
                       </TableCell>
                     </TableRow>
                   ))}
@@ -189,6 +219,9 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Exam Modal */}
+      {examToEdit && <EditExamModal exam={examToEdit} onClose={handleEditClose} />}
     </>
   )
 }

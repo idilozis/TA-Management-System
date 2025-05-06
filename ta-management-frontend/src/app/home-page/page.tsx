@@ -91,8 +91,7 @@ export default function HomePage() {
         <AppSidebar user={user} />
 
         <SidebarInset className="bg-white p-8 relative">
-          <div className="mb-4 flex justify-between items-center">
-            <SidebarTrigger className="text-gray-900" />
+          <div className="mb-4 flex justify-end items-center">
             <div className="flex items-center space-x-4">
               <MailPopover
                 forceOpen={mailOpen}

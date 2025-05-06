@@ -440,3 +440,87 @@ def delete_dean_exam(request):
     dean_exam.delete()
 
     return JsonResponse({"status":"success","message":"Dean exam deleted successfully."})
+
+
+@require_POST
+@transaction.atomic
+def update_exam(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    if not user or user_type == "TA":
+        return JsonResponse({"status": "error", "message": "Only staff can update exams."}, status=403)
+    
+    data = json.loads(request.body)
+    
+    exam_id = data.get("exam_id")
+    if not exam_id:
+        return JsonResponse({"status": "error", "message": "Exam ID is required."}, status=400)
+    
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        if exam.instructor != user:
+            return JsonResponse({"status": "error", "message": "You can only update exams you created."}, status=403)
+    except Exam.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Exam not found."}, status=404)
+    
+    course_id = data.get("course_id")
+    date_str = data.get("date")
+    start_str = data.get("start_time")
+    end_str = data.get("end_time")
+    classrooms = data.get("classrooms", [])
+    num_proctors = data.get("num_proctors", 1)
+    student_count = data.get("student_count", 0)
+    
+    if not all([course_id, date_str, start_str, end_str]):
+        return JsonResponse({"status": "error", "message": "Missing required fields."}, status=400)
+    
+    if not classrooms or not isinstance(classrooms, list):
+        return JsonResponse({
+            "status": "error",
+            "message": "`classrooms` must be a non-empty list."
+        }, status=400)
+    
+    valid = {v for v, _ in ClassroomEnum.choices()}
+    for room in classrooms:
+        if room not in valid:
+            return JsonResponse({
+                "status": "error",
+                "message": f"Invalid classroom: {room}"
+            }, status=400)
+    
+    try:
+        course = Course.objects.get(id=course_id)
+    except Course.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Course not found."}, status=404)
+    
+    if not course.instructors.filter(email=user.email).exists():
+        return JsonResponse({"status": "error", "message": "You do not teach this course."}, status=403)
+    
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        start_obj = datetime.strptime(start_str, "%H:%M").time()
+        end_obj = datetime.strptime(end_str, "%H:%M").time()
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "Invalid date/time format."}, status=400)
+    
+    if start_obj >= end_obj:
+        return JsonResponse({"status": "error", "message": "Start time must be before end time."}, status=400)
+    
+    for room in classrooms:
+        ok, msg = is_classroom_available(room, date_obj, start_obj, end_obj, exclude_exam_id=exam_id)
+        if not ok:
+            return JsonResponse({"status": "error", "message": f"{room}: {msg}"}, status=400)
+    
+    exam.course = course
+    exam.date = date_obj
+    exam.start_time = start_obj
+    exam.end_time = end_obj
+    exam.num_proctors = num_proctors
+    exam.student_count = student_count
+    exam.classrooms = classrooms
+    exam.save()
+    
+    return JsonResponse({"status": "success", "message": "Exam updated successfully!", "exam_id": exam.id})

@@ -7,6 +7,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu,
          SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar } from "@/components/ui/sidebar";
 import type { UserData } from "@/components/general/user-data";
 import apiClient from "@/lib/axiosClient";
+import { useState } from "react";
 
 type AppSidebarProps = {
   user: UserData | null;
@@ -17,6 +18,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const router = useRouter();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // User Role Text
   const getRoleString = (user: UserData) => {
@@ -83,7 +85,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     ...(user && !user.isTA && !user.isAuth
       ? [
           {
-            name: "Requests",
+            name: "Duty Requests",
             path: "/requests",
             icon: CheckCircle,
           },
@@ -166,12 +168,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   // Logout handler
   const handleLogout = async () => {
+    setIsLoggingOut(true); 
     try {
       await apiClient.post("/auth/logout/");
     } catch (error) {
       console.error("Logout API call failed", error);
     } finally {
-      router.push("/");
+      router.push("/"); 
     }
   };
 
@@ -224,13 +227,17 @@ export function AppSidebar({ user }: AppSidebarProps) {
             <div className="text-xs text-gray-500">
               Logged in as {user.email}
             </div>
-            <button
-              onClick={handleLogout}
-              className="mt-2 inline-flex items-center text-xs text-red-500 hover:underline"
-            >
-              <LogOut className="mr-1 h-4 w-4" />
-              <span>Log Out</span>
-            </button>
+            {isLoggingOut ? (
+              <div className="mt-2 text-xs text-red-500">Logging Out...</div>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="mt-2 inline-flex items-center text-xs text-red-500 hover:underline"
+              >
+                <LogOut className="mr-1 h-4 w-4" />
+                <span>Log Out</span>
+              </button>
+            )}
           </>
         )}
       </SidebarFooter>
