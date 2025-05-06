@@ -11,6 +11,7 @@ urlpatterns = [
     path('delete-exam/', delete_exam, name='delete_exam'),
     path("list-classrooms/", list_classrooms, name="list_classrooms"),
     path('update-exam/', update_exam, name='update_exam'),
+    path('update-dean-exam/', update_dean_exam, name='update_dean_exam'),
 
     # dean/authorized
     path("list-dean-courses/", list_dean_courses, name="list_dean_courses"),

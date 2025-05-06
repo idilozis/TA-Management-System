@@ -524,3 +524,84 @@ def update_exam(request):
     exam.save()
     
     return JsonResponse({"status": "success", "message": "Exam updated successfully!", "exam_id": exam.id})
+
+# Add this to your exams/views.py file
+
+@require_POST
+@transaction.atomic
+def update_dean_exam(request):
+    email = request.session.get("user_email")
+    if not email:
+        return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
+
+    user, user_type = find_user_by_email(email)
+    # Only Authorized (Dean‐office) users may update dean exams
+    if not user or not getattr(user, "isAuth", False):
+        return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
+
+    # Parse payload
+    data = json.loads(request.body)
+    exam_id = data.get("exam_id")
+    if not exam_id:
+        return JsonResponse({"status":"error","message":"Exam ID is required."}, status=400)
+
+    # Fetch the DeanExam (404 if none)
+    dean_exam = get_object_or_404(DeanExam, id=exam_id)
+
+    # Get updated data
+    codes = data.get("course_codes", [])
+    rooms = data.get("classrooms", [])
+
+    # basic checks
+    if not isinstance(codes, list) or not codes:
+        return JsonResponse({"status":"error","message":"`course_codes` list required"}, status=400)
+    if not isinstance(rooms, list) or not rooms:
+        return JsonResponse({"status":"error","message":"`classrooms` list required"}, status=400)
+
+    # build allowed set
+    real_codes = set(Course.objects.values_list("code", flat=True))
+    enum_codes = {c for c, _ in NonDeptCourseEnum.choices()}
+    allowed = real_codes.union(enum_codes)
+
+    # validate user‐submitted codes
+    for c in codes:
+        if c not in allowed:
+            return JsonResponse({"status":"error","message":f"Invalid course code {c}"}, status=400)
+
+    # classroom enum check unchanged
+    valid_rooms = {v for v,_ in ClassroomEnum.choices()}
+    for room in rooms:
+        if room not in valid_rooms:
+            return JsonResponse({"status":"error","message":f"Invalid classroom {room}"}, status=400)
+
+    # parse date/time
+    try:
+        d = datetime.strptime(data["date"], "%Y-%m-%d").date()
+        s = datetime.strptime(data["start_time"], "%H:%M").time()
+        e = datetime.strptime(data["end_time"], "%H:%M").time()
+    except ValueError:
+        return JsonResponse({"status":"error","message":"Invalid date/time"}, status=400)
+    if s >= e:
+        return JsonResponse({"status":"error","message":"Start must be before end"}, status=400)
+
+    # availability check for each classroom (excluding this exam)
+    for room in rooms:
+        ok, msg = is_classroom_available(room, d, s, e, exclude_exam_id=exam_id)
+        if not ok:
+            return JsonResponse({"status":"error","message":f"{room}: {msg}"}, status=400)
+
+    # Update the exam
+    dean_exam.course_codes = codes
+    dean_exam.date = d
+    dean_exam.start_time = s
+    dean_exam.end_time = e
+    dean_exam.num_proctors = data.get("num_proctors", 1)
+    dean_exam.student_count = data.get("student_count", 0)
+    dean_exam.classrooms = rooms
+    dean_exam.save()
+    
+    return JsonResponse({
+        "status": "success",
+        "message": "Dean exam updated successfully!",
+        "exam_id": dean_exam.id
+    })

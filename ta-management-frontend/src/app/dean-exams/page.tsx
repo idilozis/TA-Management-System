@@ -1,6 +1,4 @@
 "use client"
-
-import * as React from "react"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
@@ -8,16 +6,9 @@ import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { BookOpenCheck } from "lucide-react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BookOpenCheck, Pencil, Trash2, Users } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +20,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import apiClient from "@/lib/axiosClient"
 import DeanExamModal from "./DeanExamModal"
 import DeanProctorModal from "./DeanProctorModal"
-import { Badge } from "@/components/ui/badge"
+import EditDeanExamModal from "./EditDeanExamModal"
 
 interface DeanExam {
   id: number
@@ -54,8 +45,12 @@ export default function DeanExamsPage() {
   const [showModal, setShowModal] = useState(false)
   const [toDelete, setToDelete] = useState<number | null>(null)
   const [error, setError] = useState("")
-  const [showProctor, setShowProctor]     = useState(false)
+  const [showProctor, setShowProctor] = useState(false)
   const [currentProctorExam, setCurrentProctorExam] = useState<DeanExam | null>(null)
+  const [examToEdit, setExamToEdit] = useState<DeanExam | null>(null)
+  const [showProctorsDialog, setShowProctorsDialog] = useState(false)
+  const [selectedExamProctors, setSelectedExamProctors] = useState<string[]>([])
+  const [selectedExamName, setSelectedExamName] = useState<string>("")
 
   useEffect(() => {
     apiClient
@@ -83,6 +78,23 @@ export default function DeanExamsPage() {
     }
   }
 
+  const handleEditExam = (exam: DeanExam) => {
+    setExamToEdit(exam)
+  }
+
+  const handleEditClose = (refreshNeeded = false) => {
+    setExamToEdit(null)
+    if (refreshNeeded) {
+      setRefresh((x) => x + 1)
+    }
+  }
+
+  const handleShowProctors = (exam: DeanExam) => {
+    setSelectedExamProctors(exam.assigned_tas)
+    setSelectedExamName(exam.course_codes.join(", "))
+    setShowProctorsDialog(true)
+  }
+
   const fmtDate = (iso: string) => {
     const [y, m, d] = iso.split("-")
     return `${d}.${m}.${y}`
@@ -96,25 +108,30 @@ export default function DeanExamsPage() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar user={user} />
         <SidebarInset className="p-8">
-            <div className="flex items-center gap-2 mb-9">
-                <BookOpenCheck className="h-8 w-8 text-blue-600" />
-                <h1 className="text-3xl font-bold">Exams</h1>
-            </div>
-            <div className="flex justify-between items-center mb-6">
-                <Button onClick={() => setShowModal(true)} className="bg-blue-700 hover:bg-blue-600">+ Exam</Button>
-            </div>
-            
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded border border-red-200">
-              {error}
-            </div>
-          )}
+          <div className="flex items-center gap-2 mb-9">
+            <BookOpenCheck className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold">Exams</h1>
+          </div>
+          
+
+          {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded border border-red-200">{error}</div>}
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
             {exams.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">No exams found.</div>
             ) : (
               <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-blue-600 mb-2">Manage Exams</CardTitle>
+                      <CardDescription>Add exams, assign/de-assign proctors, and view student lists and proctors.</CardDescription>
+                    </div>
+                    <Button onClick={() => setShowModal(true)} className="bg-blue-700 hover:bg-blue-600">
+                      + Exam
+                    </Button>
+                  </div>
+                </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto rounded-md border">
                     <Table>
@@ -138,9 +155,34 @@ export default function DeanExamsPage() {
                               {ex.start_time} - {ex.end_time}
                             </TableCell>
                             <TableCell>{ex.classrooms.join(", ")}</TableCell>
-                            <TableCell>{ex.num_proctors}</TableCell>
+                            <TableCell>
+                              {ex.assigned_tas.length > 0 ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleShowProctors(ex)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Users className="h-4 w-4" />
+                                  Check Proctors ({ex.assigned_tas.length})
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground">None assigned</span>
+                              )}
+                            </TableCell>
                             <TableCell>{ex.student_count}</TableCell>
                             <TableCell className="flex gap-2">
+                              {/* Edit */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditExam(ex)}
+                                className="flex items-center gap-1"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit
+                              </Button>
+
                               {/* Delete */}
                               <Button
                                 variant="destructive"
@@ -155,7 +197,9 @@ export default function DeanExamsPage() {
                               {/* Print */}
                               <Popover>
                                 <PopoverTrigger asChild>
-                                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500">Student List</Button>
+                                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
+                                    Student List
+                                  </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-1 w-40">
                                   <Button
@@ -165,7 +209,7 @@ export default function DeanExamsPage() {
                                     onClick={() =>
                                       window.open(
                                         `${apiClient.defaults.baseURL}/reports/studentlist-alphabetic/${ex.id}/`,
-                                        "_blank"
+                                        "_blank",
                                       )
                                     }
                                   >
@@ -178,7 +222,7 @@ export default function DeanExamsPage() {
                                     onClick={() =>
                                       window.open(
                                         `${apiClient.defaults.baseURL}/reports/studentlist-random/${ex.id}/`,
-                                        "_blank"
+                                        "_blank",
                                       )
                                     }
                                   >
@@ -187,29 +231,19 @@ export default function DeanExamsPage() {
                                 </PopoverContent>
                               </Popover>
 
-                              {/* Show Proctor button only if no one’s assigned yet */}
-                              {ex.assigned_tas.length === 0 ? (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setCurrentProctorExam(ex)
-                                  setShowProctor(true)
-                                }}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white"
-                              >
-                                Proctor
-                              </Button>
-                              ) : (
-                                // otherwise, list them
-                                <div className="space-y-1">
-                                  {ex.assigned_tas.map((email) => (
-                                    <Badge key={email} variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                      {email}
-                                    </Badge>
-                                  ))}
-                                </div>
+                              {/* Show Proctor button only if no one's assigned yet */}
+                              {ex.assigned_tas.length === 0 && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setCurrentProctorExam(ex)
+                                    setShowProctor(true)
+                                  }}
+                                  className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                                >
+                                  Proctor
+                                </Button>
                               )}
-
                             </TableCell>
                           </TableRow>
                         ))}
@@ -222,28 +256,42 @@ export default function DeanExamsPage() {
           </motion.div>
 
           {/* Delete Confirmation */}
-          <AlertDialog
-            open={toDelete !== null}
-            onOpenChange={(open) => !open && setToDelete(null)}
-          >
+          <AlertDialog open={toDelete !== null} onOpenChange={(open) => !open && setToDelete(null)}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this exam?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone.
-                </AlertDialogDescription>
+                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={deleteExam}
-                  className="bg-red-600 hover:bg-red-700"
-                >
+                <AlertDialogAction onClick={deleteExam} className="bg-red-600 hover:bg-red-700">
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Proctors Dialog */}
+          <Dialog open={showProctorsDialog} onOpenChange={setShowProctorsDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Assigned Proctors for {selectedExamName}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                {selectedExamProctors.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedExamProctors.map((email) => (
+                      <div key={email} className="p-2 bg-green-50 border border-green-200 rounded-md">
+                        {email}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No proctors assigned</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* +Exam Modal */}
           {showModal && (
@@ -254,6 +302,10 @@ export default function DeanExamsPage() {
               }}
             />
           )}
+
+          {/* Edit Exam Modal */}
+          {examToEdit && <EditDeanExamModal exam={examToEdit} onClose={handleEditClose} />}
+
           {/* Proctoring Modal */}
           {showProctor && currentProctorExam && (
             <DeanProctorModal
