@@ -79,17 +79,10 @@ def _filter_tas_for_course(course, date, start_time, end_time, instr_dept=None):
         ).values_list("ta__email", flat=True)
     )
     
-    alloc = (
-        TAAllocation.objects
-            .filter(course=course)
-            .order_by('-created_at')
-            .first()
+    allocs = TAAllocation.objects.filter(course=course)
+    allocated_emails = set(
+        allocs.values_list('assigned_tas__email', flat=True)
     )
-    allocated_emails = set()
-    if alloc:
-        allocated_emails = set(
-            alloc.assigned_tas.values_list('email', flat=True)
-        )
 
     settings = GlobalSettings.objects.first()
     max_wl = settings.max_ta_workload if settings else None

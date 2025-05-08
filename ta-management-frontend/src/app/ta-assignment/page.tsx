@@ -63,6 +63,7 @@ interface TAAllocation {
 export default function TAAssignmentPage() {
   const { user, loading: userLoading } = useUser()
   const [preferences, setPreferences] = useState<AssignmentPreference[]>([])
+  // key will be `${courseCode}-${instructorEmail}`
   const [allocations, setAllocations] = useState<Record<string, TAAllocation>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -114,25 +115,17 @@ export default function TAAssignmentPage() {
 
         // For each course in the preferences, check if there are existing allocations
         for (const pref of response.data.assignments) {
-          // Check if there are any TAs assigned to this course
-          const taAllocation = {
+          const key = `${pref.course.code}-${pref.staff.email}`
+          newAllocations[key] = {
             course: pref.course,
-            assigned_tas: [],
+            assigned_tas:   [],
             assigned_graders: [],
             total_load: 0,
           }
-
-          // Look for existing allocations in the response data
-          // This assumes the backend returns allocation data along with preferences
-          // If not, we'll need to make a separate API call to get allocations
-
-          newAllocations[pref.course.code] = taAllocation
         }
 
         // Now try to fetch existing allocations for each course
         try {
-          // This would be a separate endpoint to get current allocations
-          // If your backend doesn't have this endpoint, you'll need to add it
           const allocationsResponse = await apiClient.get("/assignment/list-allocations/")
 
           if (
@@ -141,13 +134,14 @@ export default function TAAssignmentPage() {
             allocationsResponse.data.allocations
           ) {
             // Update the allocations with the data from the backend
-            for (const allocation of allocationsResponse.data.allocations) {
-              if (newAllocations[allocation.course.code]) {
-                newAllocations[allocation.course.code] = {
-                  ...newAllocations[allocation.course.code],
-                  assigned_tas: allocation.assigned_tas || [],
-                  assigned_graders: allocation.assigned_graders || [],
-                  total_load: allocation.total_load || 0,
+            for (const alloc of allocationsResponse.data.allocations) {
+              const key = `${alloc.course.code}-${alloc.instructor_email}`
+              if (newAllocations[key]) {
+                newAllocations[key] = { 
+                  ...newAllocations[key],
+                  assigned_tas: alloc.assigned_tas,
+                  assigned_graders: alloc.assigned_graders,
+                  total_load: alloc.total_load,
                 }
               }
             }
@@ -211,11 +205,12 @@ export default function TAAssignmentPage() {
     setDialogSearchQuery("")
 
     // Initialize selected TAs/graders based on current allocations
-    if (allocations[course.code]) {
+    const key = `${course.code}-${preference.staff.email}`
+    if (allocations[key]) {
       if (type === "tas") {
-        setSelectedTAs(allocations[course.code].assigned_tas.map((ta) => ta.email))
+        setSelectedTAs(allocations[key].assigned_tas.map((ta) => ta.email))
       } else {
-        setSelectedGraders(allocations[course.code].assigned_graders.map((ta) => ta.email))
+        setSelectedGraders(allocations[key].assigned_graders.map((ta) => ta.email))
       }
     } else {
       setSelectedTAs([])
@@ -275,11 +270,13 @@ export default function TAAssignmentPage() {
         assignmentType === "tas"
           ? {
               course_code: currentCourse.code,
+              instructor_email: currentPreference!.staff.email,
               assigned_tas: selectedTAs,
               ...(overrideMustHave && { force: true }),
             }
           : {
               course_code: currentCourse.code,
+              instructor_email: currentPreference!.staff.email,
               assigned_graders: selectedGraders,
             }
 
@@ -298,9 +295,9 @@ export default function TAAssignmentPage() {
       if (response.data && response.data.status === "success") {
         setAllocations((prev) => {
           const updated = { ...prev }
-
-          if (!updated[currentCourse.code]) {
-            updated[currentCourse.code] = {
+          const key = `${currentCourse.code}-${currentPreference!.staff.email}`
+          if (!updated[key]) {
+            updated[key] = {
               course: currentCourse,
               assigned_tas: [],
               assigned_graders: [],
@@ -330,8 +327,8 @@ export default function TAAssignmentPage() {
               )
             })
 
-            updated[currentCourse.code].assigned_tas = assignedTAs
-            updated[currentCourse.code].total_load = totalLoad
+            updated[key].assigned_tas = assignedTAs
+            updated[key].total_load = totalLoad
           } else {
             const assignedGraders = selectedGraders.map((email) => {
               // First check in preference graders
@@ -354,7 +351,7 @@ export default function TAAssignmentPage() {
               )
             })
 
-            updated[currentCourse.code].assigned_graders = assignedGraders
+            updated[key].assigned_graders = assignedGraders
           }
 
           return updated
@@ -583,7 +580,8 @@ export default function TAAssignmentPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredPreferences.map((pref) => {
-                          const allocation = allocations[pref.course.code] || {
+                          const key = `${pref.course.code}-${pref.staff.email}`
+                          const allocation = allocations[key] || {
                             course: pref.course,
                             assigned_tas: [],
                             assigned_graders: [],

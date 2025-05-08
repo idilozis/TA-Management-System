@@ -1,2 +1,4 @@
 instructor_name;course_code;course_name;min_load;max_load;num_graders;must_have_ta;preferred_tas;preferred_graders;avoided_tas
 Eray Tüzün;CS319;Object Oriented Software Engineering;2;2;1;Yunus Günay;Yunus Günay,Daib Malik;Asaf Önal;
+Aynur Dayanık;CS102;Algorithms and Programming II;2;2;0;Asaf Önal;;;
+Uğur Güdükbay;CS102;Algorithms and Programming II;2;2;0;Daib Malik;;;

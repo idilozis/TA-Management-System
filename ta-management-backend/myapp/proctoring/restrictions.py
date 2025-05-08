@@ -52,18 +52,13 @@ class ProctoringAssignmentSolver:
         # 4) If this is a *real* Course instance, grab the latest TAAllocation
         #    to give those TAs a small “bonus” in the objective.
         if isinstance(exam.course, Course):
-            alloc = (
+            # grab every allocation for this course
+            self.allocated_emails = set(
                 TAAllocation.objects
                 .filter(course=exam.course)
-                .order_by('-created_at')
-                .first()
+                .values_list('assigned_tas__email', flat=True)
+                .distinct()
             )
-            if alloc:
-                self.allocated_emails = set(
-                    alloc.assigned_tas.values_list('email', flat=True)
-                )
-            else:
-                self.allocated_emails = set()
         else:
             # FakeExam or stub—no allocations apply
             self.allocated_emails = set()

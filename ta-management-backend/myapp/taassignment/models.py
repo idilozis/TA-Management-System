@@ -107,5 +107,8 @@ class TAAllocation(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ("staff", "course")
+        
     def __str__(self):
          return f"Allocation for {self.course.code} by {self.staff.email}"

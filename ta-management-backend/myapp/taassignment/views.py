@@ -61,172 +61,190 @@ def list_assignment_preferences(request):
         })
     return JsonResponse({"status": "success", "assignments": data})
 
+
 @csrf_exempt
 @require_POST
 def assign_tas(request):
     """
-    Endpoint for staff to manually assign general TA(s) to a course.
+    Endpoint for a common user (staff or authorized) to manually assign to *a specific instructor's* course.
     """
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+
     user_obj, user_type, is_allowed = check_staff_or_authorized(session_email)
     if not is_allowed:
         return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
-    
+
     data = json.loads(request.body)
-    course_code = data.get("course_code")
+    course_code        = data.get("course_code")
+    instructor_email   = data.get("instructor_email")
     assigned_tas_emails = data.get("assigned_tas")
-    if not course_code:
+
+    if not all([course_code, instructor_email, assigned_tas_emails]):
         return JsonResponse({"status": "error", "message": "Missing parameter"}, status=400)
-    
+
+    # 1) Fetch course
     try:
         course = Course.objects.get(code=course_code)
     except Course.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Course not found"}, status=404)
-    
-    try:
-        assignment = TAAssignment.objects.get(course=course)
-    except TAAssignment.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
 
-    # Compute total load and build TA list
+    # 2) Fetch *that* instructor’s TAAssignment row
+    try:
+        owner      = StaffUser.objects.get(email=instructor_email)
+        assignment = TAAssignment.objects.get(staff=owner, course=course)
+    except (StaffUser.DoesNotExist, TAAssignment.DoesNotExist):
+        return JsonResponse({
+            "status": "error",
+            "message": "No TA-preferences found for that instructor + course"
+        }, status=404)
+
+    # 3) Build TA list + total_load
     total_load = 0
-    assigned_tas_list = []
-    for email in assigned_tas_emails:
+    tas        = []
+    for ta_email in assigned_tas_emails:
         try:
-            ta = TAUser.objects.get(email=email)
-            assigned_tas_list.append(ta)
-            # If ta_type is empty or "FT", count as 2; if "PT", count as 1.
-            if not ta.ta_type or ta.ta_type == "FT":
-                total_load += 2
-            else:
-                total_load += 1
+            ta = TAUser.objects.get(email=ta_email)
+            tas.append(ta)
+            total_load += 2 if (not ta.ta_type or ta.ta_type == "FT") else 1
         except TAUser.DoesNotExist:
-            return JsonResponse({"status": "error", "message": f"TA with email {email} not found."}, status=404)
-    
-    # Check max load boundary
+            return JsonResponse({
+                "status": "error",
+                "message": f"TA not found: {ta_email}"
+            }, status=404)
+
+    # 4) Enforce max_load
     if total_load > assignment.max_load:
         return JsonResponse({
-            "status": "error", 
-            "message": f"Total load ({total_load}) exceeds the maximum allowed ({assignment.max_load})."
+            "status": "error",
+            "message": f"Total load {total_load} exceeds allowed {assignment.max_load}"
         }, status=400)
-    
-    # Must-have TA check
-    must_have_emails = [ta.email for ta in assignment.must_have_ta.all()]
-    missing = [e for e in must_have_emails if e not in assigned_tas_emails]
-    if missing and not data.get("force", False):
+
+    # 5) Must-have check
+    must_emails = [t.email for t in assignment.must_have_ta.all()]
+    missing     = [e for e in must_emails if e not in assigned_tas_emails]
+    if missing and not data.get("force"):
         return JsonResponse({
             "status": "warning",
-            "message": f"The following must-have TAs are missing: {', '.join(missing)}.",
+            "message": f"Missing must-have TAs: {', '.join(missing)}",
             "missing_must_have": missing,
             "require_confirmation": True
         }, status=202)
 
-    if user_type == "Staff":
-        staff = user_obj
-    else:  # Authorized user
-        staff = assignment.staff
-    
-    # Get or create the TAAllocation record.
-    allocation, _ = TAAllocation.objects.get_or_create(staff=staff, course=course)
-    allocation.assigned_tas.set(assigned_tas_list)
+    # 7) Create/update the TAAllocation
+    allocation, _ = TAAllocation.objects.get_or_create(
+        staff=owner,
+        course=course
+    )
+    allocation.assigned_tas.set(tas)
     allocation.save()
-    
-    # Send in-app notifications
+
+    # 8) Notifications…
     ta_message = (
-        f"You have been assigned as a TA to {course.code} - {course.name} by "
+        f"You've been assigned as a TA to {course.code} - {course.name} by "
         f"{user_obj.name} {user_obj.surname}."
     )
-    for ta in assigned_tas_list:
-        create_notification(recipient_email=ta.email, message=ta_message)
+    for t in tas:
+        create_notification(recipient_email=t.email, message=ta_message)
 
-    instructors = course.instructors.all()
-    if instructors.exists():
-        assigned_ta_names = [f"{ta.name} {ta.surname}" for ta in assigned_tas_list]
-        instr_message = (
-            f"{', '.join(assigned_ta_names)} were assigned as TAs to your course {course.code} "
+    instrs = course.instructors.all()
+    if instrs:
+        names = ", ".join(f"{t.name} {t.surname}" for t in tas)
+        instr_msg = (
+            f"{names} were assigned as TAs to your course {course.code} "
             f"by {user_obj.name} {user_obj.surname}."
         )
-        for instructor in instructors:
-            create_notification(recipient_email=instructor.email, message=instr_message)
-        
-    return JsonResponse({"status": "success", "message": "General TA(s) assigned successfully.", "total_load": total_load})
+        for instr in instrs:
+            create_notification(recipient_email=instr.email, message=instr_msg)
+
+    return JsonResponse({
+        "status": "success",
+        "message": "TAs assigned successfully",
+        "total_load": total_load
+    })
+
 
 
 @csrf_exempt
 @require_POST
 def assign_graders(request):
     """
-    Endpoint for staff to manually assign grader(s) to a course.
+    Endpoint for a common user (staff or authorized) to manually assign grader(s) to *a specific instructor's* course.
     """
     session_email = request.session.get("user_email")
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
-    
+
     user_obj, user_type, is_allowed = check_staff_or_authorized(session_email)
     if not is_allowed:
         return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
-    
+
     data = json.loads(request.body)
-    course_code = data.get("course_code")
-    grader_emails = data.get("assigned_graders")
-    if not course_code:
+    course_code       = data.get("course_code")
+    instructor_email  = data.get("instructor_email")
+    grader_emails     = data.get("assigned_graders")
+
+    if not all([course_code, instructor_email, grader_emails]):
         return JsonResponse({"status": "error", "message": "Missing parameter"}, status=400)
-    
+
+    # 1) Fetch course & assignment
     try:
-        course = Course.objects.get(code=course_code)
-    except Course.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Course not found"}, status=404)
-    
-    try:
-        assignment = TAAssignment.objects.get(course=course)
-    except TAAssignment.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Assignment preference not found for this course"}, status=404)
-    
-    if len(grader_emails) > assignment.num_graders:
+        course     = Course.objects.get(code=course_code)
+        owner      = StaffUser.objects.get(email=instructor_email)
+        assignment = TAAssignment.objects.get(staff=owner, course=course)
+    except (Course.DoesNotExist, StaffUser.DoesNotExist, TAAssignment.DoesNotExist):
         return JsonResponse({
             "status": "error",
-            "message": f"Exactly {assignment.num_graders} grader(s) must be assigned."
+            "message": "Assignment preference not found for that instructor + course"
+        }, status=404)
+
+    # 2) Enforce exact number of graders
+    if len(grader_emails) != assignment.num_graders:
+        return JsonResponse({
+            "status": "error",
+            "message": f"You must assign exactly {assignment.num_graders} graders"
         }, status=400)
 
+    # 3) Build grader list
     graders = []
     for email in grader_emails:
         try:
-            ta = TAUser.objects.get(email=email)
-            graders.append(ta)
+            graders.append(TAUser.objects.get(email=email))
         except TAUser.DoesNotExist:
-            return JsonResponse({"status": "error", "message": f"TA with email {email} not found."}, status=404)
-    
-    if user_type == "Staff":
-        staff = user_obj
-    else:  # Authorized user
-        staff = assignment.staff
-    
-    allocation, _ = TAAllocation.objects.get_or_create(staff=staff, course=course)
+            return JsonResponse({
+                "status": "error",
+                "message": f"TA not found: {email}"
+            }, status=404)
+
+    # 5) Create/update the TAAllocation
+    allocation, _ = TAAllocation.objects.get_or_create(
+        staff=owner,
+        course=course
+    )
     allocation.assigned_graders.set(graders)
     allocation.save()
 
-    # Send in-app notifications
-    grader_message = (
-        f"You have been assigned as a grader to {course.code} - {course.name} by "
+    # 6) Notifications…
+    msg = (
+        f"You've been assigned as a grader to {course.code} - {course.name} by "
         f"{user_obj.name} {user_obj.surname}."
     )
-    for ta in graders:
-        create_notification(recipient_email=ta.email, message=grader_message)
+    for g in graders:
+        create_notification(recipient_email=g.email, message=msg)
 
-    instructors = course.instructors.all()
-    if instructors.exists():
-        grader_names = [f"{ta.name} {ta.surname}" for ta in graders]
-        instr_message = (
-            f"{', '.join(grader_names)} were assigned as graders to your course {course.code} by "
-            f"{user_obj.name} {user_obj.surname}."
+    instrs = course.instructors.all()
+    if instrs:
+        names = ", ".join(f"{g.name} {g.surname}" for g in graders)
+        instr_msg = (
+            f"{names} were assigned as graders to your course {course.code} "
+            f"by {user_obj.name} {user_obj.surname}."
         )
-        for instructor in instructors:
-            create_notification(recipient_email=instructor.email, message=instr_message)
+        for instr in instrs:
+            create_notification(recipient_email=instr.email, message=instr_msg)
 
-    return JsonResponse({"status": "success", "message": "Grader(s) assigned successfully."})
+    return JsonResponse({"status": "success", "message": "Graders assigned successfully"})
+
 
 
 @require_GET
@@ -246,6 +264,7 @@ def list_allocations(request):
 
     allocations_data = []
     for allocation in assignments:
+        instructor_email = allocation.staff.email
         tas = allocation.assigned_tas.all()
         graders = allocation.assigned_graders.all()
 
@@ -267,6 +286,7 @@ def list_allocations(request):
         total_load = sum(2 if getattr(ta, "ta_type", None) != "PT" else 1 for ta in tas)
 
         allocations_data.append({
+            "instructor_email": instructor_email,
             "course": {
                 "code": allocation.course.code,
                 "name": allocation.course.name,
@@ -302,7 +322,7 @@ def list_department_tas(request):
     if not dept:
         return JsonResponse({"status": "error", "message": "Invalid course_code format"}, status=400)
 
-    # filter TAs by advisor’s department
+    # filter TAs by their advisor’s department
     result = []
     for ta in TAUser.objects.all():
         ta_dept = advisor_department(ta.advisor or "")
@@ -311,6 +331,7 @@ def list_department_tas(request):
                 "name": ta.name,
                 "surname": ta.surname,
                 "email": ta.email,
+                "is_full_time": not (getattr(ta, "ta_type", None) == "PT"),
             })
 
     return JsonResponse({"status": "success", "tas": result})
