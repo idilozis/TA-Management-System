@@ -5,6 +5,7 @@ from django.views.decorators.http import require_POST, require_GET, require_http
 from django.core.mail import EmailMessage
 from myapp.userauth.helpers import find_user_by_email
 from django.db import IntegrityError, transaction
+from django.db.models.functions import Lower
 import json
 
 from myapp.models import Course, TAUser, StaffUser, AuthorizedUser, GlobalSettings, Section
@@ -127,7 +128,7 @@ def list_all_courses(request):
     if not session_email:
         return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
 
-    courses = Course.objects.all().prefetch_related("instructors")
+    courses = Course.objects.all().prefetch_related("instructors").order_by(Lower("code"))
     data = []
     for course in courses:
         instructor_list = []
