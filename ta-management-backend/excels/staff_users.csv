@@ -1,1 +1,4 @@
-name;surname;email;department;courses
+name;surname;email;department;courses;sections
+Lori Rae; Russell Dağ; lorirae@example.com; CS; CS101 Algorithms and Programming I, CS115 Introduction to Programming in Python; CS101:1, CS101:2, CS115:1, CS115:2
+Aynur; Dayanık; aynurdayanik@example.com; CS; CS102 Algorithms and Programming II, CS202 Fundamental Structures of Computer Science II; CS102:1, CS102:2, CS202:1, CS202:2
+Uğur; Güdükbay; ugurgudukbay@example.com; CS; CS102 Algorithms and Programming II, CS478 Computational Geometry, CS564 Computational Geometry; CS102:3, CS478:1, CS564:1

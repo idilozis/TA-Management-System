@@ -135,10 +135,18 @@ export default function HomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {user.courses.map((course) => (
                   <div
-                    key={course.id}
+                    key={`${course.id}-${course.sections.join("_")}`}
                     className="p-4 border border-gray-300 bg-gray-50 rounded shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <h4 className="font-semibold text-gray-800">{course.code}</h4>
+                    <h4 className="font-semibold text-gray-800">
+                      {course.code} 
+                      {course.sections.length > 0 && (
+                        course.sections.length === 1 
+                          ? ` (Section ${course.sections[0]})`
+                          : ` (Sections ${course.sections.join(", ")})`
+                        
+                      )}
+                    </h4>
                     <p className="text-gray-600">{course.name}</p>
                   </div>
                 ))}

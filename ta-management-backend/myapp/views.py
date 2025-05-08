@@ -7,7 +7,7 @@ from myapp.userauth.helpers import find_user_by_email
 from django.db import IntegrityError, transaction
 import json
 
-from myapp.models import Course, TAUser, StaffUser, AuthorizedUser, GlobalSettings
+from myapp.models import Course, TAUser, StaffUser, AuthorizedUser, GlobalSettings, Section
 
 # -----------------------------
 # LIST EITHER TAs or STAFF
@@ -102,12 +102,18 @@ def list_all_staff(request):
         for c in s.courses_taught.all():
             courses_list.append(c.code)
         
+        courses_detailed = []
+        for course in s.courses_taught.all():
+            secs = list(Section.objects.filter(course=course, instructor=s).values_list("number", flat=True))
+            courses_detailed.append({"code": course.code,"sections": secs,})
+            
         data.append({
             "email": s.email,
             "name": s.name,
             "surname": s.surname,
             "department": s.department if s.department else "-",
             "courses": courses_list,  # e.g. ["CS101", "CS105"]
+            "courses_detailed": courses_detailed,  # e.g. [{"code": "CS101", "sections": [1, 2]}]
         })
     return JsonResponse({"status": "success", "staff": data})
 

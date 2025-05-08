@@ -83,6 +83,19 @@ class Course(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+# SECTIONS of Instructors
+class Section(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sections")
+    instructor = models.ForeignKey(StaffUser, on_delete=models.CASCADE, related_name="sections")
+    number = models.PositiveSmallIntegerField(help_text="Section number (e.g. 1, 2…)")
+
+    class Meta:
+        unique_together = ('course', 'number')
+        ordering = ['course', 'number']
+
+    def __str__(self):
+        return f"{self.course.code} Sec {self.number}: {self.instructor.name} {self.instructor.surname}"
+
 
 # Authorized Users: Department Secretaries, Dean Office, and Admin
 class AuthorizedUser(models.Model):

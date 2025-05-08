@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction
 
 from myapp.userauth.helpers import find_user_by_email
-from myapp.models import Course 
+from myapp.models import Course, Section
 from myapp.exams.models import Exam, DeanExam
 from myapp.exams.classrooms import ClassroomEnum
 from myapp.exams.courses_nondept import NonDeptCourseEnum
@@ -125,7 +125,8 @@ def list_staff_courses(request):
     courses = Course.objects.filter(instructors__email=user.email)
     data = []
     for course in courses:
-        data.append({"id": course.id, "code": course.code, "name": course.name})
+        sections = list(Section.objects.filter(course=course, instructor=user).order_by("number").values_list("number", flat=True))
+        data.append({"id": course.id, "code": course.code, "name": course.name, "sections": sections,})
 
     return JsonResponse({"status": "success", "courses": data})
 

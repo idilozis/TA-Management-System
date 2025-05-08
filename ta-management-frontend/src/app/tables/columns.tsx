@@ -22,12 +22,17 @@ export interface TAData {
   program: string
   student_id: string
 }
+export interface StaffCourse {
+  code: string
+  sections: number[]
+}
 export interface StaffData {
   email: string
   name: string
   surname: string
   department: string
   courses: string[]
+  courses_detailed: StaffCourse[]
 }
 
 // — Reusable Email button —
@@ -252,10 +257,21 @@ export function useStaffColumns(onDataChange: () => void) {
         ),
       },
       {
-        accessorKey: "courses",
-        header: "Courses Taught",
-        cell: ({ row }) =>
-          (row.getValue<string[]>("courses") || []).join(", ") || "None",
+        accessorKey: "courses_detailed",
+        header: "Courses",
+        cell: ({ row }) => {
+          const list = row.getValue<StaffCourse[]>("courses_detailed") || []
+          if (!list.length) return "None"
+      
+          return list
+            .map(c => {
+              const suffix = c.sections.length
+                ? ` (Section: ${c.sections.join(", ")})`
+                : ""
+              return `${c.code}${suffix}`
+            })
+            .join(", ")
+        },
       },
       {
         accessorKey: "email",

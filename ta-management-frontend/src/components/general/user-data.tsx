@@ -9,6 +9,7 @@ export interface Course {
   id: number;
   code: string;
   name: string;
+  sections: number[];
 }
 
 export interface UserData {

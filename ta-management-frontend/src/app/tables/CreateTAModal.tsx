@@ -1,33 +1,38 @@
-// components/CreateTAModal.tsx
-import { useState, useEffect } from "react";
+"use client"
+
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
+import apiClient from "@/lib/axiosClient"
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import apiClient from "@/lib/axiosClient";
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command"
+import { Badge } from "@/components/ui/badge"
+import { X as XIcon } from "lucide-react"
 
 interface CreateTAModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
   user: {
-    isAuth: boolean;
-    role: string;
-  };
+    isAuth: boolean
+    role: string
+  }
 }
 
 export default function CreateTAModal({
@@ -36,11 +41,11 @@ export default function CreateTAModal({
   onSuccess,
   user,
 }: CreateTAModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>("")
   const [staffOptions, setStaffOptions] = useState<
     { label: string; value: string }[]
-  >([]);
+  >([])
 
   const [formData, setFormData] = useState({
     name: "",
@@ -50,9 +55,12 @@ export default function CreateTAModal({
     program: "MS",
     ta_type: "FT",
     advisor: "",
-  });
+  })
 
-  // 1) Fetch staff list for Advisor dropdown
+  // for CmdK search
+  const [advisorQuery, setAdvisorQuery] = useState("")
+
+  // fetch all staff
   useEffect(() => {
     apiClient
       .get("/list/staff/")
@@ -61,62 +69,60 @@ export default function CreateTAModal({
           const opts = res.data.staff.map((s: any) => ({
             label: `${s.name} ${s.surname}`,
             value: `${s.name} ${s.surname}`,
-          }));
-          setStaffOptions(opts);
-        } else {
-          console.warn("Could not load staff list:", res.data.message);
+          }))
+          setStaffOptions(opts)
         }
       })
-      .catch((err) => {
-        console.error("Error fetching staff:", err);
-      });
-  }, []);
+      .catch((err) => console.error(err))
+  }, [])
+
+  const filteredStaff = staffOptions.filter((opt) =>
+    opt.label.toLowerCase().includes(advisorQuery.toLowerCase())
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError("")
 
-    // authorization guard
     if (!user.isAuth || user.role !== "ADMIN") {
-      setError("You are not authorized to perform this action");
-      return;
+      setError("You are not authorized to perform this action")
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
     try {
-      const res = await apiClient.post("/list/create-ta/", formData);
+      const res = await apiClient.post("/list/create-ta/", formData)
       if (res.data.status === "success") {
-        onSuccess();
-        onOpenChange(false);
+        onSuccess()
+        onOpenChange(false)
       } else {
-        setError(res.data.message || "Failed to create TA");
+        setError(res.data.message || "Failed to create TA")
       }
     } catch (err: any) {
       if (err.response) {
-        const msg = err.response.data?.message;
+        const msg = err.response.data?.message
         switch (err.response.status) {
           case 400:
-            setError(`Validation error: ${msg || "Check your input"}`);
-            break;
+            setError(`Validation error: ${msg || "Check your input"}`)
+            break
           case 401:
-            setError("Not authenticated. Please log in again.");
-            break;
+            setError("Not authenticated. Please log in again.")
+            break
           case 409:
-            setError(`Duplicate entry: ${msg || "This TA already exists"}`);
-            break;
+            setError(`Duplicate entry: ${msg || "This TA already exists"}`)
+            break
           default:
-            setError(`Server error (${err.response.status}): ${msg}`);
+            setError(`Server error (${err.response.status}): ${msg}`)
         }
       } else if (err.request) {
-        setError("No response from server. Please check your connection.");
+        setError("No response from server. Please check your connection.")
       } else {
-        setError(`Request error: ${err.message}`);
+        setError(`Request error: ${err.message}`)
       }
-      console.error("Detailed error:", err);
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,7 +132,7 @@ export default function CreateTAModal({
         </DialogHeader>
 
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -136,7 +142,9 @@ export default function CreateTAModal({
           {/* Name / Surname */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">First Name <span className="text-red-600">*</span></Label>
+              <Label htmlFor="name">
+                First Name <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="name"
                 required
@@ -147,7 +155,9 @@ export default function CreateTAModal({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="surname">Last Name <span className="text-red-600">*</span></Label>
+              <Label htmlFor="surname">
+                Last Name <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="surname"
                 required
@@ -161,7 +171,9 @@ export default function CreateTAModal({
 
           {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email <span className="text-red-600">*</span></Label>
+            <Label htmlFor="email">
+              Email <span className="text-red-600">*</span>
+            </Label>
             <Input
               id="email"
               type="email"
@@ -173,10 +185,12 @@ export default function CreateTAModal({
             />
           </div>
 
-          {/* Student ID*/}
+          {/* Student ID */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="student_id">Student ID <span className="text-red-600">*</span></Label>
+              <Label htmlFor="student_id">
+                Student ID <span className="text-red-600">*</span>
+              </Label>
               <Input
                 id="student_id"
                 required
@@ -191,61 +205,79 @@ export default function CreateTAModal({
           {/* Program / TA Type */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="program">Program <span className="text-red-600">*</span></Label>
-              <Select
+              <Label htmlFor="program">
+                Program <span className="text-red-600">*</span>
+              </Label>
+              <select
+                id="program"
+                className="w-full border rounded px-2 py-1"
                 value={formData.program}
-                onValueChange={(val) =>
-                  setFormData({ ...formData, program: val })
+                onChange={(e) =>
+                  setFormData({ ...formData, program: e.target.value })
                 }
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MS">MS</SelectItem>
-                  <SelectItem value="PhD">PhD</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="MS">MS</option>
+                <option value="PhD">PhD</option>
+              </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ta_type">TA Type <span className="text-red-600">*</span></Label>
-              <Select
+              <Label htmlFor="ta_type">
+                TA Type <span className="text-red-600">*</span>
+              </Label>
+              <select
+                id="ta_type"
+                className="w-full border rounded px-2 py-1"
                 value={formData.ta_type}
-                onValueChange={(val) =>
-                  setFormData({ ...formData, ta_type: val })
+                onChange={(e) =>
+                  setFormData({ ...formData, ta_type: e.target.value })
                 }
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FT">Full Time</SelectItem>
-                  <SelectItem value="PT">Part Time</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="FT">Full Time</option>
+                <option value="PT">Part Time</option>
+              </select>
             </div>
           </div>
 
-          {/* Advisor dropdown */}
+          {/* Advisor (CmdK search) */}
           <div className="space-y-2">
-            <Label htmlFor="advisor">Advisor <span className="text-red-600">*</span></Label>
-            <Select
-              value={formData.advisor}
-              onValueChange={(val) =>
-                setFormData({ ...formData, advisor: val })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select advisor…" />
-              </SelectTrigger>
-              <SelectContent>
-                {staffOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>
+              Advisor <span className="text-red-600">*</span>
+            </Label>
+            <Command className="border rounded">
+              <CommandInput
+                placeholder={formData.advisor ? "" : "Search advisor…"}
+                value={advisorQuery}
+                onValueChange={(val) => setAdvisorQuery(val)}
+              />
+              <CommandList className="max-h-[8rem] overflow-y-auto">
+                <CommandEmpty>No advisors found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredStaff.map((opt) => (
+                    <CommandItem
+                      key={opt.value}
+                      onSelect={() => {
+                        setFormData({ ...formData, advisor: opt.value })
+                        setAdvisorQuery("")
+                      }}
+                    >
+                      {opt.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+            {formData.advisor && (
+              <Badge
+                variant="secondary"
+                className="inline-flex items-center mt-2 space-x-1"
+              >
+                <span>{formData.advisor}</span>
+                <XIcon
+                  className="w-4 h-4 cursor-pointer"
+                  onClick={() => setFormData({ ...formData, advisor: "" })}
+                />
+              </Badge>
+            )}
           </div>
 
           {/* Actions */}
@@ -253,18 +285,23 @@ export default function CreateTAModal({
             <Button
               variant="outline"
               onClick={() => {
-                setError("");
-                onOpenChange(false);
+                setError("")
+                onOpenChange(false)
               }}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+            >
               {loading ? "Creating..." : "Create TA"}
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
