@@ -76,6 +76,10 @@ export default function WeeklyScheduleModal() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
 
   // Fetch schedule on mount
   useEffect(() => {
@@ -117,44 +121,48 @@ export default function WeeklyScheduleModal() {
   }
 
   const handleSaveSlot = async () => {
-    if (!editSlot) return
-    if (!newCourse.trim()) {
-      setMessage("Course name cannot be empty.")
-      return
-    }
-    try {
-      const res = await apiClient.post("/schedule/update-weekly/", {
-        day: editSlot.day,
-        time_slot: editSlot.time_slot,
-        course: newCourse.trim(),
-      })
-      if (res.data.status === "success") {
-        setMessage("Slot updated successfully.")
-        setSlots((prev) => {
-          const updated = [...prev]
-          const index = updated.findIndex((s) => s.day === editSlot.day && s.time_slot === editSlot.time_slot)
-          if (index >= 0) {
-            updated[index] = { ...updated[index], course: newCourse.trim(), id: res.data.slot_id }
-          } else {
-            updated.push({
-              id: res.data.slot_id,
-              day: editSlot.day,
-              time_slot: editSlot.time_slot,
-              course: newCourse.trim(),
-            })
-          }
-          return updated
-        })
-        setEditSlot(null)
-        setTimeout(() => setMessage(""), 3000)
-      } else {
-        setMessage(res.data.message || "Error updating slot.")
-      }
-    } catch (err) {
-      console.error("Error saving slot:", err)
-      setMessage("Error updating slot.")
-    }
+  if (!editSlot) return
+  if (!newCourse.trim()) {
+    setMessage("Course name cannot be empty.")
+    return
   }
+  setIsSaving(true)
+  try {
+    const res = await apiClient.post("/schedule/update-weekly/", {
+      day: editSlot.day,
+      time_slot: editSlot.time_slot,
+      course: newCourse.trim(),
+    })
+    if (res.data.status === "success") {
+      setMessage("Slot updated successfully.")
+      setSlots((prev) => {
+        const updated = [...prev]
+        const index = updated.findIndex((s) => s.day === editSlot.day && s.time_slot === editSlot.time_slot)
+        if (index >= 0) {
+          updated[index] = { ...updated[index], course: newCourse.trim(), id: res.data.slot_id }
+        } else {
+          updated.push({
+            id: res.data.slot_id,
+            day: editSlot.day,
+            time_slot: editSlot.time_slot,
+            course: newCourse.trim(),
+          })
+        }
+        return updated
+      })
+      setEditSlot(null)
+    } else {
+      setMessage(res.data.message || "Error updating slot.")
+    }
+  } catch (err) {
+    console.error("Error saving slot:", err)
+    setMessage("Error updating slot.")
+  } finally {
+    setIsSaving(false)
+    setTimeout(() => setMessage(""), 3000)
+  }
+}
+
 
   const handleDeleteSlot = async () => {
     if (!editSlot) return
@@ -183,6 +191,38 @@ export default function WeeklyScheduleModal() {
     }
   }
 
+  const confirmDeleteSlot = async () => {
+  if (!editSlot) return
+  const slotId = getSlotId(editSlot.day, editSlot.time_slot)
+  if (!slotId) {
+    setEditSlot(null)
+    return
+  }
+  setIsDeleting(true)
+  try {
+    const res = await apiClient.post("/schedule/delete-weekly/", {
+      id: slotId,
+      day: editSlot.day,
+      time_slot: editSlot.time_slot,
+    })
+    if (res.data.status === "success") {
+      setMessage("Slot deleted successfully.")
+      setSlots((prev) => prev.filter((s) => !(s.day === editSlot.day && s.time_slot === editSlot.time_slot)))
+      setEditSlot(null)
+    } else {
+      setMessage(res.data.message || "Error deleting slot.")
+    }
+  } catch (err) {
+    console.error("Error deleting slot:", err)
+    setMessage("Error deleting slot.")
+  } finally {
+    setIsDeleting(false)
+    setShowConfirmDelete(false)
+    setTimeout(() => setMessage(""), 3000)
+  }
+}
+
+
   return (
     <Card className="mt-6">
       <CardHeader className="pb-3">
@@ -190,6 +230,14 @@ export default function WeeklyScheduleModal() {
           <CardTitle className="flex items-center text-2xl font-bold">
             <CalendarDays className="mr-2 h-6 w-6 text-blue-600" /> WEEKLY SCHEDULE
           </CardTitle>
+          {isEditMode ? (
+            <div className="text-blue-700 text-lg font-medium">
+              You are in Editing Mode
+            </div>
+          ) : (
+            <div>
+            </div>
+          )}
 
           <Button
             onClick={() => {
@@ -197,11 +245,11 @@ export default function WeeklyScheduleModal() {
               setEditSlot(null)
             }}
             variant={isEditMode ? "default" : "outline"}
-            className="gap-1"
+            className="gap-1 bg-blue-600 hover:bg-blue-500 text-white"
           >
             {isEditMode ? (
               <>
-                <Check className="h-4 w-4" /> Done
+                <Check className="h-4 w-4" /> Save
               </>
             ) : (
               <>
@@ -285,20 +333,45 @@ export default function WeeklyScheduleModal() {
               <DialogFooter className="flex justify-between sm:justify-between">
                 <div>
                   {editSlot.id && editSlot.course && (
-                    <Button variant="destructive" onClick={handleDeleteSlot} className="mr-2">
-                      Delete
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowConfirmDelete(true)}
+                      className="mr-2"
+                      disabled={isSaving || isDeleting}
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
                     </Button>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setEditSlot(null)}>
+                  <Button variant="outline" onClick={() => setEditSlot(null)} disabled={isSaving || isDeleting}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveSlot}>Save</Button>
+                  <Button className="bg-blue-600 hover:bg-blue-500 text-white" onClick={handleSaveSlot} disabled={isSaving || isDeleting}>
+                    {isSaving ? "Saving..." : "Save"}
+                  </Button>
                 </div>
               </DialogFooter>
             </DialogContent>
           )}
+        </Dialog>
+        <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete} >
+          <DialogContent className="backdrop-transparent">
+            <DialogHeader>
+              <DialogTitle>Confirm Deletion</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 text-sm">
+              Are you sure you want to delete this slot ({editSlot?.day} {editSlot?.time_slot})?
+            </div>
+            <DialogFooter className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowConfirmDelete(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteSlot} disabled={isDeleting}>
+                {isDeleting ? "Deleting..." : "Yes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       </CardContent>
     </Card>
