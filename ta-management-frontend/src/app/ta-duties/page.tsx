@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
-import { CheckCircle, Plus, Check, X } from "lucide-react"
+import { CheckCircle, Plus, Check, X, Pencil } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -62,9 +62,12 @@ export default function TADutiesPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("error")
   const [activeTab, setActiveTab] = useState("pending")
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingDuty, setEditingDuty] = useState<Duty | null>(null)
   const [courseQuery, setCourseQuery] = useState("")
+
   const formatDate = (iso: string) => {
-    const [year, month, day] = iso.split('-')
+    const [year, month, day] = iso.split("-")
     return `${day}.${month}.${year}`
   }
 
@@ -80,7 +83,20 @@ export default function TADutiesPage() {
       description: "",
     },
   })
-  
+
+  // Initialize edit form
+  const editForm = useForm<DutyFormValues>({
+    resolver: zodResolver(dutyFormSchema),
+    defaultValues: {
+      duty_type: "",
+      date: "",
+      start_time: "",
+      end_time: "",
+      course_code: "",
+      description: "",
+    },
+  })
+
   // Helper: convert decimal hours to "Hh Mm"
   function formatDuration(durationInHours: number): string {
     const totalMinutes = Math.round(durationInHours * 60)
@@ -130,10 +146,11 @@ export default function TADutiesPage() {
   }
 
   const filteredCourses = courses.filter(
-    c =>
+    (c) =>
       c.code.toLowerCase().includes(courseQuery.toLowerCase()) ||
-      c.name.toLowerCase().includes(courseQuery.toLowerCase())
+      c.name.toLowerCase().includes(courseQuery.toLowerCase()),
   )
+
   // On mount (and once user is known), fetch duties if TA, and fetch courses
   useEffect(() => {
     if (user && user.isTA) {
@@ -165,10 +182,63 @@ export default function TADutiesPage() {
     }
   }
 
+  // Submit handler for editing a duty
+  const onEditSubmit = async (data: DutyFormValues) => {
+    if (!editingDuty) return
+
+    setMessage("")
+    try {
+      const res = await apiClient.post(`/taduties/update-duty/${editingDuty.id}/`, data)
+      if (res.data.status === "success") {
+        setMessage("Duty updated successfully!")
+        setMessageType("success")
+        fetchDuties()
+        // Reset form
+        editForm.reset()
+        // Close modal
+        setShowEditModal(false)
+        setEditingDuty(null)
+      } else {
+        setMessage(res.data.message || "Error updating duty.")
+        setMessageType("error")
+      }
+    } catch {
+      setMessage("Error updating duty.")
+      setMessageType("error")
+    }
+  }
+
+  // Handle edit button click
+  const handleEdit = (duty: Duty) => {
+    setEditingDuty(duty)
+
+    // Convert duty type from display format to value format
+    const dutyTypeValue = duty.duty_type.toLowerCase().replace(/ /g, "_")
+
+    // Populate the edit form with the duty data
+    editForm.reset({
+      duty_type: dutyTypeValue,
+      date: duty.date,
+      start_time: duty.start_time,
+      end_time: duty.end_time,
+      course_code: duty.course || "",
+      description: duty.description || "",
+    })
+
+    setShowEditModal(true)
+  }
+
   // Handle cancel button click
   const handleCancel = () => {
     form.reset()
     setShowCreateModal(false)
+  }
+
+  // Handle edit cancel button click
+  const handleEditCancel = () => {
+    editForm.reset()
+    setShowEditModal(false)
+    setEditingDuty(null)
   }
 
   // Loading and error messages
@@ -243,6 +313,7 @@ export default function TADutiesPage() {
                             <TableHead>Duration</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Description</TableHead>
+                            <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -261,6 +332,17 @@ export default function TADutiesPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="max-w-[200px] truncate">{duty.description || "-"}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(duty)}
+                                  className="flex items-center gap-1"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Edit
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -363,7 +445,9 @@ export default function TADutiesPage() {
                         name="duty_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Task Type <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Task Type <span className="text-red-500">*</span>
+                            </FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -396,14 +480,17 @@ export default function TADutiesPage() {
                               {field.value ? (
                                 // Show selected course with clear button
                                 <div className="flex items-center justify-between border rounded p-2">
-                                  <span>{courses.find(c => c.code === field.value)?.code || field.value} - {courses.find(c => c.code === field.value)?.name || ""}</span>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 w-6 p-0" 
+                                  <span>
+                                    {courses.find((c) => c.code === field.value)?.code || field.value} -{" "}
+                                    {courses.find((c) => c.code === field.value)?.name || ""}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
                                     onClick={() => {
-                                      field.onChange("");
-                                      setCourseQuery("");
+                                      field.onChange("")
+                                      setCourseQuery("")
                                     }}
                                   >
                                     <X className="h-4 w-4 text-red-600" />
@@ -424,8 +511,8 @@ export default function TADutiesPage() {
                                         <CommandItem
                                           key={course.id}
                                           onSelect={() => {
-                                            field.onChange(course.code);
-                                            setCourseQuery("");  // Clear the query after selection
+                                            field.onChange(course.code)
+                                            setCourseQuery("") // Clear the query after selection
                                           }}
                                         >
                                           <Check
@@ -445,18 +532,25 @@ export default function TADutiesPage() {
                           </FormItem>
                         )}
                       />
-                      </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Date */}
                       <FormField
                         control={form.control}
                         name="date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Date <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Date <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-36" max = {new Date().toISOString().split("T")[0]} />
+                              <Input
+                                type="date"
+                                {...field}
+                                className="w-36"
+                                max={new Date().toISOString().split("T")[0]}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -469,7 +563,9 @@ export default function TADutiesPage() {
                         name="start_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Time <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Start Time <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input type="time" {...field} className="w-30" />
                             </FormControl>
@@ -484,7 +580,9 @@ export default function TADutiesPage() {
                         name="end_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Time <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              End Time <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input type="time" {...field} className="w-30" />
                             </FormControl>
@@ -516,6 +614,169 @@ export default function TADutiesPage() {
                       </Button>
                       <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
                         Send Request
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Duty Modal */}
+      {showEditModal && editingDuty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl mx-4"
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="border-blue-600 border-2">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-blue-600">Edit Task</CardTitle>
+                </div>
+                <CardDescription>Update your pending duty request.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...editForm}>
+                  <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                      {/* Duty Type */}
+                      <FormField
+                        control={editForm.control}
+                        name="duty_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Task Type <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select task type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="lab">Lab</SelectItem>
+                                <SelectItem value="grading">Grading</SelectItem>
+                                <SelectItem value="recitation">Recitation</SelectItem>
+                                <SelectItem value="office_hours">Office Hours</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Course (disabled, read-only) */}
+                      <FormField
+                        control={editForm.control}
+                        name="course_code"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Course</FormLabel>
+                            <div className="border rounded p-2 bg-gray-50">
+                              {field.value ? (
+                                <span>
+                                  {courses.find((c) => c.code === field.value)?.code || field.value} -{" "}
+                                  {courses.find((c) => c.code === field.value)?.name || ""}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">No course selected</span>
+                              )}
+                            </div>
+                            <FormDescription>Course cannot be changed for existing duties.</FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Date */}
+                      <FormField
+                        control={editForm.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Date <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                className="w-36"
+                                max={new Date().toISOString().split("T")[0]}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Start Time */}
+                      <FormField
+                        control={editForm.control}
+                        name="start_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              Start Time <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} className="w-30" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* End Time */}
+                      <FormField
+                        control={editForm.control}
+                        name="end_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              End Time <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} className="w-30" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <FormField
+                      control={editForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Optional description of the task" {...field} />
+                          </FormControl>
+                          <FormDescription>Provide any additional details about this duty.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
+                      <Button type="button" variant="outline" onClick={handleEditCancel}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
+                        Update Request
                       </Button>
                     </CardFooter>
                   </form>

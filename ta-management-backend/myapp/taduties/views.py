@@ -283,3 +283,95 @@ def list_past_requests(request):
         })
 
     return JsonResponse({"status": "success", "duties": duty_list})
+
+
+@require_POST
+@transaction.atomic
+def update_duty(request, duty_id):
+    """
+    Update an existing duty request.
+    Only pending duties can be updated, and only by the TA who created them.
+    The course cannot be changed.
+    """
+    session_email = request.session.get("user_email")
+    if not session_email:
+        return JsonResponse({"status": "error", "message": "Not authenticated"}, status=401)
+    
+    user, user_type = find_user_by_email(session_email)
+    if not user or user_type != "TA":
+        return JsonResponse({"status": "error", "message": "Only TAs can update duties"}, status=403)
+
+    # Get the duty
+    try:
+        duty = TADuty.objects.get(id=duty_id)
+    except TADuty.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Duty not found"}, status=404)
+    
+    # Check if the duty belongs to the TA
+    if duty.ta_user != user:
+        return JsonResponse({"status": "error", "message": "You can only update your own duties"}, status=403)
+    
+    # Check if the duty is still pending
+    if duty.status != "pending":
+        return JsonResponse({"status": "error", "message": "Only pending duties can be updated"}, status=400)
+    
+    # Parse request data
+    data = json.loads(request.body)
+    duty_type = data.get("duty_type")
+    date_str = data.get("date")
+    start_time_str = data.get("start_time")
+    end_time_str = data.get("end_time")
+    description = data.get("description", "")
+    
+    # Validate required fields
+    if not (duty_type and date_str and start_time_str and end_time_str):
+        return JsonResponse({"status": "error", "message": "Missing required fields"}, status=400)
+    
+    # Parse the date/time
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        start_obj = datetime.strptime(start_time_str, "%H:%M").time()
+        end_obj = datetime.strptime(end_time_str, "%H:%M").time()
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "Invalid date/time format"}, status=400)
+    
+    # Store original values for change detection
+    changes = []
+    if duty.duty_type != duty_type:
+        changes.append(f"Type changed from {duty.get_duty_type_display()} to {duty_type}")
+    
+    if duty.date != date_obj:
+        changes.append(f"Date changed from {duty.date.isoformat()} to {date_obj.isoformat()}")
+    
+    if duty.start_time.strftime("%H:%M") != start_time_str:
+        changes.append(f"Start time changed from {duty.start_time.strftime('%H:%M')} to {start_time_str}")
+    
+    if duty.end_time.strftime("%H:%M") != end_time_str:
+        changes.append(f"End time changed from {duty.end_time.strftime('%H:%M')} to {end_time_str}")
+    
+    if duty.description != description:
+        changes.append("Description was updated")
+    
+    # Update the duty
+    duty.duty_type = duty_type
+    duty.date = date_obj
+    duty.start_time = start_obj
+    duty.end_time = end_obj
+    duty.description = description
+    duty.save()
+    
+    # Notify instructors about the changes if there were any
+    if changes and duty.course:
+        change_summary = ", ".join(changes)
+        for instructor in duty.course.instructors.all():
+            create_notification(
+                recipient_email=instructor.email,
+                message=f"{user.name} {user.surname} updated a duty request for course {duty.course.code}. Changes: {change_summary}"
+            )
+    
+    return JsonResponse({
+        "status": "success",
+        "message": "Duty updated successfully.",
+        "duty_id": duty.id
+    })
+

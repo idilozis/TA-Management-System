@@ -186,9 +186,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <SidebarHeader className={`border-b border-gray-200 p-0 ${isCollapsed ? "py-4" : ""}`}>
         <div className={`flex flex-col items-center px-6 py-4 text-center ${isCollapsed ? "py-0" : ""}`}>
           <img
-            src="/blank-profile-icon.png"
+            src="/bilkent-logo.png"
             alt="Profile"
-            className={`${isCollapsed ? "h-8 w-8 mb-0" : "mb-3 h-16 w-16"} rounded-full border border-gray-300`}
+            className={`${isCollapsed ? "h-8 w-8 mb-0" : "mb-3 h-25 w-25"} rounded-full border border-gray-300`}
           />
           {/* Hide these elements when collapsed */}
           {!isCollapsed && user && (

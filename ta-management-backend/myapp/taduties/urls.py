@@ -9,4 +9,5 @@ urlpatterns = [
     path("pending-requests/", list_pending_duties, name="list_pending_duties"),
     path("past-requests/", list_past_requests, name="list_past_duties"),
     path("<int:duty_id>/update-status/", update_duty_status, name="update_duty_status"),
+    path('update-duty/<int:duty_id>/', update_duty, name='update_duty'),
 ]
