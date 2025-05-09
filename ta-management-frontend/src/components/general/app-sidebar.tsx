@@ -73,7 +73,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...((user && user.isTA) || (user && user.isAuth)
+    ...((user && user.isTA) || (user && user.isAuth && user.role != "ADMIN")
       ? [
           {
             name: "Leave Requests",
@@ -81,7 +81,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             icon: CalendarOff,
           },
         ]
-      : []),  
+      : []),
     ...(user && !user.isTA && !user.isAuth
       ? [
           {
@@ -109,7 +109,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && !user.isTA && user.isAuth && (user.role == "DEAN" || user.role == "ADMIN")
+    ...(user && !user.isTA && user.isAuth && user.role == "DEAN"
       ? [
           {
             name: "Exams",
@@ -118,7 +118,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && user.isAuth
+    ...(user && user.isAuth && user.role != "ADMIN"
       ? [
           { 
             name:"Swaps", 

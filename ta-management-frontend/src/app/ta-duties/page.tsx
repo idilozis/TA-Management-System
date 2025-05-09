@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import apiClient from "@/lib/axiosClient"
-import { CheckCircle, Plus } from "lucide-react"
+import { CheckCircle, Plus, Check, X } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -61,6 +62,7 @@ export default function TADutiesPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("error")
   const [activeTab, setActiveTab] = useState("pending")
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [courseQuery, setCourseQuery] = useState("")
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split('-')
     return `${day}.${month}.${year}`
@@ -78,7 +80,7 @@ export default function TADutiesPage() {
       description: "",
     },
   })
-
+  
   // Helper: convert decimal hours to "Hh Mm"
   function formatDuration(durationInHours: number): string {
     const totalMinutes = Math.round(durationInHours * 60)
@@ -127,6 +129,11 @@ export default function TADutiesPage() {
     }
   }
 
+  const filteredCourses = courses.filter(
+    c =>
+      c.code.toLowerCase().includes(courseQuery.toLowerCase()) ||
+      c.name.toLowerCase().includes(courseQuery.toLowerCase())
+  )
   // On mount (and once user is known), fetch duties if TA, and fetch courses
   useEffect(() => {
     if (user && user.isTA) {
@@ -349,7 +356,7 @@ export default function TADutiesPage() {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                       {/* Duty Type */}
                       <FormField
                         control={form.control}
@@ -382,28 +389,65 @@ export default function TADutiesPage() {
                         name="course_code"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Course <span className="text-red-500">*</span></FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select course" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {courses.map((course) => (
-                                  <SelectItem key={course.id} value={course.code}>
-                                    {course.code} - {course.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>
+                              Course <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <div className="relative">
+                              {field.value ? (
+                                // Show selected course with clear button
+                                <div className="flex items-center justify-between border rounded p-2">
+                                  <span>{courses.find(c => c.code === field.value)?.code || field.value} - {courses.find(c => c.code === field.value)?.name || ""}</span>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 w-6 p-0" 
+                                    onClick={() => {
+                                      field.onChange("");
+                                      setCourseQuery("");
+                                    }}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                // Show command component for searching
+                                <Command className="border rounded">
+                                  <CommandInput
+                                    placeholder="Search courses..."
+                                    value={courseQuery}
+                                    onValueChange={setCourseQuery}
+                                  />
+                                  <CommandList className="max-h-[8rem] overflow-y-auto">
+                                    <CommandEmpty>No courses found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {filteredCourses.map((course) => (
+                                        <CommandItem
+                                          key={course.id}
+                                          onSelect={() => {
+                                            field.onChange(course.code);
+                                            setCourseQuery("");  // Clear the query after selection
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 ${
+                                              field.value === course.code ? "opacity-100" : "opacity-0"
+                                            }`}
+                                          />
+                                          {course.code} - {course.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              )}
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Date */}
                       <FormField
                         control={form.control}

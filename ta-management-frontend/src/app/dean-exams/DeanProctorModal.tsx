@@ -19,7 +19,11 @@ interface DeanExam {
   classrooms: string[]
   num_proctors: number
   student_count: number
-  assigned_tas: string[]
+  assigned_tas: Array<{
+    email: string
+    first_name: string
+    last_name: string
+  }>
 }
 
 interface TA {

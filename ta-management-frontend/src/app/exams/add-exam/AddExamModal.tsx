@@ -90,7 +90,7 @@ export default function AddExamModal({ onClose }: AddExamModalProps) {
         end_time:      endTime,
         num_proctors:  numProctors,
         student_count: studentCount,
-        classrooms,    // <-- array of selected rooms
+        classrooms,
       }
       const res = await apiClient.post("/exams/create-exam/", payload)
       if (res.data.status === "success") {

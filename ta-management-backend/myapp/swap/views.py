@@ -7,9 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta, datetime
 from django.shortcuts import get_object_or_404
-from myapp.taleave.models import TALeaveRequests
-from myapp.schedule.models import TAWeeklySlot
 from django.db.models import Q, F, Case, When, Value, CharField, DateField
+from django.db.models.functions import Replace, Lower
 
 from myapp.userauth.helpers import find_user_by_email
 from myapp.utils import advisor_department
@@ -18,6 +17,9 @@ from myapp.notificationsystem.views import create_notification
 from myapp.proctoring.models import ProctoringAssignment
 from myapp.swap.models import SwapRequest
 from myapp.models import TAUser, AuthorizedUser
+from myapp.taleave.models import TALeaveRequests
+from myapp.schedule.models import TAWeeklySlot
+from myapp.models import GlobalSettings
 
 # -----------------------------
 # TA-initiated Swap
@@ -239,14 +241,12 @@ def swap_candidates(request, assignment_id):
     if role != "TA":
         return JsonResponse({"status":"error","message":"Only TAs can fetch candidates"}, status=403)
 
-    pa = get_object_or_404(ProctoringAssignment.objects.select_related("exam","dean_exam","ta"),
-                           pk=assignment_id)
+    pa = get_object_or_404(ProctoringAssignment.objects.select_related("exam","dean_exam","ta"), pk=assignment_id)
     if pa.ta != user:
         return JsonResponse({"status":"error","message":"Permission denied"}, status=403)
 
-    # Is this a dean exam assignment?
+    # Determine exam vs. dean-exam
     is_dean = pa.exam is None and pa.dean_exam is not None
-
     # Common data
     exam       = pa.exam or pa.dean_exam
     date       = exam.date
@@ -289,6 +289,20 @@ def swap_candidates(request, assignment_id):
             original_assignment__dean_exam__end_time=end_time)
         ).values_list("requested_to__email", flat=True)
     )
+    
+    if not is_dean:
+        norm_code = exam.course.code.replace(" ", "").lower()
+        enrolled_set = set(
+            TAWeeklySlot.objects
+              .annotate(norm=Lower(Replace(F('course'), Value(' '), Value(''))))
+              .filter(norm=norm_code)
+              .values_list('ta__email', flat=True)
+        )
+    else:
+        enrolled_set = set()
+
+    settings = GlobalSettings.objects.first()
+    max_wl = settings.max_ta_workload if settings else None
 
     assignable, unassignable = [], []
     for ta in TAUser.objects.filter(isTA=True):
@@ -305,9 +319,12 @@ def swap_candidates(request, assignment_id):
             reasons.append("Lecture conflict")
         if ta.email in pending_emails:
             reasons.append("Already has a pending swap request for this exam")
-        # Only check department for normal exams
         if not is_dean and advisor_department(ta.advisor) != instr_dept:
             reasons.append("Different department")
+        if max_wl is not None and ta.workload > max_wl:
+            reasons.append("Over max workload")
+        if ta.email in enrolled_set:
+            reasons.append("Enrolled in course")
 
         rec = {
             "email":    ta.email,
@@ -428,6 +445,20 @@ def candidate_tas_staff(request, assignment_id):
         ).values_list("ta__email", flat=True)
     )
 
+    if not is_dean:
+        norm_code = exam.course.code.replace(" ", "").lower()
+        enrolled_set = set(
+            TAWeeklySlot.objects
+              .annotate(norm=Lower(Replace(F('course'), Value(' '), Value(''))))
+              .filter(norm=norm_code)
+              .values_list('ta__email', flat=True)
+        )
+    else:
+        enrolled_set = set()
+
+    settings = GlobalSettings.objects.first()
+    max_wl = settings.max_ta_workload if settings else None
+    
     assignable, excluded = [], []
     for ta in TAUser.objects.filter(isTA=True):
         reasons = []
@@ -440,7 +471,11 @@ def candidate_tas_staff(request, assignment_id):
         if ta.email in conflicts:
             reasons.append("Lecture conflict")
         if not is_dean and advisor_department(ta.advisor) != instr_dept:
-            reasons.append("Different department")
+            reasons.append("Different department")        
+        if max_wl is not None and ta.workload > max_wl:
+            reasons.append("Over max workload")
+        if ta.email in enrolled_set:
+            reasons.append("Enrolled in course")
 
         rec = {
             "email": ta.email,

@@ -24,7 +24,11 @@ interface Exam {
   classrooms: string[]
   num_proctors: number
   student_count: number
-  assigned_tas: string[]
+  assigned_tas: Array<{
+    email: string
+    first_name: string
+    last_name: string
+  }>
 }
 
 interface TA {
@@ -325,13 +329,13 @@ export default function ProctorStaff() {
                           <TableCell className="text-center">{exam.student_count}</TableCell>
                           <TableCell>
                             <div className="space-y-1">
-                              {exam.assigned_tas.map((email) => (
+                              {exam.assigned_tas.map((ta) => (
                                 <Badge
-                                  key={email}
+                                  key={ta.email}
                                   variant="outline"
                                   className="bg-green-100 text-green-800 border-green-200 block"
                                 >
-                                  {email}
+                                  {ta.first_name} {ta.last_name} ({ta.email})
                                 </Badge>
                               ))}
                             </div>

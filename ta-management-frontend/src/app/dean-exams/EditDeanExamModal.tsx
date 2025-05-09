@@ -27,7 +27,7 @@ interface DeanExam {
   classrooms: string[]
   num_proctors: number
   student_count: number
-  assigned_tas: string[]
+  // assigned_tas: string[]
 }
 
 interface EditDeanExamModalProps {
@@ -243,7 +243,7 @@ export default function EditDeanExamModal({ exam, onClose }: EditDeanExamModalPr
                     <Label>Number of Proctors</Label>
                     <Input
                       type="text"
-                      value={`De-proctor to Reassign`}
+                      value={`Delete Exam to Reassign`}
                       disabled
                       className="cursor-not-allowed bg-gray-100 text-gray-500"
                     />

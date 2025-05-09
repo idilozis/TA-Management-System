@@ -75,6 +75,7 @@ def get_current_user(request):
             "email": user.email,
             "program": user.program,
             "advisor": user.advisor,
+            "workload": user.workload,
             "isTA": True,
             "isAuth": False,
         }

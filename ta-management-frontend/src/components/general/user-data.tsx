@@ -22,6 +22,7 @@ export interface UserData {
   // TAs
   program?: string;
   advisor?: string;
+  workload?: number;
 
   // Staff
   department?: string;

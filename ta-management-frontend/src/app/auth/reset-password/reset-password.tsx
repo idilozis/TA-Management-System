@@ -73,17 +73,14 @@ export default function ResetPassword() {
         }, 3000);
       }
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        setMessage(error.message || "Something went wrong.");
-      } else {
-        setMessage("Something went wrong.");
-      }
+      const axiosError = error as any;
+      const serverMsg = axiosError?.response?.data?.message ?? "Something went wrong. Please try again.";
+      setMessage(serverMsg);
     }
   };
 
   return (
     <div className="relative flex flex-col min-h-screen bg-blue-950 overflow-hidden z-0">
-      {/* NOT WORKING WHEN text-transparent is used BILKENT background text with campus images */}
       <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 text-[14rem] font-bold text-transparent select-none bilkent-text">
         BİLKENT
       </div>

@@ -149,7 +149,15 @@ def list_staff_exams(request):
     exams_data = []
     for exam in exams:
         # Get confirmed TA assignments from the ProctoringAssignment relation.
-        assigned_tas = list(exam.proctoring_assignments.values_list('ta__email', flat=True))
+        assigned_tas = []
+        for pa in exam.proctoring_assignments.select_related('ta'):
+            t = pa.ta
+            assigned_tas.append({
+                "email": t.email,
+                "first_name": t.name,
+                "last_name": t.surname,
+            })
+        # assigned_tas = list(exam.proctoring_assignments.values_list('ta__email', flat=True))
         exams_data.append({
             "id": exam.id,
             "course_code": exam.course.code,
@@ -183,7 +191,7 @@ def list_ta_exams(request):
     assignments = (
         ProctoringAssignment.objects
             .filter(ta=user)
-            .select_related("exam__course", "dean_exam")   # single SQL round‑trip
+            .select_related("exam__course", "dean_exam")
     )
 
     exams = []
@@ -192,14 +200,16 @@ def list_ta_exams(request):
             src   = pa.exam
             code  = src.course.code
             name  = src.course.name
+            is_paid_proctoring = False
         else:                               # Dean‑office exam
             src   = pa.dean_exam
             code  = ", ".join(src.course_codes)
-            name  = ""                       # dean exams don’t store a name
+            name  = ""                      # Dean-office exams don’t store a name
+            is_paid_proctoring = all(c not in REAL_COURSE_CODES for c in src.course_codes)
 
         pending = SwapRequest.objects.filter(original_assignment=pa,status="pending").exists()
         
-        exams.append({
+        exam_data = {
             "assignment_id": pa.id,          
             "id"          : src.id,
             "course_code" : code,
@@ -211,7 +221,12 @@ def list_ta_exams(request):
             "num_proctors": src.num_proctors,
             "student_count": src.student_count,
             "has_pending_swap": pending,
-        })
+            "paid_proctoring": False,
+        }
+
+        if is_paid_proctoring:
+            exam_data["paid_proctoring"] = True
+        exams.append(exam_data)
 
     return JsonResponse({"status": "success", "exams": exams})
 
@@ -389,8 +404,16 @@ def list_dean_exams(request):
     qs = DeanExam.objects.order_by("-date", "-start_time")
     exams = []
     for ex in qs:
-        exams.append({
-            "id": ex.id,
+        assigned_tas = []
+        for pa in ex.proctoring_assignments.select_related('ta'):
+            t = pa.ta
+            assigned_tas.append({
+                "email": t.email,
+                "first_name": t.name,
+                "last_name": t.surname,
+            })
+        exam_data = {       
+            "id" : ex.id,
             "course_codes": ex.course_codes,
             "date": ex.date.strftime("%Y-%m-%d"),
             "start_time": ex.start_time.strftime("%H:%M"),
@@ -398,8 +421,13 @@ def list_dean_exams(request):
             "classrooms": ex.classrooms,
             "num_proctors": ex.num_proctors,
             "student_count": ex.student_count,
-            "assigned_tas": list(ex.proctoring_assignments.values_list("ta__email", flat=True)),
-        })
+            "assigned_tas": assigned_tas,
+            "paid_proctoring": False,
+        }
+
+        if all(code not in REAL_COURSE_CODES for code in ex.course_codes):
+            exam_data["paid_proctoring"] = True
+        exams.append(exam_data)
 
     return JsonResponse({"status":"success","exams":exams})
 

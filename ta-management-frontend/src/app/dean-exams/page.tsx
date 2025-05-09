@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { Badge } from "@/components/ui/badge"
 import { AppSidebar } from "@/components/general/app-sidebar"
 import { useUser } from "@/components/general/user-data"
 import { PageLoader } from "@/components/ui/loading-spinner"
@@ -35,7 +36,12 @@ interface DeanExam {
   classrooms: string[]
   num_proctors: number
   student_count: number
-  assigned_tas: string[]
+  assigned_tas: Array<{
+    email: string
+    first_name: string
+    last_name: string
+  }>
+  paid_proctoring?: boolean
 }
 
 export default function DeanExamsPage() {
@@ -49,7 +55,9 @@ export default function DeanExamsPage() {
   const [currentProctorExam, setCurrentProctorExam] = useState<DeanExam | null>(null)
   const [examToEdit, setExamToEdit] = useState<DeanExam | null>(null)
   const [showProctorsDialog, setShowProctorsDialog] = useState(false)
-  const [selectedExamProctors, setSelectedExamProctors] = useState<string[]>([])
+  const [selectedExamProctors, setSelectedExamProctors] = useState<
+    Array<{ email: string; first_name: string; last_name: string }>
+  >([])
   const [selectedExamName, setSelectedExamName] = useState<string>("")
 
   useEffect(() => {
@@ -149,7 +157,17 @@ export default function DeanExamsPage() {
                       <TableBody>
                         {exams.map((ex) => (
                           <TableRow key={ex.id} className="hover:bg-muted/30">
-                            <TableCell>{ex.course_codes.join(", ")}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <span>{ex.course_codes.join(", ")}</span>
+                                {ex.paid_proctoring && (
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                    Paid Proctoring
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            
                             <TableCell>{fmtDate(ex.date)}</TableCell>
                             <TableCell>
                               {ex.start_time} - {ex.end_time}
@@ -279,16 +297,19 @@ export default function DeanExamsPage() {
               </DialogHeader>
               <div className="py-4">
                 {selectedExamProctors.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedExamProctors.map((email) => (
-                      <div key={email} className="p-2 bg-green-50 border border-green-200 rounded-md">
-                        {email}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground">No proctors assigned</p>
-                )}
+                <div className="space-y-2">
+                  {selectedExamProctors.map((ta) => (
+                    <div
+                      key={ta.email}
+                      className="p-2 bg-green-50 border border-green-200 rounded-md"
+                    >
+                      {ta.first_name} {ta.last_name} ({ta.email})
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">No proctors assigned</p>
+              )}
               </div>
             </DialogContent>
           </Dialog>

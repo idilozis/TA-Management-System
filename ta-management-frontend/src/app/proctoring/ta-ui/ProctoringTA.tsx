@@ -40,6 +40,7 @@ interface Exam {
   num_proctors: number;
   student_count: number;
   has_pending_swap?: boolean;
+  paid_proctoring?: boolean;
 }
 
 export default function ProctoringTA() {
@@ -175,9 +176,14 @@ export default function ProctoringTA() {
                       {upcomingExams.map((exam) => (
                         <TableRow key={exam.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">
-                            <div>{exam.course_code}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {exam.course_name}
+                            <div className="flex items-center space-x-2">
+                              <span>{exam.course_code}</span>
+                              {exam.paid_proctoring && (
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                  Paid Proctoring
+                                </Badge>
+                              )}
+                              <span className="text-sm text-muted-foreground">{exam.course_name}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -248,9 +254,14 @@ export default function ProctoringTA() {
                       {pastExams.map((exam) => (
                         <TableRow key={exam.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">
-                            <div>{exam.course_code}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {exam.course_name}
+                            <div className="flex items-center space-x-2">
+                              <span>{exam.course_code}</span>
+                              {exam.paid_proctoring && (
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                  Paid Proctoring
+                                </Badge>
+                              )}
+                              <span className="text-sm text-muted-foreground">{exam.course_name}</span>
                             </div>
                           </TableCell>
                           <TableCell>

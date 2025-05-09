@@ -260,7 +260,7 @@ export default function SettingsPage() {
               </CardFooter>
             </Card>
 
-            {/* --- Global Settings (Admin Only) --- */}
+            {/* Global Settings (Admin Only) */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-blue-600">Global Settings</CardTitle>
@@ -272,6 +272,8 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  {/* Semester */}
                   <div className="space-y-2">
                     <Label htmlFor="semester">Current Semester</Label>
                     {isAdmin ? (
@@ -286,9 +288,12 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workload">Max TA Workload (hrs)</Label>
-                    {isAdmin ? (
+                  
+                  {/* Workload */}
+                  {isAdmin ? (
+                    // Admin: editable max workload
+                    <div className="space-y-2">
+                      <Label htmlFor="workload">Max TA Workload (hrs)</Label>
                       <Input
                         id="workload"
                         type="number"
@@ -300,14 +305,28 @@ export default function SettingsPage() {
                           )
                         }
                       />
-                    ) : (
-                      <div className="p-2 border rounded-md bg-muted/20 text-muted-foreground">
-                        {workload} hrs
+                    </div>
+                  ) : (
+                    // Non-admins: read-only
+                    <div className="space-y-2">
+                      <Label>Max TA Workload (hrs)</Label>
+                      <div
+                        className={
+                          "p-2 border rounded-md " +
+                          (user!.isTA
+                            ? "bg-green-50 text-green-800 font-semibold"
+                            : "bg-muted/20 text-muted-foreground")
+                        }
+                      >
+                        {user!.isTA
+                          ? `${user!.workload} / ${workload} hrs`
+                          : `${workload} hrs`}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
+
               {isAdmin && (
                 <CardFooter>
                   <Button
