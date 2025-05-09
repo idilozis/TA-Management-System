@@ -26,7 +26,9 @@ def list_assignment_preferences(request):
         return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
 
     assignments = TAAssignment.objects.all().select_related("staff", "course") \
-        .prefetch_related("must_have_ta", "preferred_tas", "preferred_graders", "avoided_tas")
+        .prefetch_related("must_have_ta", "preferred_tas", "preferred_graders", "avoided_tas") \
+        .order_by("course__code", "staff__surname", "staff__name")
+    
     data = []
     for assignment in assignments:
         data.append({
@@ -260,7 +262,8 @@ def list_allocations(request):
     # Both Staff and Authorized Users can see all allocations
     assignments = TAAllocation.objects.all() \
         .select_related("course") \
-        .prefetch_related("assigned_tas", "assigned_graders")
+        .prefetch_related("assigned_tas", "assigned_graders") \
+        .order_by("course__code")
 
     allocations_data = []
     for allocation in assignments:
@@ -324,7 +327,8 @@ def list_department_tas(request):
 
     # filter TAs by their advisor’s department
     result = []
-    for ta in TAUser.objects.all():
+    tas = TAUser.objects.all().order_by("name", "surname")
+    for ta in tas:
         ta_dept = advisor_department(ta.advisor or "")
         if ta_dept and ta_dept.upper() == dept:
             result.append({
