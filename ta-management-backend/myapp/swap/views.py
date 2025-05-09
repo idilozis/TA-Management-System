@@ -461,6 +461,8 @@ def candidate_tas_staff(request, assignment_id):
     
     assignable, excluded = [], []
     for ta in TAUser.objects.filter(isTA=True):
+        if ta.pk == pa.ta.pk:
+            continue # don’t include the TA who’s already assigned here
         reasons = []
         if ta.email in leave_set:
             reasons.append("On leave")
