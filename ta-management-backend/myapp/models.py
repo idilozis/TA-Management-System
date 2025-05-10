@@ -86,7 +86,7 @@ class Course(models.Model):
 # SECTIONS of Instructors
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sections")
-    instructor = models.ForeignKey(StaffUser, on_delete=models.CASCADE, related_name="sections")
+    instructor = models.ForeignKey(StaffUser, on_delete=models.CASCADE, related_name="sections", null=True, blank=True)
     number = models.PositiveSmallIntegerField(help_text="Section number (e.g. 1, 2…)")
 
     class Meta:
