@@ -37,6 +37,7 @@ export default function RequestsPage() {
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error">("error")
   const [activeTab, setActiveTab] = useState("pending")
+  const [respondingAction, setRespondingAction] = useState<{ id: number; action: "approved" | "rejected" } | null>(null)
 
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split("-")
@@ -93,6 +94,7 @@ export default function RequestsPage() {
 
   // Approve/Reject handler
   const updateDutyStatus = async (dutyId: number, newStatus: string) => {
+    setRespondingAction({ id: dutyId, action: newStatus as "approved" | "rejected" })
     try {
       const res = await apiClient.post(`/taduties/${dutyId}/update-status/`, {
         status: newStatus,
@@ -110,6 +112,8 @@ export default function RequestsPage() {
     } catch {
       setMessage("Error updating duty status.")
       setMessageType("error")
+    } finally {
+      setRespondingAction(null)
     }
   }
 
@@ -223,16 +227,22 @@ export default function RequestsPage() {
                                     size="sm"
                                     className="bg-blue-600 hover:bg-blue-500"
                                     onClick={() => updateDutyStatus(duty.id, "approved")}
+                                    disabled={respondingAction !== null}
                                   >
-                                    Approve
+                                    {respondingAction?.id === duty.id && respondingAction?.action === "approved" 
+                                      ? "Approving..." 
+                                      : "Approve"}
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="destructive"
                                     onClick={() => updateDutyStatus(duty.id, "rejected")}
                                     className="bg-red-600 hover:bg-red-700"
+                                    disabled={respondingAction !== null}
                                   >
-                                    Reject
+                                    {respondingAction?.id === duty.id && respondingAction?.action === "rejected" 
+                                      ? "Rejecting..." 
+                                      : "Reject"}
                                   </Button>
                                 </div>
                               </TableCell>

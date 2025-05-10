@@ -61,6 +61,7 @@ export default function TALeaveTA() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFileName, setSelectedFileName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split('-')
     return `${day}.${month}.${year}`
@@ -103,6 +104,7 @@ export default function TALeaveTA() {
 
   const onSubmit = async (data: LeaveFormValues) => {
     setMessage("")
+    setIsSubmitting(true)
     const formData = new FormData()
     formData.append("leave_type", data.leave_type)
     formData.append("start_date", data.start_date)
@@ -137,6 +139,8 @@ export default function TALeaveTA() {
     } catch {
       setMessage("Error creating leave request.")
       setMessageType("error")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -539,11 +543,11 @@ export default function TALeaveTA() {
                     />
 
                     <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
-                      <Button type="button" variant="outline" onClick={handleCancel}>
+                      <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
-                        Submit Request
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500" disabled={isSubmitting}>
+                        {isSubmitting ? "Submitting Request..." : "Submit Request"}
                       </Button>
                     </CardFooter>
                   </form>

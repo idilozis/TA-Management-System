@@ -65,6 +65,8 @@ export default function TADutiesPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingDuty, setEditingDuty] = useState<Duty | null>(null)
   const [courseQuery, setCourseQuery] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split("-")
@@ -162,6 +164,7 @@ export default function TADutiesPage() {
   // Submit handler for creating a new duty
   const onSubmit = async (data: DutyFormValues) => {
     setMessage("")
+    setIsSubmitting(true)
     try {
       const res = await apiClient.post("/taduties/create-duty/", data)
       if (res.data.status === "success") {
@@ -179,6 +182,8 @@ export default function TADutiesPage() {
     } catch {
       setMessage("Error creating duty.")
       setMessageType("error")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -187,6 +192,7 @@ export default function TADutiesPage() {
     if (!editingDuty) return
 
     setMessage("")
+    setIsUpdating(true)
     try {
       const res = await apiClient.post(`/taduties/update-duty/${editingDuty.id}/`, data)
       if (res.data.status === "success") {
@@ -205,6 +211,8 @@ export default function TADutiesPage() {
     } catch {
       setMessage("Error updating duty.")
       setMessageType("error")
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -609,11 +617,11 @@ export default function TADutiesPage() {
                     />
 
                     <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
-                      <Button type="button" variant="outline" onClick={handleCancel}>
+                      <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
-                        Send Request
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500" disabled={isSubmitting}>
+                        {isSubmitting ? "Sending Request..." : "Send Request"}
                       </Button>
                     </CardFooter>
                   </form>
@@ -772,11 +780,11 @@ export default function TADutiesPage() {
                     />
 
                     <CardFooter className="flex justify-end space-x-2 px-0 pt-4">
-                      <Button type="button" variant="outline" onClick={handleEditCancel}>
+                      <Button type="button" variant="outline" onClick={handleEditCancel} disabled={isUpdating}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
-                        Update Request
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-500" disabled={isUpdating}>
+                        {isUpdating ? "Updating Request..." : "Update Request"}
                       </Button>
                     </CardFooter>
                   </form>

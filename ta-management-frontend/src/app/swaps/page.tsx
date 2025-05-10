@@ -139,6 +139,8 @@ function SwapsTable({
   data: SwapRow[];
   empty: string;
 }) {
+  const [respondingAction, setRespondingAction] = useState<"accept" | "reject" | null>(null);
+
   if (data.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -148,11 +150,14 @@ function SwapsTable({
   }
 
   const respond = async (id: number, decision: "accept" | "reject") => {
+    setRespondingAction(decision);
     try {
       await apiClient.post(`/swap/respond/${id}/`, { decision });
       window.location.reload();
     } catch {
       alert("Swap update failed");
+    } finally {
+      setRespondingAction(null);
     }
   };
 
@@ -202,15 +207,17 @@ function SwapsTable({
                       className="bg-blue-600 hover:bg-blue-500"
                       size="sm"
                       onClick={() => respond(r.swap_id, "accept")}
+                      disabled={respondingAction !== null}
                     >
-                      Accept
+                      {respondingAction === "accept" ? "Accepting..." : "Accept"}
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() => respond(r.swap_id, "reject")}
+                      disabled={respondingAction !== null}
                     >
-                      Reject
+                      {respondingAction === "reject" ? "Rejecting..." : "Reject"}
                     </Button>
                   </div>
                 ) : (
