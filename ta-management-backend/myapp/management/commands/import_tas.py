@@ -42,7 +42,8 @@ class Command(BaseCommand):
             student_id = str(row['student_id']).strip()
             program = str(row['program']).strip() or None
             advisor = str(row['advisor']).strip() or None
-            ta_type = str(row['ta_type']).strip() or None
+            raw_type = str(row['ta_type']).strip().upper() # IE department's all TAs are 'FT'
+            ta_type = raw_type if raw_type in ('FT', 'PT') else 'FT'
 
             # Basic validation
             if not email:

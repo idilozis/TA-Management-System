@@ -1,1 +1,23 @@
 name;surname;email;student_id;program;advisor;ta_type
+Yahya;Elnouby;yahyaelnouby@example.com;20210001;MS;Eray Tüzün;FT
+Utku Boran;Torun;utkutorun@example.com;20210002;MS;Eray Tüzün;FT
+Zülal;Bingöl;zulalbingol@example.com;20210003;PhD;Can Alkan;FT
+Sinan;Çavdar;sinancavdar@example.com;20210004;MS;Selim Aksoy;FT
+Sude;Önder;sudeonder@example.com;20210005;MS;Selim Aksoy;PT
+Sahand;Yengejeh;sahandyengej@example.com;20210006;MS;Anıl Koyuncu;PT
+Serkan;Demirci;serkandemirci@example.com;20210007;PhD;Uğur Güdükbay;FT
+Sinan;Sonlu;sinansonlu@example.com;20210008;PhD;Uğur Güdükbay;FT
+Giray;Akyol;girayakyol@example.com;20210009;MS;Eray Tüzün;PT
+Umut;Cihan;umutcihan@example.com;20210010;MS;Eray Tüzün;FT
+Ricardo;Brenes;ricardobrenes@example.com;20210011;PhD;Can Alkan;PT
+Emir;Türkölmez;emirturkolmez@example.com;20210012;MS;Selim Aksoy;FT
+Aslı Sena;Bozkurt;aslibozkurt@example.com;20210013;MS;Emre Uzun;
+Aziza;Rafiq;azizarafiq@example.com;20210014;MS;Emre Uzun;
+Batuhan;Sedir;batuhansedir@example.com;20210015;MS;Oya Karaşan;
+Bilge;Koyuncu;bilgekoyuncu@example.com;20210016;MS;Ayşe Selin Kocaman;
+Bora;Çetin;boracetin@example.com;20210017;MS;Bahar Yetiş;
+Efecan;Şentürk;efecansentürk@example.com;20210018;MS;Yiğit Karpat;
+Muhittin Can;Korkut;muhittinkorkut@example.com;20210019;MS;Aleksandr Vinel;
+Tuna Arda;Kınık;tunakinik@example.com;20210020;MS;Firdevs Ulus;
+Kaan;Çakıroğlu;kaancakiroglu@example.com;20210021;MS;Ayşe Selin Kocaman;
+Deniz;Akkaya;denizakkaya@example.com;20210022;MS;Bahar Yetiş;

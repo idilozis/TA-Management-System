@@ -55,7 +55,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     }
   };
 
-  const SECRETARY = user && (user.role=="CS SECRETARY" || user.role=="IE SECRETARY" || user.role=="EEE SECRETARY" || user.role=="ME SECRETARY");
+  const SECRETARY = user && (user.role == "CS SECRETARY" || user.role == "IE SECRETARY" || user.role == "EEE SECRETARY" || user.role == "ME SECRETARY");
 
   // NAVIGATION ITEMS
   const navItems = [
@@ -73,7 +73,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...((user && user.isTA) || (user && user.isAuth && user.role != "ADMIN")
+    ...((user && user.isTA) || (user && user.isAuth && (user.role == "DEAN" || SECRETARY))
       ? [
           {
             name: "Leave Requests",
@@ -118,7 +118,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           },
         ]
       : []),
-    ...(user && user.isAuth && user.role != "ADMIN"
+    ...(user && user.isAuth && (user.role == "DEAN" || SECRETARY)
       ? [
           { 
             name:"Swaps", 
