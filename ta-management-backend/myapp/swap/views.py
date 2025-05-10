@@ -66,7 +66,7 @@ def create_swap(request):
     for auth in authorized_list:
         create_notification(
             recipient_email=auth.email,
-            message=f"{user.name} requested a swap for assignment {pa.id}."
+            message=f"{user.name} requested a swap assignment."
         )
     # Notify the target TA
     create_notification(
@@ -109,7 +109,7 @@ def respond_swap(request, swap_id):
 
         create_notification(
             recipient_email=swap.requested_by.email,
-            message=f"{responder.name} rejected your proctor‑swap request."
+            message=f"{responder.name} rejected your proctor-swap request."
         )
         return JsonResponse({"status": "success", "message": "Swap rejected"})
 
@@ -544,7 +544,7 @@ def staff_swap(request, assignment_id):
     for auth in auth_list:
         create_notification(
             recipient_email=auth.email,
-            message=f"{user.name} performed a staff swap for assignment {pa.id}."
+            message=f"{user.name} made a swap assignment."
         )
     return JsonResponse({"status": "success", "message": "Swap completed"})
 
