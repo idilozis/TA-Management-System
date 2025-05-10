@@ -34,6 +34,7 @@ export default function TALeaveAuthorized() {
   const [pendingLeaves, setPendingLeaves] = useState<StaffLeave[]>([])
   const [pastLeaves, setPastLeaves] = useState<StaffLeave[]>([])
   const [activeTab, setActiveTab] = useState("pending")
+  const [loadingLeaveId, setLoadingLeaveId] = useState<number | null>(null)
 
   // Format date from ISO to DD.MM.YYYY
   const formatDate = (iso: string) => {
@@ -89,6 +90,7 @@ export default function TALeaveAuthorized() {
 
   const handleUpdateLeaveStatus = async (leaveId: number, newStatus: string) => {
     setMessage("")
+    setLoadingLeaveId(leaveId)
     try {
       const res = await apiClient.post(`/taleave/leaves/${leaveId}/update-status/`, {
         status: newStatus,
@@ -105,6 +107,8 @@ export default function TALeaveAuthorized() {
     } catch {
       setMessage("Error updating leave request.")
       setMessageType("error")
+    } finally {
+      setLoadingLeaveId(null)
     }
   }
 
@@ -224,16 +228,18 @@ export default function TALeaveAuthorized() {
                                 <Button
                                   size="sm"
                                   onClick={() => handleUpdateLeaveStatus(leave.id, "approved")}
-                                  className="bg-blue-600 hover:bg-green-500 text-white"
+                                  className="bg-blue-600 hover:bg-blue-500 text-white"
+                                  disabled={loadingLeaveId === leave.id}
                                 >
-                                  Approve
+                                  {loadingLeaveId === leave.id ? "Loading..." : "Approve"}
                                 </Button>
                                 <Button
                                   size="sm"
                                   onClick={() => handleUpdateLeaveStatus(leave.id, "rejected")}
                                   className="bg-red-600 hover:bg-red-500 text-white"
+                                  disabled={loadingLeaveId === leave.id}
                                 >
-                                  Reject
+                                  {loadingLeaveId === leave.id ? "Loading..." : "Reject"}
                                 </Button>
                               </div>
                             )}

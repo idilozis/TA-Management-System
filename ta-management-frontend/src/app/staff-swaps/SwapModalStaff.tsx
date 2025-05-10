@@ -44,6 +44,7 @@ export default function SwapModalStaff({
   const [unassignable, setUnassignable] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -76,8 +77,11 @@ export default function SwapModalStaff({
       await apiClient.post(`/swap/staff-swap/${assignment.assignment_id}/`, {
         new_ta: selected.email,
       });
-      onOpenChange(false);
-      refresh();                  
+      setSuccess(`Successfully swapped TA for ${assignment.course_code}`);
+      setTimeout(() => {
+        onOpenChange(false);
+        refresh();
+      }, 700);
     } catch {
       setError("Swap failed");
     }
@@ -101,6 +105,13 @@ export default function SwapModalStaff({
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {success && (
+          <Alert className="bg-green-50 text-green-800 border-green-200">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 
