@@ -368,9 +368,9 @@ def list_all_assignments(request):
         )
     )
     if order == "course":
-        qs = qs.order_by("sort_course", "sort_date")
+        qs = qs.order_by("sort_course", "-sort_date")
     else:
-        qs = qs.order_by("sort_date", "sort_course")
+        qs = qs.order_by("-sort_date", "sort_course")
 
     # Department filter for Secretaries
     if user.role.endswith("SECRETARY"):
@@ -552,8 +552,6 @@ def staff_swap(request, assignment_id):
 # -----------------------------
 # List All Swaps for Authorized Users
 # -----------------------------
-# Modified list_all_swaps function for proper department filtering
-
 @require_GET
 def list_all_swaps(request):
     session_email = request.session.get("user_email")

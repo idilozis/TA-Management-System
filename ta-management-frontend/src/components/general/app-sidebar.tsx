@@ -67,7 +67,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
     ...(user && user.isTA
       ? [
           {
-            name: "Duties",
+            name: "Workload Approval",
             path: "/ta-duties",
             icon: CheckCircle,
           },

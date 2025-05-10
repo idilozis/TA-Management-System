@@ -48,6 +48,10 @@ export default function StaffSwapsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState<Assignment | null>(null)
 
+  // compute today's date at midnight
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const openModal = (row: Assignment) => {
     setSelected(row)
     setModalOpen(true)
@@ -150,16 +154,26 @@ export default function StaffSwapsPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {assignments.map((row) => (
+                        {assignments.map((row) => {
+                          // parse row.date and zero out time
+                          const examDate = new Date(row.date);
+                          examDate.setHours(0, 0, 0, 0);
+
+                          return (
                             <TableRow key={row.assignment_id} className="hover:bg-muted/50">
                               <TableCell className="font-medium">
                                 <div>{row.course_code}</div>
                                 {row.course_name && (
-                                  <div className="text-sm text-muted-foreground">{row.course_name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {row.course_name}
+                                  </div>
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-100 text-blue-800 border-blue-200"
+                                >
                                   {formatDate(row.date)}
                                 </Badge>
                               </TableCell>
@@ -170,13 +184,20 @@ export default function StaffSwapsPage() {
                               <TableCell>{row.student_count}</TableCell>
                               <TableCell>{row.ta_name}</TableCell>
                               <TableCell className="text-right">
-                                <Button className="bg-blue-600 hover:bg-blue-500" size="sm" onClick={() => openModal(row)}>
-                                  Swap
-                                </Button>
+                                {examDate >= today && (
+                                  <Button
+                                    className="bg-blue-600 hover:bg-blue-500"
+                                    size="sm"
+                                    onClick={() => openModal(row)}
+                                  >
+                                    Swap
+                                  </Button>
+                                )}
                               </TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
+                          );
+                        })}
+                      </TableBody>
                       </Table>
                     </div>
                   )}

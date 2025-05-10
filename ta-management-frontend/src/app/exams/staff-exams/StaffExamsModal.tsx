@@ -43,6 +43,9 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
   const [examToDelete, setExamToDelete] = useState<number | null>(null)
   const [examToEdit, setExamToEdit] = useState<Exam | null>(null)
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split("-")
     return `${day}.${month}.${year}`
@@ -127,38 +130,58 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {exams.map((exam) => (
+                {exams.map((exam) => {
+                  const examDate = new Date(exam.date);
+                  examDate.setHours(0, 0, 0, 0);
+
+                  return (
                     <TableRow key={exam.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium whitespace-nowrap">
                         {exam.course_code} - {exam.course_name}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(exam.date)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(exam.date)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {exam.start_time} - {exam.end_time}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{exam.classrooms.join(", ")}</TableCell>
-                      <TableCell className="whitespace-nowrap">{exam.num_proctors}</TableCell>
-                      <TableCell className="whitespace-nowrap">{exam.student_count}</TableCell>
-
+                      <TableCell className="whitespace-nowrap">
+                        {exam.classrooms.join(", ")}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {exam.num_proctors}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {exam.student_count}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap flex items-center gap-2">
-                        {/* Delete */}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setExamToDelete(exam.id)}
-                          className="flex items-center gap-1"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </Button>
+                        {/* Delete & Edit only for today-or-future exams */}
+                        {examDate >= today && (
+                          <>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setExamToDelete(exam.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
 
-                        {/* Edit */}
-                        <Button variant="outline" size="sm" onClick={() => handleEditExam(exam)} className="flex items-center gap-1">
-                          <Pencil className="h-4 w-4" />
-                          Edit
-                        </Button>
-                         {/* Print dropdown */}
-                         <Popover>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditExam(exam)}
+                              className="flex items-center gap-1"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Print student list dropdown (always shown) */}
+                        <Popover>
                           <PopoverTrigger asChild>
                             <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
                               Student List
@@ -193,11 +216,12 @@ export default function StaffExamsModal({ refreshTrigger }: MyExamsProps) {
                             </Button>
                           </PopoverContent>
                         </Popover>
-
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
+                  );
+                })}
+              </TableBody>
+
               </Table>
             </div>
           )}

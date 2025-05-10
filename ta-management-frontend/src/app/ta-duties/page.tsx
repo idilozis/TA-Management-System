@@ -260,7 +260,7 @@ export default function TADutiesPage() {
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-6">
             <CheckCircle className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">Duties</h1>
+            <h1 className="text-3xl font-bold">Workload Approval</h1>
           </div>
 
           {message && (
