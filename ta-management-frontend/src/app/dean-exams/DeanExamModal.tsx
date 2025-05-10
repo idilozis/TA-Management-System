@@ -379,7 +379,7 @@ export default function DeanExamModal({ onClose }: DeanExamModalProps) {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-green-600 hover:bg-green-500"
+                    className="bg-blue-600 hover:bg-blue-500"
                   >
                     {isSubmitting ? "Saving..." : "Save"}
                   </Button>

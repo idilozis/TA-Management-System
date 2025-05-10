@@ -64,6 +64,8 @@ export default function DeanProctorModal({
   const [autoTAs, setAutoTAs] = useState<TA[]>([])
   const [manualTAs, setManualTAs] = useState<TA[]>([])
   const [selected, setSelected] = useState<string[]>([])
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [isLoading, setIsLoading] = useState<"auto" | "manual" | null>(null)
   const formatDate = (iso: string) => {
     const [year, month, day] = iso.split("-");
     return `${day}.${month}.${year}`;
@@ -72,6 +74,7 @@ export default function DeanProctorModal({
   // run automatic assignment
   async function handleAuto() {
     setError("")
+    setIsLoading("auto")
     try {
       const res = await apiClient.post(`/proctoring/automatic-dean-assignment/${exam.id}/`)
       if (!res.data.success) {
@@ -90,12 +93,15 @@ export default function DeanProctorModal({
       setStep("auto")
     } catch {
       setError("Error during automatic assignment")
+    } finally {
+      setIsLoading(null)
     }
   }
 
   // confirm automatic assignment
   async function confirmAuto() {
     if (!autoResult) return
+    setIsConfirming(true)
     try {
       await apiClient.post(`/proctoring/confirm-dean-assignment/${exam.id}/`, {
         assigned_tas: autoResult.assignedTas,
@@ -104,12 +110,15 @@ export default function DeanProctorModal({
       onClose()
     } catch {
       setError("Error confirming assignment")
+    } finally {
+      setIsConfirming(false)
     }
   }
 
   // run manual candidate fetch
   async function handleManual() {
     setError("")
+    setIsLoading("manual")
     try {
       const res = await apiClient.get(`/proctoring/candidate-tas-dean/${exam.id}/`)
       if (res.data.status !== "success") {
@@ -121,6 +130,8 @@ export default function DeanProctorModal({
       setStep("manual")
     } catch {
       setError("Error loading candidate TAs")
+    } finally {
+      setIsLoading(null)
     }
   }
 
@@ -135,6 +146,7 @@ export default function DeanProctorModal({
   // confirm manual assignment
   async function confirmManual() {
     if (selected.length !== exam.num_proctors) return
+    setIsConfirming(true)
     try {
       await apiClient.post(`/proctoring/confirm-dean-assignment/${exam.id}/`, {
         assigned_tas: selected,
@@ -143,6 +155,8 @@ export default function DeanProctorModal({
       onClose()
     } catch {
       setError("Error confirming assignment")
+    } finally {
+      setIsConfirming(false)
     }
   }
   const assignableTAs = manualTAs
@@ -162,7 +176,7 @@ export default function DeanProctorModal({
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Manual TA Assignment</DialogTitle>
+          <DialogTitle>Choose Assignment Method First</DialogTitle>
           <DialogDescription>
             For {exam.course_codes.join(", ")} on {formatDate(exam.date)} (
             {exam.start_time}-{exam.end_time})
@@ -179,11 +193,19 @@ export default function DeanProctorModal({
         {/* Step 1: choose automatic vs manual */}
         {step === "choose" && (
           <div className="flex gap-4 justify-center py-8">
-            <Button onClick={handleAuto} className="bg-green-600 hover:bg-green-500">
-              Automatic
+            <Button 
+              onClick={handleAuto} 
+              className="bg-blue-600 hover:bg-blue-500"
+              disabled={isLoading !== null}
+            >
+              {isLoading === "auto" ? "Loading..." : "Automatic"}
             </Button>
-            <Button onClick={handleManual} className="bg-blue-600 hover:bg-blue-500">
-              Manual
+            <Button 
+              onClick={handleManual} 
+              className="bg-blue-600 hover:bg-blue-500"
+              disabled={isLoading !== null}
+            >
+              {isLoading === "manual" ? "Loading..." : "Manual"}
             </Button>
           </div>
         )}
@@ -216,8 +238,12 @@ export default function DeanProctorModal({
             </ScrollArea>
             <DialogFooter className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setStep("choose")}>Back</Button>
-              <Button onClick={confirmAuto} className="bg-green-600 hover:bg-green-500">
-                Confirm
+              <Button
+                onClick={confirmAuto}
+                className="bg-blue-600 hover:bg-blue-500"
+                disabled={isConfirming}
+              >
+                {isConfirming ? "Confirming..." : "Confirm"}
               </Button>
             </DialogFooter>
           </>
@@ -280,10 +306,10 @@ export default function DeanProctorModal({
               <Button variant="outline" onClick={() => setStep("choose")}>Back</Button>
               <Button
                 onClick={confirmManual}
-                disabled={selected.length !== exam.num_proctors}
-                className="bg-green-600 hover:bg-green-500"
+                disabled={selected.length !== exam.num_proctors || isConfirming}
+                className="bg-blue-600 hover:bg-blue-500"
               >
-                Confirm ({selected.length}/{exam.num_proctors})
+                {isConfirming ? "Confirming..." : `Confirm (${selected.length}/${exam.num_proctors})`}
               </Button>
             </DialogFooter>
           </>
