@@ -44,6 +44,10 @@ def create_duty(request):
     except ValueError:
         return JsonResponse({"status": "error", "message": "Invalid date/time format"}, status=400)
     
+    # Check if the start time is before the end time
+    if start_obj >= end_obj:
+        return JsonResponse({"status": "error", "message": "Start time must be before end time"}, status=400)
+    
     # Fetch the Course by its unique course code
     try:
         course = Course.objects.get(code=course_code)
