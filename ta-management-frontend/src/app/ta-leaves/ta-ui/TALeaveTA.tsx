@@ -226,9 +226,47 @@ export default function TALeaveTA() {
                           </TableCell>
                           <TableCell>{computeTotalDays(leave.start_date, leave.end_date)}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                              {leave.status}
-                            </Badge>
+                            {(() => {
+                              const now = new Date()
+                              const end = new Date(`${leave.end_date}T${leave.end_time}`)
+                              const st = leave.status.toLowerCase()
+
+                              if (st === "pending") {
+                                if (end < now) {
+                                  return (
+                                    <Badge
+                                      variant="destructive"
+                                      className="bg-red-100 text-red-800 border-red-200"
+                                    >
+                                      Not responded
+                                    </Badge>
+                                  )
+                                } else {
+                                  return (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-yellow-100 text-yellow-800 border-yellow-200"
+                                    >
+                                      {leave.status} {/* Pending */}
+                                    </Badge>
+                                  )
+                                }
+                              }
+
+                              // for approved/rejected
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    st === "approved"
+                                      ? "bg-green-100 text-green-800 border-green-200"
+                                      : "bg-red-100 text-red-800 border-red-200"
+                                  }
+                                >
+                                  {leave.status}
+                                </Badge>
+                              )
+                            })()}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">{leave.description}</TableCell>
                           <TableCell>

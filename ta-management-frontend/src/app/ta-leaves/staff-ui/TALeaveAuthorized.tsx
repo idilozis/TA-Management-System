@@ -175,7 +175,9 @@ export default function TALeaveAuthorized() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pendingLeaves.map((leave) => (
+                    {pendingLeaves.map((leave) => {
+                      const isPast = new Date(leave.end_date) < new Date(new Date().setHours(0,0,0,0));
+                      return (
                         <TableRow key={leave.id}>
                           <TableCell className="font-medium">{leave.ta_name}</TableCell>
                           <TableCell>{leave.ta_email}</TableCell>
@@ -192,7 +194,9 @@ export default function TALeaveAuthorized() {
                               {leave.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">{leave.description || "-"}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {leave.description || "-"}
+                          </TableCell>
                           <TableCell>
                             {leave.document_url ? (
                               <Button
@@ -211,26 +215,34 @@ export default function TALeaveAuthorized() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleUpdateLeaveStatus(leave.id, "approved")}
-                                className="bg-blue-600 hover:bg-green-500 text-white"
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleUpdateLeaveStatus(leave.id, "rejected")}
-                                className="bg-red-600 hover:bg-red-500 text-white"
-                              >
-                                Reject
-                              </Button>
-                            </div>
+                            {isPast ? (
+                              <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                                Expired
+                              </Badge>
+                            ) : (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleUpdateLeaveStatus(leave.id, "approved")}
+                                  className="bg-blue-600 hover:bg-green-500 text-white"
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleUpdateLeaveStatus(leave.id, "rejected")}
+                                  className="bg-red-600 hover:bg-red-500 text-white"
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
+                      )
+                    })}
+                  </TableBody>
+
                   </Table>
                 </div>
               )}

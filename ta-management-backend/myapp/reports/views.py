@@ -310,17 +310,30 @@ def _load_exam_or_dean(exam_id):
         rooms = ex.classrooms or []
         start = ex.start_time.strftime("%H:%M")
         end   = ex.end_time.strftime("%H:%M")
-        students = ex.course.students.order_by("surname", "name")
+        codes = [ex.course.code]
     except Exam.DoesNotExist:
         de = get_object_or_404(DeanExam, pk=exam_id)
         title = ", ".join(de.course_codes)
         rooms = de.classrooms or []
         start = de.start_time.strftime("%H:%M")
         end   = de.end_time.strftime("%H:%M")
-        q = Q()
-        for c in de.course_codes:
-            q |= Q(nondept_courses__contains=[c])
-        students = StudentList.objects.filter(q).order_by("surname", "name")
+        codes = de.course_codes
+
+    # a Q object that OR’s together:
+    #   1) any StudentList whose related Course has matching .code
+    #   2) any StudentList whose nondept_courses JSONField contains the code
+    q = Q()
+    for code in codes:
+        q |= Q(courses__code=code)
+        q |= Q(nondept_courses__contains=[code])
+
+    # filter and order
+    students = (
+        StudentList.objects
+                   .filter(q)
+                   .order_by("surname", "name")
+                   .distinct()   # in case a student is in multiple matching courses
+    )
 
     return title, rooms, start, end, students
 

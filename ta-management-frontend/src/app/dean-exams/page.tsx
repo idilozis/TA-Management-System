@@ -60,6 +60,9 @@ export default function DeanExamsPage() {
   >([])
   const [selectedExamName, setSelectedExamName] = useState<string>("")
 
+  const today = new Date()
+  today.setHours(0,0,0,0)
+
   useEffect(() => {
     apiClient
       .get("/exams/list-dean-exams/")
@@ -155,7 +158,14 @@ export default function DeanExamsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {exams.map((ex) => (
+                      {exams.map((ex) => {
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        const exDate = new Date(ex.date)
+                        exDate.setHours(0, 0, 0, 0)
+                        const isPast = exDate < today
+
+                        return (
                           <TableRow key={ex.id} className="hover:bg-muted/30">
                             <TableCell>
                               <div className="flex items-center space-x-2">
@@ -167,7 +177,6 @@ export default function DeanExamsPage() {
                                 )}
                               </div>
                             </TableCell>
-                            
                             <TableCell>{fmtDate(ex.date)}</TableCell>
                             <TableCell>
                               {ex.start_time} - {ex.end_time}
@@ -189,30 +198,33 @@ export default function DeanExamsPage() {
                               )}
                             </TableCell>
                             <TableCell>{ex.student_count}</TableCell>
+
                             <TableCell className="flex gap-2">
-                              {/* Edit */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditExam(ex)}
-                                className="flex items-center gap-1"
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Edit
-                              </Button>
+                              {/* Edit & Delete only for non-past exams */}
+                              {!isPast && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditExam(ex)}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setToDelete(ex.id)}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete
+                                  </Button>
+                                </>
+                              )}
 
-                              {/* Delete */}
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setToDelete(ex.id)}
-                                className="flex items-center gap-1"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </Button>
-
-                              {/* Print */}
+                              {/* Student List popover (always visible) */}
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-500">
@@ -249,8 +261,8 @@ export default function DeanExamsPage() {
                                 </PopoverContent>
                               </Popover>
 
-                              {/* Show Proctor button only if no one's assigned yet */}
-                              {ex.assigned_tas.length === 0 && (
+                              {/* “Proctor” only when no one’s assigned and not past */}
+                              {!isPast && ex.assigned_tas.length === 0 && (
                                 <Button
                                   size="sm"
                                   onClick={() => {
@@ -264,8 +276,10 @@ export default function DeanExamsPage() {
                               )}
                             </TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
+                        )
+                      })}
+                    </TableBody>
+
                     </Table>
                   </div>
                 </CardContent>
