@@ -311,17 +311,17 @@ def list_dean_courses(request):
     if not email:
         return JsonResponse({"status":"error","message":"Not authenticated"}, status=401)
     user, user_type = find_user_by_email(email)
-    if not user or not getattr(user, "isAuth",False):
+    if not user or (user_type not in ("TA", "Authorized") or (user_type == "Authorized" and not getattr(user, "isAuth", False))):
         return JsonResponse({"status":"error","message":"Not authorized"}, status=403)
 
     # 1) Real courses from DB
-    real = Course.objects.all().values("code", "name")
+    real = Course.objects.order_by("code").values("code", "name")
 
     # 2) Enum-only courses from NonDeptCourseEnum
-    enum = [
-        {"code": code, "name": label}
-        for code, label in NonDeptCourseEnum.choices()
-    ]
+    enum = sorted(
+        ({"code": code, "name": label} for code, label in NonDeptCourseEnum.choices()),
+        key=lambda c: c["code"]
+    )
 
     # 3) Combine
     courses = list(real) + enum

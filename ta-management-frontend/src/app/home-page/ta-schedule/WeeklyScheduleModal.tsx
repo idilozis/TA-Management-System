@@ -5,10 +5,11 @@ import apiClient from "@/lib/axiosClient"
 import { CalendarDays, Pencil, Check } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { Badge } from "@/components/ui/badge"
 
 const TIME_SLOTS = [
@@ -79,7 +80,7 @@ export default function WeeklyScheduleModal() {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-
+  const [courses, setCourses] = useState<{ id: number; code: string; name: string }[]>([])
 
   // Fetch schedule on mount
   useEffect(() => {
@@ -91,6 +92,13 @@ export default function WeeklyScheduleModal() {
           setSlots(res.data.slots)
         } else {
           setError("Failed to load schedule data")
+        }
+
+        const courseRes = await apiClient.get("/exams/list-dean-courses/")
+        if (courseRes.data.status === "success") {
+          setCourses(courseRes.data.courses)
+        } else {
+          setError("Could not load courses")
         }
       } catch (err) {
         console.error("Error fetching schedule:", err)
@@ -310,7 +318,7 @@ export default function WeeklyScheduleModal() {
           {editSlot && (
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="text-blue-600">
                   Edit Slot ({editSlot.day} {editSlot.time_slot})
                 </DialogTitle>
               </DialogHeader>
@@ -322,12 +330,44 @@ export default function WeeklyScheduleModal() {
               )}
 
               <div className="space-y-4 py-2">
-                <Input
-                  placeholder="Enter course name"
-                  value={newCourse}
-                  onChange={(e) => setNewCourse(e.target.value)}
-                  className="w-full"
-                />
+                <Label className="block text-sm font-medium">Course</Label>
+                <Command className="border rounded">
+                  <CommandInput
+                    placeholder="Search courses..."
+                    value={newCourse}
+                    onValueChange={setNewCourse}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No courses found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        key="other"
+                        onSelect={() => {
+                          setNewCourse("__OTHER__")
+                          setEditSlot(prev => prev && ({ ...prev, course: "" }))
+                        }}
+                      >
+                        Other Course
+                      </CommandItem>
+                      {courses
+                        .filter((c) =>
+                          `${c.code} ${c.name}`.toLowerCase().includes(newCourse.toLowerCase())
+                        )
+                        .map((c) => (
+                          
+                          <CommandItem
+                            key={c.id}
+                            onSelect={() => {
+                              setNewCourse(c.code)
+                              setTimeout(() => setEditSlot({ ...editSlot, course: c.code }), 0)
+                            }}
+                          >
+                            {c.code} - {c.name}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
               </div>
 
               <DialogFooter className="flex justify-between sm:justify-between">
@@ -344,19 +384,28 @@ export default function WeeklyScheduleModal() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setEditSlot(null)} disabled={isSaving || isDeleting}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditSlot(null)}
+                    disabled={isSaving || isDeleting}
+                  >
                     Cancel
                   </Button>
-                  <Button className="bg-blue-600 hover:bg-blue-500 text-white" onClick={handleSaveSlot} disabled={isSaving || isDeleting}>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-500 text-white"
+                    onClick={handleSaveSlot}
+                    disabled={isSaving || isDeleting}
+                  >
                     {isSaving ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </DialogFooter>
             </DialogContent>
+
           )}
         </Dialog>
         <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete} >
-          <DialogContent className="backdrop-transparent">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Confirm Deletion</DialogTitle>
             </DialogHeader>
