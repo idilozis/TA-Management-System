@@ -70,7 +70,7 @@ export default function SwapModal({ open, onOpenChange, assignmentId, examLabel,
     <Dialog open={open} onOpenChange={(v) => { setSelected(""); onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-blue-600">Swap proctor: {examLabel}</DialogTitle>
+          <DialogTitle className="text-blue-600">Send swap request for {examLabel}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
