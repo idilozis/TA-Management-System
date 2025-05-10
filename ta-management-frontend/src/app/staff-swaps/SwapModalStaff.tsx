@@ -149,7 +149,7 @@ export default function SwapModalStaff({
             </ScrollArea>
 
             <div className="text-right pt-4">
-              <Button
+              <Button className="bg-blue-600 hover:bg-blue-500"
                 onClick={doSwap}
                 disabled={!selected || submitting}
               >

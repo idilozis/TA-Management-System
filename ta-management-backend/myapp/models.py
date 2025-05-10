@@ -44,7 +44,7 @@ class TAUser(models.Model):
         return check_password(raw_password, self.password)
 
 
-# STAFF Users
+# STAFF Users (INSTRUCTORS)
 class StaffUser(models.Model):
     name = models.CharField(max_length=255)
     surname = models.CharField(max_length=255)

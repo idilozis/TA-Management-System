@@ -112,7 +112,7 @@ export default function SwapModal({ open, onOpenChange, assignmentId, examLabel,
               ))}
             </ScrollArea>
 
-            <Button disabled={!selected || submitting} onClick={doSwap} className="w-full">
+            <Button disabled={!selected || submitting} onClick={doSwap} className="w-full bg-blue-600 hover:bg-blue-500">
               {submitting ? "Sending…" : "Send swap request"}
             </Button>
           </>

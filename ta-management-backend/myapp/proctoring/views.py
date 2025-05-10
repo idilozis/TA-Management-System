@@ -5,6 +5,7 @@ from django.db.models import Q, F, Value
 from django.db.models.functions import Lower, Replace
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
+from django.db.models.functions import Concat
 
 from myapp.userauth.helpers import find_user_by_email
 from myapp.models import TAUser, StaffUser, Course
@@ -22,14 +23,21 @@ from myapp.models import GlobalSettings
 REAL_COURSE_CODES = set(Course.objects.values_list("code", flat=True))
 
 def advisor_department(advisor_name):
-    """Get TA's department from advisor name."""
-    if not advisor_name:
+    """Get TA's department by matching full “name + ' ' + surname” exactly."""
+    if not advisor_name or not advisor_name.strip():
         return None
-    parts = advisor_name.split()
-    staff = StaffUser.objects.filter(
-        name__iexact=parts[0],
-        surname__iexact=parts[-1]
-    ).first()
+
+    full = advisor_name.strip()
+
+    # Annotate a virtual full_name field, then filter
+    staff = (
+        StaffUser.objects
+            .annotate(
+                full_name=Concat('name', Value(' '), 'surname')
+            )
+            .filter(full_name__iexact=full)
+            .first()
+    )
     return staff.department if staff else None
 
 
