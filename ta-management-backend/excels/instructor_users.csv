@@ -1,0 +1,7 @@
+name;surname;email;department;courses;sections
+Lori Rae; Russell Dağ; lorirae@example.com; CS; CS101 Algorithms and Programming I, CS115 Introduction to Programming in Python; CS101:1, CS101:2, CS115:1, CS115:2
+Aynur; Dayanık; aynurdayanik@example.com; CS; CS102 Algorithms and Programming II, CS202 Fundamental Structures of Computer Science II; CS102:1, CS102:2, CS202:1, CS202:2
+Uğur; Güdükbay; ugurgudukbay@example.com; CS; CS102 Algorithms and Programming II, CS478 Computational Geometry, CS564 Computational Geometry; CS102:3, CS478:1, CS564:1
+Can; Alkan; canalkan@example.com; CS; CS202 Fundamental Structures of Computer Science II, CS481 Bioinformatics Algorithms, CS583 Bioinformatics Algorithms; CS202:3, CS481:1, CS583:1
+Selim; Aksoy; selimaksoy@example.com; CS; CS201 Fundamental Structures of Computer Science, CS390 Individual Research Study, CS489 Teaching Project in Computer Engineering, CS490 Senior Research Project; CS201:1, CS390:1, CS489:1, CS490:1
+Anıl; Koyuncu; anilkoyuncu@example.com; CS; CS437 Software Design Patterns, CS439 Automated Program Repair, CS537 Software Design Patterns, CS539 Automated Program Repair, CS590 Research Seminar I, CS690 Research Seminar II; CS437:1, CS439:1, CS537:1, CS539:1, CS590:1, CS690:1

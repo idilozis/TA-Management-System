@@ -78,9 +78,23 @@ export default function TablesPage() {
         else setError(res.data.message || "Error fetching TAs.")
       } else {
         const res = await apiClient.get("/list/staff/")
-        if (res.data.status === "success") setStaff(res.data.staff)
-        else setError(res.data.message || "Error fetching staff.")
+        if (res.data.status === "success") {
+          // sort by department, then by (name + surname)
+          const sorted = [...res.data.staff].sort((a, b) => {
+            if (a.department === b.department) {
+              // if same dept, compare full names
+              const nameA = `${a.name} ${a.surname}`;
+              const nameB = `${b.name} ${b.surname}`;
+              return nameA.localeCompare(nameB);
+            }
+            return a.department.localeCompare(b.department);
+          });
+          setStaff(sorted);
+        } else {
+          setError(res.data.message || "Error fetching staff.");
+        }
       }
+    
     } catch {
       setError("Error fetching data. Please try again.")
     } finally {

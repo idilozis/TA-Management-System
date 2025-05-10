@@ -1,4 +1,4 @@
-# myapp/management/commands/import_staff.py
+# myapp/management/commands/import_instructor.py
 import os
 import pandas as pd
 from django.core.management.base import BaseCommand, CommandError
@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
-        csv_file_path = 'excels/staff_users.csv'
+        csv_file_path = 'excels/instructor_users.csv'
         self.stdout.write(self.style.WARNING(f"Reading CSV file from: {csv_file_path}"))
 
         if not os.path.exists(csv_file_path):
