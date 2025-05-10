@@ -50,7 +50,19 @@ const dutyFormSchema = z.object({
   end_time: z.string().min(1, { message: "Please select an end time" }),
   course_code: z.string().min(1, { message: "Please select a course" }),
   description: z.string().optional(),
-})
+}).refine((data) => {
+  // Only validate if both times are present
+  if (!data.start_time || !data.end_time) return true;
+  
+  // Convert times to comparable values
+  const start = new Date(`2000-01-01T${data.start_time}`);
+  const end = new Date(`2000-01-01T${data.end_time}`);
+  
+  return end > start;
+}, {
+  message: "End time must be after start time",
+  path: ["end_time"], // This will show the error on the end_time field
+});
 
 type DutyFormValues = z.infer<typeof dutyFormSchema>
 
