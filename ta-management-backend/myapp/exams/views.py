@@ -145,7 +145,7 @@ def list_staff_exams(request):
         return JsonResponse({"status": "error", "message": "You are not staff."}, status=403)
 
     # Get all exams where the user is the instructor
-    exams = Exam.objects.filter(instructor=user).select_related('course')
+    exams = Exam.objects.filter(instructor=user).select_related('course').order_by('-date', '-start_time')
     exams_data = []
     for exam in exams:
         # Get confirmed TA assignments from the ProctoringAssignment relation.

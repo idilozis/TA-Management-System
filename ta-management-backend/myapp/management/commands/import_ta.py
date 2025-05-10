@@ -17,7 +17,8 @@ class Command(BaseCommand):
             raise CommandError(f"File not found: {csv_file_path}")
 
         try:
-            df = pd.read_csv(csv_file_path, delimiter=';', encoding='cp1254')
+            # UTF-8-SIG for Turkish characters
+            df = pd.read_csv(csv_file_path, delimiter=';', encoding='utf-8-sig')
         except Exception as e:
             raise CommandError(f"Error reading CSV: {e}")
 
@@ -26,39 +27,47 @@ class Command(BaseCommand):
             'surname',
             'email',
             'student_id',
-            'program',   # 'MS' or 'PhD'
-            'advisor',   # instructor full name, 'Eray Tüzün'
-            'ta_type'    # 'FT' or 'PT'
+            'program',    # 'MS' or 'PhD'
+            'advisor',    # e.g. 'Eray Tüzün'
+            'ta_type'     # 'FT' or 'PT'
         ]
         for col in expected_columns:
             if col not in df.columns:
                 raise CommandError(f"Missing required column: {col}")
 
-        for _, row in df.iterrows():
+        for index, row in df.iterrows():
             name = str(row['name']).strip()
             surname = str(row['surname']).strip()
             email = str(row['email']).strip().lower()
-            student_id  = str(row['student_id']).strip()
+            student_id = str(row['student_id']).strip()
             program = str(row['program']).strip() or None
             advisor = str(row['advisor']).strip() or None
             ta_type = str(row['ta_type']).strip() or None
 
-            # Create or update the TAUser record
+            # Basic validation
+            if not email:
+                self.stdout.write(self.style.ERROR(f"Row {index}: email is empty; skipping."))
+                continue
+            if not name or not surname:
+                self.stdout.write(self.style.ERROR(f"Row {index}: name/surname missing for '{email}'; skipping."))
+                continue
+
+            # Create or update TAUser (advisor is a raw string)
             ta, created = TAUser.objects.update_or_create(
                 email=email,
                 defaults={
-                    'name': name,
-                    'surname': surname,
+                    'name':       name,
+                    'surname':    surname,
                     'student_id': student_id,
-                    'program': program,
-                    'advisor': advisor,
-                    'ta_type': ta_type,
-                    # workload, password, isTA default values will apply if new
+                    'program':    program,
+                    'advisor':    advisor,
+                    'ta_type':    ta_type,
                 }
             )
+
             if created:
-                self.stdout.write(self.style.SUCCESS(f"Created TA: {email}"))
+                self.stdout.write(self.style.SUCCESS(f"Row {index}: Created TA '{email}' (Advisor: '{advisor}')"))
             else:
-                self.stdout.write(self.style.NOTICE(f"Updated TA: {email}"))
+                self.stdout.write(self.style.WARNING(f"Row {index}: Updated TA '{email}' (Advisor: '{advisor}')"))
 
         self.stdout.write(self.style.SUCCESS("All TA users imported/updated successfully."))

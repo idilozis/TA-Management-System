@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 type Assignment = {
   assignment_id: number;
@@ -88,7 +88,7 @@ export default function SwapModalStaff({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-blue-600">
             Swap proctor for {assignment.course_code}{" "}
             {new Date(assignment.date).toLocaleDateString()}
           </DialogTitle>
@@ -108,7 +108,9 @@ export default function SwapModalStaff({
           <div className="py-8 text-center">Loading…</div>
         ) : (
           <>
-            <h4 className="font-semibold mb-1">Available TAs</h4>
+            <h4 className="text-sm font-medium text-green-700 mb-2 flex items-center">
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Available TAs
+            </h4>
             <ScrollArea className="h-40 rounded border p-2 mb-4">
               {assignable.length === 0 && (
                 <div className="text-sm text-muted-foreground">
@@ -123,12 +125,14 @@ export default function SwapModalStaff({
                   onClick={() => setSelected(ta)}
                 >
                   <span>{ta.name}</span>
-                  <Badge variant="outline">{ta.workload} h</Badge>
+                  <Badge variant="outline">{ta.workload} h</Badge>
                 </div>
               ))}
             </ScrollArea>
             
-            <h4 className="font-semibold mb-1">Unavailable TAs</h4>
+            <h4 className="text-sm font-medium text-red-700 mb-2 flex items-center">
+              <AlertCircle className="h-4 w-4 mr-1" /> Unavailable TAs
+            </h4>
             <ScrollArea className="h-32 rounded border p-2">
               {unassignable.length === 0 && (
                 <div className="text-sm text-muted-foreground">—</div>

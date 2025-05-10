@@ -343,7 +343,7 @@ export default function WeeklyScheduleModal() {
                       <CommandItem
                         key="other"
                         onSelect={() => {
-                          setNewCourse("__OTHER__")
+                          setNewCourse("Other Course")
                           setEditSlot(prev => prev && ({ ...prev, course: "" }))
                         }}
                       >

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface Candidate { email: string; name: string; workload: number; reason?: string }
 
@@ -69,7 +70,7 @@ export default function SwapModal({ open, onOpenChange, assignmentId, examLabel,
     <Dialog open={open} onOpenChange={(v) => { setSelected(""); onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Swap proctor: {examLabel}</DialogTitle>
+          <DialogTitle className="text-blue-600">Swap proctor: {examLabel}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -78,7 +79,9 @@ export default function SwapModal({ open, onOpenChange, assignmentId, examLabel,
           <div className="text-destructive text-sm">{error}</div>
         ) : (
           <>
-            <div className="font-semibold mb-1">Available TAs</div>
+            <h4 className="text-sm font-medium text-green-700 mb-2 flex items-center">
+              <CheckCircle2 className="h-4 w-4 mr-1" /> Available TAs
+            </h4>
             <ScrollArea className="h-40 mb-4 border rounded-md">
               {assignable.map((c) => (
                 <div key={c.email}
@@ -92,11 +95,13 @@ export default function SwapModal({ open, onOpenChange, assignmentId, examLabel,
                 </div>
               ))}
               {assignable.length === 0 && (
-                <div className="text-sm text-muted-foreground p-3">No one free</div>
+                <div className="text-sm text-muted-foreground p-3">No available TAs.</div>
               )}
             </ScrollArea>
 
-            <div className="font-semibold mb-1">Unavailable TAs</div>
+            <h4 className="text-sm font-medium text-red-700 mb-2 flex items-center">
+              <AlertCircle className="h-4 w-4 mr-1" /> Unavailable TAs
+            </h4>
             <ScrollArea className="h-32 mb-4 border rounded-md bg-muted/10">
               {unassignable.map((c) => (
                 <div key={c.email}
