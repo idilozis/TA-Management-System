@@ -6,7 +6,7 @@ import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, AlertTriangle, FileText, CheckCircle2 } from "lucide-react"
+import { AlertCircle, AlertTriangle, FileText, CheckCircle2, AlertOctagon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -176,18 +176,45 @@ export default function ProctorStaff() {
   const unassignedExams = exams.filter((exam) => exam.assigned_tas.length === 0)
   const assignedExams = exams.filter((exam) => exam.assigned_tas.length > 0)
 
-  const assignableTAs = manualTAs
-    .filter((t) => t.assignable)
-    .sort((a, b) => {
-      // 1) previously‐assigned first
-      if (a.already_assigned && !b.already_assigned) return -1;
-      if (!a.already_assigned && b.already_assigned) return 1;
-      // 2) then by penalty
-      const pa = (a.penalty ?? 0) - (b.penalty ?? 0);
-      if (pa !== 0) return pa;
-      // 3) then by workload
-      return a.workload - b.workload;
-    });
+  function sortByAssignedThenWorkload(a: TA, b: TA) {
+    // 1) previously‐assigned first
+    if (a.already_assigned && !b.already_assigned) return -1;
+    if (!a.already_assigned && b.already_assigned) return 1;
+    // 2) then by workload
+    return a.workload - b.workload;
+  }
+
+  const fullyAssignableTAs = manualTAs
+    .filter((ta) => ta.assignable && !(ta.penalty && ta.penalty > 0))
+    .sort(sortByAssignedThenWorkload);
+  
+  const SOFT_ONLY = ["day-before", "day-after", "ms/phd"];
+
+  const softExcludedTAs = manualTAs
+    .filter((ta) => {
+      // a penalty ⇒ soft
+      if (ta.assignable && ta.penalty && ta.penalty > 0) return true;
+
+      // otherwise must be excluded, and all reasons must be soft
+      if (!ta.assignable && ta.reason) {
+        const reasons = ta.reason
+          .split(";")
+          .map((r) => r.trim().toLowerCase());
+        return reasons.length > 0 && reasons.every((r) =>
+          SOFT_ONLY.some((s) => r.includes(s))
+        );
+      }
+      return false;
+    })
+    .sort(sortByAssignedThenWorkload);
+  
+  const hardExcludedTAs = manualTAs
+    .filter(
+      (ta) =>
+        !fullyAssignableTAs.includes(ta) &&
+        !softExcludedTAs.includes(ta)
+    )
+    .sort(sortByAssignedThenWorkload);
 
   return (
     <div>
@@ -405,7 +432,7 @@ export default function ProctorStaff() {
 
       {/* Manual Assignment Dialog */}
       <Dialog open={showManual} onOpenChange={setShowManual}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>Manual TA Assignment</DialogTitle>
             <DialogDescription>
@@ -419,48 +446,110 @@ export default function ProctorStaff() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Fully Assignable TAs */}
             <div>
               <h3 className="text-sm font-medium text-green-700 mb-2 flex items-center">
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Assignable TAs
               </h3>
-              <ScrollArea className="h-[200px] rounded-md border">
-                {assignableTAs.map((ta) => (
-                  <div
-                    key={ta.email}
-                    className={`
-                      flex justify-between items-center p-3 border-b cursor-pointer hover:bg-muted/50
-                      ${ta.already_assigned ? "bg-yellow-50 border-yellow-200" : ""}
-                      ${selected.includes(ta.email) ? "bg-blue-50 border-blue-200" : ""}
-                    `}
-                    onClick={() => toggle(ta.email)}
-                  >
-                    <div>
-                      <div className="font-medium flex items-center">
-                        {ta.first_name} {ta.last_name}
-                        {ta.already_assigned && (
-                          <Badge className="ml-2 bg-yellow-100 text-yellow-800">
-                            Course TA
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{ta.email}</div>
-                    </div>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-800">
-                      Workload: {ta.workload}
-                    </Badge>
+              <ScrollArea className="h-[180px] rounded-md border">
+                {fullyAssignableTAs.length === 0 ? (
+                  <div className="p-3 text-center text-muted-foreground italic">
+                    No TAs match all preferences
                   </div>
-                ))}
+                ) : (
+                  fullyAssignableTAs.map((ta) => (
+                    <div
+                      key={ta.email}
+                      className={`
+                        flex justify-between items-center p-3 border-b cursor-pointer hover:bg-muted/50
+                        ${ta.already_assigned ? "bg-yellow-50 border-yellow-200" : ""}
+                        ${selected.includes(ta.email) ? "bg-blue-50 border-blue-200" : ""}
+                      `}
+                      onClick={() => toggle(ta.email)}
+                    >
+                      <div>
+                        <div className="font-medium flex items-center">
+                          {ta.first_name} {ta.last_name}
+                          {ta.already_assigned && (
+                            <Badge className="ml-2 bg-yellow-100 text-yellow-800">
+                              Course TA
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{ta.email}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-50 text-green-800 border-green-200">
+                          {ta.program}
+                        </Badge>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                          Workload: {ta.workload}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </ScrollArea>
             </div>
 
+            {/* Soft Excluded TAs */}
             <div>
-              <h3 className="text-sm font-medium text-red-700 mb-2 flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" /> Non-Assignable TAs
+              <h3 className="text-sm font-medium text-amber-700 mb-2 flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-1" /> Soft Restrictions 
+                <span className="ml-2 font-normal text-muted-foreground">(day-before/after, MS/PhD - can be selected)</span>
               </h3>
               <ScrollArea className="h-[150px] rounded-md border">
-                {manualTAs
-                  .filter((t) => !t.assignable)
-                  .map((ta) => (
+                {softExcludedTAs.length === 0 ? (
+                  <div className="p-3 text-center text-muted-foreground italic">
+                    No TAs with soft restrictions
+                  </div>
+                ) : (
+                  softExcludedTAs.map((ta) => (
+                    <div
+                      key={ta.email}
+                      className={`
+                        flex justify-between items-center p-3 border-b cursor-pointer hover:bg-muted/50
+                        bg-amber-50 border-amber-200
+                        ${selected.includes(ta.email) ? "bg-blue-50 border-blue-200" : ""}
+                      `}
+                      onClick={() => toggle(ta.email)}
+                    >
+                      <div>
+                        <div className="font-medium">
+                          {ta.first_name} {ta.last_name}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{ta.email}</div>
+                        <div className="mt-1 text-sm text-amber-600 italic">
+                          {ta.reason || (ta.penalty && ta.penalty > 0 ? "Day-before/after conflict" : "")}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-amber-50 text-amber-800 border-amber-200">
+                          {ta.program}
+                        </Badge>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                          Workload: {ta.workload}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </ScrollArea>
+            </div>
+
+            {/* Hard Excluded TAs */}
+            <div>
+              <h3 className="text-sm font-medium text-red-700 mb-2 flex items-center">
+                <AlertOctagon className="h-4 w-4 mr-1" /> Hard Restrictions
+                <span className="ml-2 font-normal text-muted-foreground">(cannot be selected)</span>
+              </h3>
+              <ScrollArea className="h-[120px] rounded-md border">
+                {hardExcludedTAs.length === 0 ? (
+                  <div className="p-3 text-center text-muted-foreground italic">
+                    No TAs with hard restrictions
+                  </div>
+                ) : (
+                  hardExcludedTAs.map((ta) => (
                     <div key={ta.email} className="p-3 border-b">
                       <div className="font-medium">
                         {ta.first_name} {ta.last_name}
@@ -468,7 +557,8 @@ export default function ProctorStaff() {
                       <div className="text-sm text-muted-foreground">{ta.email}</div>
                       <div className="mt-1 text-sm text-red-600 italic">{ta.reason}</div>
                     </div>
-                  ))}
+                  ))
+                )}
               </ScrollArea>
             </div>
           </div>
