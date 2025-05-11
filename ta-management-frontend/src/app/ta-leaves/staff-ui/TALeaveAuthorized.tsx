@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import apiClient from "@/lib/axiosClient"
 import { useUser } from "@/components/general/user-data"
-import { CalendarOff, FileDown } from "lucide-react"
+import { CalendarOff, FileDown, Search } from "lucide-react"
 import { PageLoader } from "@/components/ui/loading-spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Input } from "@/components/ui/input"
+import { ExpandableCell } from "@/components/ui/expandable-cell"
 
 interface StaffLeave {
   id: number
@@ -34,7 +36,9 @@ export default function TALeaveAuthorized() {
   const [pendingLeaves, setPendingLeaves] = useState<StaffLeave[]>([])
   const [pastLeaves, setPastLeaves] = useState<StaffLeave[]>([])
   const [activeTab, setActiveTab] = useState("pending")
-  const [loadingLeaveId, setLoadingLeaveId] = useState<number | null>(null)
+  const [approvingLeaveId, setApprovingLeaveId] = useState<number | null>(null)
+  const [rejectingLeaveId, setRejectingLeaveId] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Format date from ISO to DD.MM.YYYY
   const formatDate = (iso: string) => {
@@ -90,7 +94,13 @@ export default function TALeaveAuthorized() {
 
   const handleUpdateLeaveStatus = async (leaveId: number, newStatus: string) => {
     setMessage("")
-    setLoadingLeaveId(leaveId)
+
+    if (newStatus === "approved") {
+      setApprovingLeaveId(leaveId)
+    } else if (newStatus === "rejected") {
+      setRejectingLeaveId(leaveId)
+    }
+
     try {
       const res = await apiClient.post(`/taleave/leaves/${leaveId}/update-status/`, {
         status: newStatus,
@@ -108,9 +118,34 @@ export default function TALeaveAuthorized() {
       setMessage("Error updating leave request.")
       setMessageType("error")
     } finally {
-      setLoadingLeaveId(null)
+      if (newStatus === "approved") {
+        setApprovingLeaveId(null)
+      } else if (newStatus === "rejected") {
+        setRejectingLeaveId(null)
+      }
     }
   }
+
+  // Filter leaves based on search query
+  const filterLeaves = (leaves: StaffLeave[]) => {
+    if (!searchQuery.trim()) return leaves
+
+    const query = searchQuery.toLowerCase().trim()
+    return leaves.filter((leave) => {
+      return (
+        leave.ta_name.toLowerCase().includes(query) ||
+        leave.ta_email.toLowerCase().includes(query) ||
+        leave.leave_type.toLowerCase().includes(query) ||
+        leave.description.toLowerCase().includes(query) ||
+        leave.status.toLowerCase().includes(query) ||
+        formatDate(leave.start_date).includes(query) ||
+        formatDate(leave.end_date).includes(query)
+      )
+    })
+  }
+
+  const filteredPendingLeaves = filterLeaves(pendingLeaves)
+  const filteredPastLeaves = filterLeaves(pastLeaves)
 
   if (loading) return <PageLoader />
   if (!user) return <div className="min-h-screen flex items-center justify-center bg-background">No user found.</div>
@@ -141,6 +176,7 @@ export default function TALeaveAuthorized() {
         </Alert>
       )}
 
+
       {/* Leave Requests Tables */}
       <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
@@ -157,10 +193,24 @@ export default function TALeaveAuthorized() {
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-600">Pending Leave Requests</CardTitle>
               <CardDescription>Leave requests awaiting your approval or rejection.</CardDescription>
+      <div className="mb-4 mt-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by name, email, type, description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full max-w-md"
+          />
+        </div>
+      </div>
             </CardHeader>
             <CardContent>
-              {pendingLeaves.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No pending leave requests.</div>
+              {filteredPendingLeaves.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? "No matching leave requests found." : "No pending leave requests."}
+                </div>
               ) : (
                 <div className="rounded-md border">
                   <Table>
@@ -179,76 +229,75 @@ export default function TALeaveAuthorized() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {pendingLeaves.map((leave) => {
-                      const isPast = new Date(leave.end_date) < new Date(new Date().setHours(0,0,0,0));
-                      return (
-                        <TableRow key={leave.id}>
-                          <TableCell className="font-medium">{leave.ta_name}</TableCell>
-                          <TableCell>{leave.ta_email}</TableCell>
-                          <TableCell>{leave.leave_type}</TableCell>
-                          <TableCell>
-                            {formatDate(leave.start_date)} ({leave.start_time})
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(leave.end_date)} ({leave.end_time})
-                          </TableCell>
-                          <TableCell>{computeTotalDays(leave.start_date, leave.end_date)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                              {leave.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {leave.description || "-"}
-                          </TableCell>
-                          <TableCell>
-                            {leave.document_url ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                asChild
-                              >
-                                <a href={`http://localhost:8000/taleave/leaves/${leave.id}/download-document/`}>
-                                  <FileDown className="h-4 w-4" />
-                                  <span>Download</span>
-                                </a>
-                              </Button>
-                            ) : (
-                              <span className="text-muted-foreground">N/A</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {isPast ? (
-                              <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                                Expired
+                      {filteredPendingLeaves.map((leave) => {
+                        const isPast = new Date(leave.end_date) < new Date(new Date().setHours(0, 0, 0, 0))
+                        return (
+                          <TableRow key={leave.id}>
+                            <TableCell className="font-medium">{leave.ta_name}</TableCell>
+                            <TableCell>{leave.ta_email}</TableCell>
+                            <TableCell>{leave.leave_type}</TableCell>
+                            <TableCell>
+                              {formatDate(leave.start_date)} ({leave.start_time})
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(leave.end_date)} ({leave.end_time})
+                            </TableCell>
+                            <TableCell>{computeTotalDays(leave.start_date, leave.end_date)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                                {leave.status}
                               </Badge>
-                            ) : (
-                              <div className="flex gap-2">
+                            </TableCell>
+                            <TableCell className="max-w-[300px] whitespace-normal">
+                              <ExpandableCell content={leave.description || "-"} />
+                            </TableCell>
+                            <TableCell>
+                              {leave.document_url ? (
                                 <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleUpdateLeaveStatus(leave.id, "approved")}
-                                  className="bg-blue-600 hover:bg-blue-500 text-white"
-                                  disabled={loadingLeaveId === leave.id}
+                                  className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  asChild
                                 >
-                                  {loadingLeaveId === leave.id ? "Loading..." : "Approve"}
+                                  <a href={`http://localhost:8000/taleave/leaves/${leave.id}/download-document/`}>
+                                    <FileDown className="h-4 w-4" />
+                                    <span>Download</span>
+                                  </a>
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleUpdateLeaveStatus(leave.id, "rejected")}
-                                  className="bg-red-600 hover:bg-red-500 text-white"
-                                  disabled={loadingLeaveId === leave.id}
-                                >
-                                  {loadingLeaveId === leave.id ? "Loading..." : "Reject"}
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-
+                              ) : (
+                                <span className="text-muted-foreground">N/A</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {isPast ? (
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                                  Expired
+                                </Badge>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdateLeaveStatus(leave.id, "approved")}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white"
+                                    disabled={approvingLeaveId === leave.id || rejectingLeaveId === leave.id}
+                                  >
+                                    {approvingLeaveId === leave.id ? "Approving..." : "Approve"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdateLeaveStatus(leave.id, "rejected")}
+                                    className="bg-red-600 hover:bg-red-500 text-white"
+                                    disabled={approvingLeaveId === leave.id || rejectingLeaveId === leave.id}
+                                  >
+                                    {rejectingLeaveId === leave.id ? "Rejecting..." : "Reject"}
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
                   </Table>
                 </div>
               )}
@@ -261,10 +310,24 @@ export default function TALeaveAuthorized() {
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-600">Past Leave Requests</CardTitle>
               <CardDescription>History of approved and rejected leave requests.</CardDescription>
+              <div className="mb-4 mt-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by name, email, type, description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 w-full max-w-md"
+          />
+        </div>
+      </div>
             </CardHeader>
             <CardContent>
-              {pastLeaves.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No past leave requests.</div>
+              {filteredPastLeaves.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? "No matching leave requests found." : "No past leave requests."}
+                </div>
               ) : (
                 <div className="rounded-md border">
                   <Table>
@@ -282,7 +345,7 @@ export default function TALeaveAuthorized() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pastLeaves.map((leave) => (
+                      {filteredPastLeaves.map((leave) => (
                         <TableRow key={leave.id}>
                           <TableCell className="font-medium">{leave.ta_name}</TableCell>
                           <TableCell>{leave.ta_email}</TableCell>
@@ -306,7 +369,9 @@ export default function TALeaveAuthorized() {
                               {leave.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">{leave.description || "-"}</TableCell>
+                          <TableCell className="max-w-[300px] whitespace-normal">
+                            <ExpandableCell content={leave.description || "-"} />
+                          </TableCell>
                           <TableCell>
                             {leave.document_url ? (
                               <Button
