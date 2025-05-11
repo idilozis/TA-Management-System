@@ -1,4 +1,17 @@
 instructor_name;course_code;course_name;min_load;max_load;num_graders;must_have_ta;preferred_tas;preferred_graders;avoided_tas
-Eray Tüzün;CS319;Object Oriented Software Engineering;2;2;1;Yunus Günay;Yunus Günay,Daib Malik;Asaf Önal;
-Aynur Dayanık;CS102;Algorithms and Programming II;2;2;0;Asaf Önal;;;
-Uğur Güdükbay;CS102;Algorithms and Programming II;2;2;0;Daib Malik;;;
+Lori Rae Russell Dağ;CS101;Algorithms and Programming I;2;3;1;Yahya Elnouby;Yahya Elnouby,Giray Akyol;Umut Cihan;Sahand Yengejeh
+Lori Rae Russell Dağ;CS115;Introduction to Programming in Python;2;3;1;Umut Cihan;Umut Cihan,Yahya Elnouby;;Sahand Yengejeh, Giray Akyol
+Uğur Güdükbay;CS478;Computational Geometry;1;2;1;Serkan Demirci;Serkan Demirci,Sinan Sonlu;;Sude Önder
+Uğur Güdükbay;CS564;Computational Geometry;1;1;0;Sinan Sonlu;Sinan Sonlu;;Sude Önder
+Can Alkan;CS202;Fundamental Structures of Computer Science II;2;2;1;Ricardo Brenes;Ricardo Brenes,Zülal Bingöl;;Sinan Çavdar
+Can Alkan;CS481;Bioinformatics Algorithms;1;1;1;Zülal Bingöl;Zülal Bingöl;;Serkan Demirci
+Can Alkan;CS583;Bioinformatics Algorithms;1;1;0;Ricardo Brenes;;;
+Selim Aksoy;CS201;Fundamental Structures of Computer Science;2;2;1;Sinan Çavdar;Sinan Çavdar,Emir Türkölmez;;Sahand Yengejeh, Daib Malik
+Selim Aksoy;CS390;Individual Research Study;1;1;0;Emir Türkölmez;;;
+Selim Aksoy;CS489;Teaching Project in Computer Engineering;1;1;0;Sude Önder;;;
+Selim Aksoy;CS490;Senior Research Project;1;1;0;Sinan Çavdar;;Sahand Yengejeh
+Anıl Koyuncu;CS437;Software Design Patterns;1;2;1;Sahand Yengejeh;Sahand Yengejeh;;Yahya Elnouby
+Anıl Koyuncu;CS439;Automated Program Repair;1;1;0;;;Sude Önder
+Anıl Koyuncu;CS537;Software Design Patterns;1;1;1;Sahand Yengejeh;;;
+Anıl Koyuncu;CS539;Automated Program Repair;1;1;0;;;Sude Önder
+Anıl Koyuncu;CS590;Seminar in Computer Engineering;0;1;0;;;;
