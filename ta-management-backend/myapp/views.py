@@ -83,6 +83,7 @@ def list_all_tas(request):
             "advisor": ta.advisor if ta.advisor else "-",
             "program": ta.program,
             "student_id": ta.student_id,
+            "is_full_time": (ta.ta_type or "").strip().upper() != "PT",
         })
     return JsonResponse({"status": "success", "tas": data})
 

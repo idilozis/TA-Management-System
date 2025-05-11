@@ -45,11 +45,16 @@ def list_assignment_preferences(request):
             "max_load": assignment.max_load,
             "num_graders": assignment.num_graders,
             "must_have_ta": [
-                {"name": ta.name, "surname": ta.surname, "email": ta.email}
+                {
+                    "name": ta.name,
+                    "surname": ta.surname,
+                    "email": ta.email,
+                    "is_full_time": (ta.ta_type or "").strip().upper() != "PT",
+                }
                 for ta in assignment.must_have_ta.all()
             ],
             "preferred_tas": [
-                {"name": ta.name, "surname": ta.surname, "email": ta.email}
+                {"name": ta.name, "surname": ta.surname, "email": ta.email, "is_full_time": (ta.ta_type or "").strip().upper() != "PT",}
                 for ta in assignment.preferred_tas.all()
             ],
             "preferred_graders": [
@@ -57,7 +62,7 @@ def list_assignment_preferences(request):
                 for ta in assignment.preferred_graders.all()
             ],
             "avoided_tas": [
-                {"name": ta.name, "surname": ta.surname, "email": ta.email}
+                {"name": ta.name, "surname": ta.surname, "email": ta.email, "is_full_time": (ta.ta_type or "").strip().upper() != "PT",}
                 for ta in assignment.avoided_tas.all()
             ],
         })
@@ -335,7 +340,7 @@ def list_department_tas(request):
                 "name": ta.name,
                 "surname": ta.surname,
                 "email": ta.email,
-                "is_full_time": not (getattr(ta, "ta_type", None) == "PT"),
+                "is_full_time": (ta.ta_type or "").strip().upper() != "PT",
             })
 
     return JsonResponse({"status": "success", "tas": result})
