@@ -91,10 +91,10 @@ export default function SwapsPage() {
             </Alert>
           )}
 
-          <Tabs defaultValue="pending">
+          <Tabs defaultValue="requests">
             <TabsList className="mb-6">
-              <TabsTrigger value="pending">Pending Swaps</TabsTrigger>
               <TabsTrigger value="requests">Incoming Requests</TabsTrigger>
+              <TabsTrigger value="pending">Pending Swaps</TabsTrigger>
               <TabsTrigger value="history">My Swap History</TabsTrigger>
             </TabsList>
 

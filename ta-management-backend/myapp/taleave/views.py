@@ -51,8 +51,18 @@ def create_leave(request):
     except ValueError:
         return JsonResponse({"status": "error", "message": "Invalid date/time format"}, status=400)
     
-    if end_date < start_date or (end_date == start_date and end_time < start_time):
-        return JsonResponse({"status":"error","message":"Invalid date/time range"}, status=400)
+    if end_date < start_date:
+        return JsonResponse({
+            "status": "error",
+            "message": "End date cannot be earlier than start date."
+        }, status=400)
+
+    if end_date == start_date and end_time <= start_time:
+        return JsonResponse({
+            "status": "error",
+            "message": "On the same day, end time must be later than start time."
+        }, status=400)
+
     
     # Create leave request
     leave = TALeaveRequests.objects.create(

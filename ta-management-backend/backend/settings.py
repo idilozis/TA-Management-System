@@ -63,8 +63,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'tamanagementsystem@gmail.com'    # E-mail address
-EMAIL_HOST_PASSWORD = 'mwdv jfhx rzkh rbvr'         # App password
+EMAIL_HOST_USER = 'tamanagementbilkent@gmail.com'    # E-mail address
+EMAIL_HOST_PASSWORD = 'ongk fjez tkuf qkdr'         # App password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ######################################
 

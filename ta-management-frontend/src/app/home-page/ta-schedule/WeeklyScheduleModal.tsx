@@ -371,7 +371,7 @@ export default function WeeklyScheduleModal() {
               </div>
 
               <DialogFooter className="flex justify-between sm:justify-between">
-                <div>
+                <div className="mt-8">
                   {editSlot.id && editSlot.course && (
                     <Button
                       variant="destructive"
@@ -383,7 +383,7 @@ export default function WeeklyScheduleModal() {
                     </Button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-8">
                   <Button
                     variant="outline"
                     onClick={() => setEditSlot(null)}

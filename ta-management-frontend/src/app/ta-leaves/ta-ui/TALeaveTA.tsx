@@ -18,6 +18,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { ExpandableCell } from "@/components/ui/expandable-cell"
 
 interface TALeave {
   id: number
@@ -63,7 +64,7 @@ export default function TALeaveTA() {
   const [selectedFileName, setSelectedFileName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const formatDate = (iso: string) => {
-    const [year, month, day] = iso.split('-')
+    const [year, month, day] = iso.split("-")
     return `${day}.${month}.${year}`
   }
 
@@ -136,9 +137,10 @@ export default function TALeaveTA() {
         setMessage(res.data.message || "Error creating leave request.")
         setMessageType("error")
       }
-    } catch {
-      setMessage("Error creating leave request.")
-      setMessageType("error")
+    } catch (err: any) {
+    const serverMessage = err.response?.data?.message || "Error creating leave request."
+    setMessage(serverMessage)
+    setMessageType("error")
     } finally {
       setIsSubmitting(false)
     }
@@ -173,12 +175,6 @@ export default function TALeaveTA() {
         <h1 className="text-3xl font-bold">Leave Requests</h1>
       </div>
 
-      {message && (
-        <Alert variant={messageType === "success" ? "default" : "destructive"} className="mb-6">
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      )}
-
       {/* Leaves Tables */}
       <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
@@ -197,7 +193,10 @@ export default function TALeaveTA() {
                 <CardTitle className="text-blue-600">Pending Leave Requests</CardTitle>
                 <CardDescription>Leave requests awaiting approval.</CardDescription>
               </div>
-              <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white">
+              <Button onClick={() => {
+                setMessage("");
+                setShowCreateModal(true);
+              }} className="bg-blue-600 hover:bg-blue-500 text-white">
                 <Plus className="mr-0.5 h-4 w-4" /> New Leave Request
               </Button>
             </CardHeader>
@@ -238,10 +237,7 @@ export default function TALeaveTA() {
                               if (st === "pending") {
                                 if (end < now) {
                                   return (
-                                    <Badge
-                                      variant="destructive"
-                                      className="bg-red-100 text-red-800 border-red-200"
-                                    >
+                                    <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
                                       Not responded
                                     </Badge>
                                   )
@@ -272,7 +268,9 @@ export default function TALeaveTA() {
                               )
                             })()}
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">{leave.description}</TableCell>
+                          <TableCell className="max-w-[300px] whitespace-normal">
+                            <ExpandableCell content={leave.description} />
+                          </TableCell>
                           <TableCell>
                             {leave.document_url ? (
                               <Button
@@ -351,7 +349,9 @@ export default function TALeaveTA() {
                               {leave.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">{leave.description}</TableCell>
+                          <TableCell className="max-w-[300px] whitespace-normal">
+                            <ExpandableCell content={leave.description} />
+                          </TableCell>
                           <TableCell>
                             {leave.document_url ? (
                               <Button
@@ -392,6 +392,11 @@ export default function TALeaveTA() {
                 <CardDescription>Submit a new leave request for approval.</CardDescription>
               </CardHeader>
               <CardContent>
+                 {message && (
+        <Alert variant={messageType === "success" ? "default" : "destructive"} className="mb-6">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -401,7 +406,9 @@ export default function TALeaveTA() {
                         name="leave_type"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Leave Type <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Leave Type <span className="text-red-500">*</span>
+                            </FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -463,9 +470,16 @@ export default function TALeaveTA() {
                         name="start_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Date <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Start Date <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-full" min = {new Date().toISOString().split("T")[0]}/>
+                              <Input
+                                type="date"
+                                {...field}
+                                className="w-full"
+                                min={new Date().toISOString().split("T")[0]}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -478,9 +492,16 @@ export default function TALeaveTA() {
                         name="end_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Date <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              End Date <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} className="w-full" min = {new Date().toISOString().split("T")[0]}/>
+                              <Input
+                                type="date"
+                                {...field}
+                                className="w-full"
+                                min={new Date().toISOString().split("T")[0]}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -495,9 +516,11 @@ export default function TALeaveTA() {
                         name="start_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Start Time <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Start Time <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full"/>
+                              <Input type="time" {...field} className="w-full" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -510,9 +533,11 @@ export default function TALeaveTA() {
                         name="end_time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>End Time <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              End Time <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input type="time" {...field} className="w-full"/>
+                              <Input type="time" {...field} className="w-full" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -526,7 +551,9 @@ export default function TALeaveTA() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>
+                            Description <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Provide details about your leave request."

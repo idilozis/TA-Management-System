@@ -143,7 +143,7 @@ export default function RequestsPage() {
         <SidebarInset className="p-8">
           <div className="flex items-center gap-2 mb-6">
             <CheckCircle className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold">Duty Requests</h1>
+            <h1 className="text-3xl font-bold">Workload Approval</h1>
           </div>
 
           {message && (
